@@ -1,0 +1,59 @@
+%#============================================================================
+%# ePortal - WEB Based daily organizer
+%# Author - S.Rusakov <rusakov_sa@users.sourceforge.net>
+%#
+%# Copyright (c) 2001 Sergey Rusakov.  All rights reserved.
+%# This program is free software; you can redistribute it
+%# and/or modify it under the same terms as Perl itself.
+%#
+%# $Revision: 3.1 $
+%# $Date: 2003/04/24 05:36:52 $
+%# $Header: /home/cvsroot/ePortal/comp_root/catalog/showtext.htm,v 3.1 2003/04/24 05:36:52 ras Exp $
+%#
+%#----------------------------------------------------------------------------
+%# Parameters:
+%#   link - ID of ePortal::Catalog object to download
+%#   todisk - true to force "Save as" dialog
+%#----------------------------------------------------------------------------
+<& /message.mc &>
+<% plink(pick_lang(rus => "Вернуться в каталог", eng => "Back to Catalogue"),
+  -href => href("index.htm", group => $c->parent_id)) %>
+<p>
+<% $body %>
+<p>
+<% plink(pick_lang(rus => "Вернуться в каталог", eng => "Back to Catalogue"),
+  -href => href("index.htm", group => $c->parent_id)) %>
+<p>
+
+%#=== @metags onStartRequest ====================================================
+<%method onStartRequest><%perl>
+  $link = $ARGS{link};
+  if ( $link ) {
+    $c = new ePortal::Catalog;
+    if ( ! $c->restore($link) ) {
+      $session{ErrorMessage} = pick_lang(
+        rus => "Указанный ресурс не найден", eng => "Resource not found");
+      return;
+    }
+
+    if ( $c->RecordType eq 'textHTML' ) {
+      $body = filter_html(' ' . $c->Text);
+    } elsif ( $c->RecordType eq 'textpara' ) {
+      $body = $c->Text;
+      $body =~ s/\r?\n\r?\n/<p>\n/g;
+    } elsif ( $c->RecordType eq 'textline' ) {
+      $body = $c->Text;
+      $body =~ s/\r?\n/<p>\n/g;
+    } elsif ( $c->RecordType eq 'text' ) {
+      $body = "\n<PRE>\n" . $c->Text . "\n</PRE>\n";
+    } else {
+      die "Unknown RecordType";
+    }
+
+  }
+</%perl></%method>
+
+%#=== @METAGS once =========================================================
+<%once>
+my ($link, $c, $body) = ();
+</%once>

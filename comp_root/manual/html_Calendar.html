@@ -1,0 +1,99 @@
+<HTML>
+<HEAD>
+<TITLE>ePortal::HTML::Calendar - Calendar dialog box.</TITLE>
+<LINK REV="made" HREF="mailto:rusakov_sa@users.sourceforge.net">
+</HEAD>
+
+<BODY>
+
+<A NAME="__index__"></A>
+<!-- INDEX BEGIN -->
+
+<UL>
+
+	<LI><A HREF="#name">NAME</A></LI>
+	<LI><A HREF="#synopsis">SYNOPSIS</A></LI>
+	<LI><A HREF="#methods">METHODS</A></LI>
+	<UL>
+
+		<LI><A HREF="#new%28date%29"><CODE>new(date)</CODE></A></LI>
+		<LI><A HREF="#self_url%28cal_param%2C%20value%29">self_url(cal_param, value)</A></LI>
+		<LI><A HREF="#url%28%24day_number%2C%24url%29"><CODE>url($day_number,$url)</CODE></A></LI>
+		<LI><A HREF="#url_all%28%24url%29"><CODE>url_all($url)</CODE></A></LI>
+		<LI><A HREF="#date_source%28%29"><CODE>date_source()</CODE></A></LI>
+		<LI><A HREF="#draw%28%29"><CODE>draw()</CODE></A></LI>
+		<LI><A HREF="#date%28%29"><CODE>date()</CODE></A></LI>
+		<LI><A HREF="#set_date%28date%29"><CODE>set_date(date)</CODE></A></LI>
+	</UL>
+
+	<LI><A HREF="#author">AUTHOR</A></LI>
+</UL>
+<!-- INDEX END -->
+
+<HR>
+<P>
+<H1><A NAME="name">NAME</A></H1>
+<P>ePortal::HTML::Calendar - Calendar dialog box.</P>
+<P>
+<HR>
+<H1><A NAME="synopsis">SYNOPSIS</A></H1>
+<P>This module is used to make a dialog with a monthly calendar.</P>
+<PRE>
+ % $Calendar = new ePortal::HTML::Calendar;
+ % $Calendar-&gt;url_all('self');
+ ...
+ &lt;% $Calendar-&gt;draw %&gt;</PRE>
+<P>
+<HR>
+<H1><A NAME="methods">METHODS</A></H1>
+<P>
+<H2><A NAME="new%28date%29"><CODE>new(date)</CODE></A></H2>
+<P>Object contructor. <STRONG>date</STRONG> is passed to <CODE>set_date</CODE>. Calendar's date may be
+got from session hash or URL. The date source may be checked with
+<CODE>date_source()</CODE> member function.</P>
+<P>A value of <STRONG>self</STRONG> means that date was initialized by Calendar.pm itself,
+<STRONG>session</STRONG> means that date was restored from user's session hash, <STRONG>url</STRONG> -
+from browsers's request.</P>
+<P>
+<H2><A NAME="self_url%28cal_param%2C%20value%29">self_url(cal_param, value)</A></H2>
+<P>Constructs self referencing URL removing all myself specific parameters.
+New parameters should be passed to this function to make them added to URL.</P>
+<P>Returns URL with parameters.</P>
+<P>
+<H2><A NAME="url%28%24day_number%2C%24url%29"><CODE>url($day_number,$url)</CODE></A></H2>
+<P>Sets an URL for particular day in the current month view. If $url eq
+<STRONG>'self'</STRONG> than self-refence URL will be contructed without parameters loss.</P>
+<P>
+<H2><A NAME="url_all%28%24url%29"><CODE>url_all($url)</CODE></A></H2>
+<P>Sets an url for each day in calendar. $url parameter is passed to <CODE>url()</CODE>
+method. See it for details</P>
+<P>
+<H2><A NAME="date_source%28%29"><CODE>date_source()</CODE></A></H2>
+<P>Returns a sting which points to a source of the date</P>
+<P><STRONG>self</STRONG> - self initialized date (today)</P>
+<P><STRONG>session</STRONG> - restored from user's session hash</P>
+<P><STRONG>url</STRONG> - adjusted from URL</P>
+<P>
+<H2><A NAME="draw%28%29"><CODE>draw()</CODE></A></H2>
+<P>Draws the calendar. Returns an HTML in array context and outputs HTML via
+$m in scalar context.</P>
+<P>
+<H2><A NAME="date%28%29"><CODE>date()</CODE></A></H2>
+<P>Returns a date selected. It returns an array (YYYY,MM,DD) in array context
+and nicely formatted date 'DD.MM.YYYY' in scalar context.</P>
+<P>
+<H2><A NAME="set_date%28date%29"><CODE>set_date(date)</CODE></A></H2>
+<P>Adjust the calendar to the date. Parameter may be:</P>
+<P><STRONG>'now'</STRONG> or <STRONG>'today'</STRONG> - set the date to today</P>
+<P><STRONG>'cal_nmon'</STRONG>,<STRONG>'next'</STRONG> or <STRONG>'cal_pmon'</STRONG>,<STRONG>'prev'</STRONG> - adjust to next or prev month</P>
+<P><STRONG>[YYYY,MM,DD]</STRONG> - array ref to (YYYY,MM,DD)</P>
+<P><STRONG>(YYYY,MM,DD)</STRONG> - array of (YYYY,MM,DD)</P>
+<P><STRONG>'DD.MM.YYYY'</STRONG> - date as string</P>
+<P>
+<HR>
+<H1><A NAME="author">AUTHOR</A></H1>
+<P>Sergey Rusakov, &lt;<A HREF="mailto:rusakov_sa@users.sourceforge.net">rusakov_sa@users.sourceforge.net</A>&gt;</P>
+
+</BODY>
+
+</HTML>

@@ -1,0 +1,206 @@
+%#============================================================================
+%# ePortal - WEB Based daily organizer
+%# Author - S.Rusakov <rusakov_sa@users.sourceforge.net>
+%#
+%# Copyright (c) 2001 Sergey Rusakov.  All rights reserved.
+%# This program is free software; you can redistribute it
+%# and/or modify it under the same terms as Perl itself.
+%#
+%# $Revision: 3.2 $
+%# $Date: 2003/04/24 05:36:51 $
+%# $Header: /home/cvsroot/ePortal/comp_root/admin/ePortal_setup.htm,v 3.2 2003/04/24 05:36:51 ras Exp $
+%#
+%#----------------------------------------------------------------------------
+<& /message.mc &>
+&nbsp;
+<% $dlg->dialog_start( title => pick_lang(rus => "Настройка ePortal сервера", eng => "ePortal server setup") ) %>
+
+<% $dlg->row('&nbsp;') %>
+<% $dlg->row('<b>Database connection information</b>') %>
+<% $dlg->row('<hr width="50%">') %>
+  <% $dlg->field('dbi_source', RO=>1) %>
+  <% $dlg->field('dbi_username', RO=>1) %>
+  <% $dlg->field('dbi_password', RO=>1) %>
+
+<% $dlg->row('&nbsp;') %>
+<% $dlg->row('<b>General settings</b>') %>
+<% $dlg->row('<hr width="50%">') %>
+  <% $dlg->field('admin') %>
+  <% $dlg->field('days_keep_sessions') %>
+  <% $dlg->field('refresh_interval') %>
+  <% $dlg->field('date_field_style') %>
+  <% $dlg->field('smtp_server') %>
+  <% $dlg->field('www_server') %>
+  <% $dlg->field('mail_domain') %>
+  <% $dlg->field('vhost') %>
+
+<% $dlg->row('&nbsp;') %>
+<% $dlg->row('<b>Language settings</b>') %>
+<% $dlg->row('<hr width="50%">') %>
+  <% $dlg->field('language') %>
+  <% $dlg->field('disk_charset') %>
+
+<% $dlg->row('&nbsp;') %>
+<% $dlg->row('<b>Debug settings</b>') %>
+<% $dlg->row('<hr width="50%">') %>
+  <% $dlg->field('debug') %>
+  <% $dlg->field('log_filename') %>
+  <% $dlg->field('log_charset') %>
+
+<% $dlg->row('&nbsp;') %>
+<% $dlg->row('<b>LDAP settings</b>') %>
+<% $dlg->row('<hr width="50%">') %>
+  <% $dlg->field('ldap_server') %>
+  <% $dlg->field('ldap_base') %>
+  <% $dlg->field('ldap_binddn') %>
+  <% $dlg->field('ldap_bindpw') %>
+  <% $dlg->field('ldap_charset') %>
+  <% $dlg->field('ldap_uid_attr') %>
+  <% $dlg->field('ldap_fullname_attr') %>
+  <% $dlg->field('ldap_title_attr') %>
+  <% $dlg->field('ldap_ou_attr') %>
+  <% $dlg->field('ldap_group_attr') %>
+  <% $dlg->field('ldap_groupdesc_attr') %>
+
+<% $dlg->row('&nbsp;') %>
+<% $dlg->buttons %>
+<% $dlg->dialog_end %>
+<p>
+
+
+%#=== @metags once =========================================================
+<%once>
+my ($dlg, $obj);
+</%once>
+
+
+%#=== @METAGS cleanup =========================================================
+<%cleanup>
+($dlg, $obj) = ();
+</%cleanup>
+
+%#=== @METAGS attr =========================================================
+<%attr>
+Title => {rus => "Настройка ePortal", eng => "ePortal setup page"}
+</%attr>
+
+
+%#=== @METAGS onStartRequest ====================================================
+<%method onStartRequest><%perl>
+    my $obj = new ePortal::ApplicationConfig(
+      ApplicationObject => $ePortal,
+      Attributes => [
+        # main_parameters
+        dbi_source   => { default => $ePortal->dbi_source },
+        dbi_username => { default => $ePortal->dbi_username },
+        dbi_password => {
+            default => $ePortal->dbi_password,
+            fieldtype => 'password',
+        },
+        admin_mode   => { default => $ePortal->admin_mode },
+
+        # configurable parameters
+        admin => {
+            dtype => 'Array',
+        },
+        debug => {
+            dtype => 'VarChar',
+            fieldtype => 'popup_menu',
+            values => [qw/debug info notice warn error crit alert emerg/],
+            labels => {
+                emerg => 'Emergencies - system is unusable',
+                alert => 'Action must be taken immediately',
+                crit  => 'Critical Conditions',
+                error => 'Error conditions',
+                warn  => 'Warning conditions',
+                notice => 'Normal but significant condition',
+                info   => 'Informational',
+                debug  => 'Debug-level messages'
+            },
+            default => 'error',
+        },
+        vhost => {},
+        log_filename => {
+            dtype => 'VarChar',
+            default => 'apache',
+        },
+        log_charset => {
+            fieldtype => 'popup_menu',
+            values => [qw/UTF8 DOS WIN KOI8/],
+            default => 'KOI8',
+        },
+        disk_charset => {
+            fieldtype => 'popup_menu',
+            values => [qw/UTF8 DOS WIN KOI8/],
+            default => 'KOI8',
+        },
+        days_keep_sessions => {
+            dtype => 'Number',
+            default => 7,
+        },
+        language => {
+            fieldtype => 'popup_menu',
+            values => [qw/eng rus/],
+            default => 'rus',
+        },
+        refresh_interval => {
+            dtype => 'Number',
+            default => 300,
+        },
+        date_field_style => {
+            fieldtype => 'popup_menu',
+            values => [qw/java nonjava/],
+            default => 'java',
+        },
+        smtp_server => {
+            default => 'localhost',
+        },
+        www_server => { },
+        mail_domain => { },
+        ldap_server => { },
+        ldap_base => { },
+        ldap_binddn => { },
+        ldap_bindpw => { },
+        ldap_charset => {
+            fieldtype => 'popup_menu',
+            values => [qw/UTF8 DOS WIN KOI8/],
+            default => 'UTF8',
+        },
+        ldap_uid_attr => {
+            default => 'uid',
+        },
+        ldap_fullname_attr => {
+            default => 'fullName',
+        },
+        ldap_title_attr => {
+            default => 'title',
+        },
+        ldap_ou_attr => {
+            default => 'ou',
+        },
+        ldap_group_attr => {
+            default => 'groupMembership',
+        },
+        ldap_groupdesc_attr => {
+            default => 'description',
+        },
+
+      ],
+    );
+
+    $obj->restore();
+
+  # Handle Dialog events
+  $dlg = new ePortal::HTML::Dialog( obj => $obj, width => 450);
+  my $location = $dlg->handle_request;
+
+  # Every application has it's own DBISource object
+  if ( $dlg->isButtonPressed('ok') ) {
+    return "index.htm";
+
+  } elsif ( $dlg->isButtonPressed('cancel')) {
+    return "index.htm";
+  }
+
+</%perl></%method>
+

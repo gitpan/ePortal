@@ -1,0 +1,121 @@
+%#============================================================================
+%# ePortal - WEB Based daily organizer
+%# Author - S.Rusakov <rusakov_sa@users.sourceforge.net>
+%#
+%# Copyright (c) 2001 Sergey Rusakov.  All rights reserved.
+%# This program is free software; you can redistribute it
+%# and/or modify it under the same terms as Perl itself.
+%#
+%# $Revision: 3.2 $
+%# $Date: 2003/04/24 05:36:51 $
+%# $Header: /home/cvsroot/ePortal/comp_root/login.htm,v 3.2 2003/04/24 05:36:51 ras Exp $
+%#
+%#----------------------------------------------------------------------------
+<& /message.mc &>
+&nbsp;
+<% $dlg->dialog_start( title => pick_lang(rus => "Регистрация в системе", eng => "Login to ePortal") ) %>
+<% $dlg->field("username") %>
+<% $dlg->field("password") %>
+<% $dlg->field("savepassword") %>
+<% $dlg->buttons(ok_label => pick_lang(rus => "Зарегистрироваться!", eng => "Login!")) %>
+<% $dlg->dialog_end %>
+
+&nbsp;
+<hr>
+<p>
+	<% pick_lang(rus => q{
+		<a href="/login-faq.htm">Здесь</a> находится список часто задаваемых
+		вопросов, касающихся регистрации на информационном сервере.
+	}, eng => q{
+    <a href="/login-faq.htm">Here</a> is Frequently Asked Questions
+		about login process.
+	}) %>
+
+<p>
+<& /inset.mc &>
+
+
+
+
+
+
+
+%#=== @METAGS onStartRequest ====================================================
+<%method onStartRequest><%perl>
+	$dlg = new ePortal::HTML::Dialog( obj => new ePortal::Dual::Login, width => 300);
+	my $location = $dlg->handle_request();
+
+	# Handle CANCEL
+	if ($location and $dlg->isButtonPressed("cancel")) {
+		$m->comp("/redirect.mc", location => $location);
+		return;
+	}
+
+	# Handle OK
+	my($username, $reason);
+	if ($dlg->isButtonPressed("ok")) {
+    ($username, $reason) = $ePortal->CheckUserAccount(
+      username => $dlg->{obj}->username,
+      password => $dlg->{obj}->password);
+
+		if ($username) {
+      $m->scomp('/pv/send_auth_cookie.mc', username => $username, savepassword => $dlg->{obj}->savepassword);
+			$location = "/index.htm" if $location =~ /login\.htm/;
+			return $location if $location;
+		} else {
+      $m->scomp('/pv/send_auth_cookie.mc');
+		}
+
+	}
+
+	my %reasons = (
+		bad_user 			=> pick_lang(
+        rus => "Пользователь с таким именем не существует",
+				eng => "Bad user name"),
+    bad_password  => pick_lang(
+				rus => "Вы ввели неправильный пароль",
+				eng => "Bad password"),
+		md5_changed 	=> pick_lang(
+				rus => "Полученная информация не достоверна",
+				eng => "MD5 checksum incorrect"),
+		ip_changed		=> pick_lang(
+				rus => "Адрес компьютера изменился",
+				eng => "Client TCP/IP address changed"),
+		no_user				=> pick_lang(
+				rus => "Неизвестный пользователь или не указано имя пользователя",
+				eng => "No user name or user unknown"),
+		disabled			=> pick_lang(
+				rus => "Бюджет пользователя отключен",
+				eng => "User is disabled"),
+		system_error	=> pick_lang(
+				rus => "Системная ошибка",
+				eng => "System error"),
+		"" => "",
+	);
+	if (exists $reasons{$reason}) {
+		$session{ErrorMessage} = $reasons{$reason};
+	} else {
+		$session{ErrorMessage} = pick_lang(
+				rus => "Неизвестная причина отказа",
+				eng => "Unknown error occured");
+	}
+
+</%perl></%method>
+
+
+%#=== @METAGS attr ====================================================
+<%attr>
+Title => {rus => "Регистрация на сервере", eng => "Login to server"}
+</%attr>
+
+
+%#=== @metags once =========================================================
+<%once>
+my ($dlg, $obj);
+</%once>
+
+%#=== @metags cleanup =========================================================
+<%cleanup>
+($dlg, $obj) = ();
+</%cleanup>
+

@@ -1,0 +1,28 @@
+%#============================================================================
+%# ePortal - WEB Based daily organizer
+%# Author - S.Rusakov <rusakov_sa@users.sourceforge.net>
+%#
+%# Copyright (c) 2001 Sergey Rusakov.  All rights reserved.
+%# This program is free software; you can redistribute it
+%# and/or modify it under the same terms as Perl itself.
+%#
+%# $Revision: 3.1 $
+%# $Date: 2003/04/24 05:36:52 $
+%# $Header: /home/cvsroot/ePortal/comp_root/errors/require_admin.htm,v 3.1 2003/04/24 05:36:52 ras Exp $
+%#
+%#----------------------------------------------------------------------------
+
+<& /message.mc, ErrorMessage => pick_lang(rus => "В доступе отказано", eng => "Access denied") &>
+
+<p>
+<% pick_lang(rus => q{
+	Для доступа к указанному ресурсу необходимы права Администратора.
+}, eng => q{
+	You does not have administrators privilegies.
+}) %>
+<p>
+
+%#=== @metags attr =========================================================
+<%attr>
+Title => {rus => "Ошибка доступа", eng => "Access denied"}
+</%attr>

@@ -1,0 +1,65 @@
+<HTML>
+<HEAD>
+<TITLE>ePortal::ThePersistent::ParentACL - Extended Access Control Lists base
+class for persistent objects based on parent object.</TITLE>
+<LINK REV="made" HREF="mailto:rusakov_sa@users.sourceforge.net">
+</HEAD>
+
+<BODY>
+
+<A NAME="__index__"></A>
+<!-- INDEX BEGIN -->
+
+<UL>
+
+	<LI><A HREF="#name">NAME</A></LI>
+	<LI><A HREF="#synopsis">SYNOPSIS</A></LI>
+	<LI><A HREF="#methods">METHODS</A></LI>
+	<LI><A HREF="#author">AUTHOR</A></LI>
+</UL>
+<!-- INDEX END -->
+
+<HR>
+<P>
+<H1><A NAME="name">NAME</A></H1>
+<P>ePortal::ThePersistent::ParentACL - Extended Access Control Lists base
+class for persistent objects based on parent object.</P>
+<P>
+<HR>
+<H1><A NAME="synopsis">SYNOPSIS</A></H1>
+<P><STRONG>ePortal::ThePersistent::ParentACL</STRONG> implements Access Control Lists
+(ACL) functions) for ThePersistent classes.</P>
+<UL>
+<LI>
+Object is inaccessible if parent is not exists. This is VERY IMPORTANT.
+Even Admin may not access this object. This is like constraint.
+<P></P>
+<LI>
+Object is <CODE>readable</CODE> if parent too.
+<P></P>
+<LI>
+Object if <CODE>modifiable</CODE> including ability to delete if parent allows
+<CODE>xacl_check_update()</CODE>
+<P></P>
+<LI>
+New object is allowed if parent allows <CODE>xacl_check_children()</CODE> which check
+by default <CODE>xacl_check_update()</CODE>
+<P></P>
+<LI>
+Admin privileges is not a sense for <CODE>ParentACL</CODE> package but defaults to
+<CODE>xacl_check_admin()</CODE> of the parent.
+<P></P></UL>
+<P>
+<HR>
+<H1><A NAME="methods">METHODS</A></H1>
+<P>See
+<A HREF="thep_ExtendedACL.html">ePortal::ThePersistent::ExtendedACL</A>
+for details.</P>
+<P>
+<HR>
+<H1><A NAME="author">AUTHOR</A></H1>
+<P>Sergey Rusakov, &lt;<A HREF="mailto:rusakov_sa@users.sourceforge.net">rusakov_sa@users.sourceforge.net</A>&gt;</P>
+
+</BODY>
+
+</HTML>

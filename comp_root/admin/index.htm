@@ -1,0 +1,112 @@
+%#============================================================================
+%# ePortal - WEB Based daily organizer
+%# Author - S.Rusakov <rusakov_sa@users.sourceforge.net>
+%#
+%# Copyright (c) 2001 Sergey Rusakov.  All rights reserved.
+%# This program is free software; you can redistribute it
+%# and/or modify it under the same terms as Perl itself.
+%#
+%# $Revision: 3.6 $
+%# $Date: 2003/04/24 05:36:51 $
+%# $Header: /home/cvsroot/ePortal/comp_root/admin/index.htm,v 3.6 2003/04/24 05:36:51 ras Exp $
+%#
+%#----------------------------------------------------------------------------
+
+<p>
+<& /item_caption.mc, title => 'ePortal setup step-by-step' &>
+<ul>
+  <li><a href="ePortal_setup.htm"><% pick_lang(
+      rus => "Основная страница настройки ePortal",
+      eng => "ePortal setup page") %></a>
+
+  <li><a HREF="/admin/ePortal_catalog.htm"><% pick_lang(
+      rus => "Загрузка Каталога для ePortal",
+      eng => "Load ePortal's Catalogue") %></a>
+
+</ul>
+
+%#
+%# ===========================================================================
+%#
+
+<p>
+<& /item_caption.mc, title => pick_lang(rus => "Пользователии группы", eng => "Users and groups") &>
+<ul>
+  <li><a HREF="/admin/users_list.htm"><% pick_lang(
+      rus => "Пользователи ePortal",
+      eng => "ePortal users") %></a>
+
+  <li><a HREF="/admin/groups_list.htm"><% pick_lang(
+      rus => "Группы пользователей ePortal",
+      eng => "ePortal groups") %></a>
+</ul>
+
+
+%#
+%# ===========================================================================
+%#
+
+<p>
+<& /item_caption.mc, title => pick_lang(rus => "Приложения", eng => "Applications") &>
+<table width="90%">
+  <tr>
+    <th><% pick_lang(rus => "Наименование", eng => "Name") %></th>
+    <th><% pick_lang(rus => "Действия", eng => "Actions") %></th>
+    <th><% pick_lang(rus => "Статус", eng => "Status") %></th>
+    <th></th>
+  </tr>
+  <%perl>
+    # All installed as unconfigured
+    my %A = ( map {$_ => 0} $ePortal->ApplicationsInstalled );
+    # Mark as configured some of them
+    foreach (keys %{ $ePortal->applications }) {
+      $A{$_} = $ePortal->applications->{$_};
+    }
+    # save config
+    $ePortal->{applications} = \%A;
+    $ePortal->config_save;
+    $ePortal->config_load;
+
+    foreach my $app_name ($ePortal->ApplicationsInstalled) {
+  </%perl>
+ <tr>
+  <td><b><% $app_name %></b></td>
+  <td>
+    <% plink(pick_lang(rus => "Настройка", eng => "Setup"),
+      -href => $app_name.'_setup.htm') %>
+    <% plink(pick_lang(rus => "Загрузка каталога", eng => "Load Catalogue"),
+      -href => $app_name.'_catalog.htm') %>
+  </td>
+  <td>
+    <b>
+    <% $ePortal->applications->{$app_name}
+        ? '<font color="green">Ok!</font>'
+        : '<font color="red">Not Ok!</font>' %>
+    </b>
+  <td>
+ </tr>
+% }
+</table>
+
+%#
+%# ===========================================================================
+%#
+
+<p>
+<& /item_caption.mc, title => pick_lang(rus => "Прочие ссылки", eng => "Other resources") &>
+
+<ul>
+
+	<li><a href="/manual/index.htm"><% pick_lang(
+			rus => "Руководство по ePortal",
+			eng => "ePortal manual") %></a>
+
+%#<hr>
+%# <li><a HREF="/admin/statistics.htm"><% pick_lang(
+%#     rus => "Статистика работы сервера",
+%#     eng => "Display runtime statistics") %></a>
+
+<hr>
+
+</ul>
+

@@ -1,0 +1,71 @@
+%#============================================================================
+%# ePortal - WEB Based daily organizer
+%# Author - S.Rusakov <rusakov_sa@users.sourceforge.net>
+%#
+%# Copyright (c) 2001 Sergey Rusakov.  All rights reserved.
+%# This program is free software; you can redistribute it
+%# and/or modify it under the same terms as Perl itself.
+%#
+%# $Revision: 3.1 $
+%# $Date: 2003/04/24 05:36:51 $
+%# $Header: /home/cvsroot/ePortal/comp_root/admin/mlink_edit.htm,v 3.1 2003/04/24 05:36:51 ras Exp $
+%#
+%#----------------------------------------------------------------------------
+&nbsp;
+<% $dlg->dialog_start(
+			title => pick_lang(rus => "—сылка меню", eng => "Menu link"),
+      copy_button => 1,
+			width => 450)	%>
+
+% if ($link->menu_id == 0) {
+	<% $dlg->field('menu_id') %>
+	<% $dlg->buttons( more_button => 1, ok_button => 0) %>
+% foreach my $field (qw/section_id title nickname url enabled text /) {
+	<% $dlg->field($field, hidden => 1) %>
+% }
+
+% } else {
+
+	<% $dlg->field("menu_id", hidden => 1) %>
+	<% $dlg->field('menu_id', RO => 1) %>
+	<% $dlg->row('<hr>') %>
+% foreach my $field (qw/section_id title nickname url enabled text /) {
+	<% $dlg->field($field) %>
+% }
+	<% $dlg->buttons %>
+%}
+
+<% $dlg->dialog_end %>
+&nbsp;
+
+%#=== @metags once =========================================================
+<%once>
+my ($dlg, $obj);
+</%once>
+
+%#=== @metags cleanup =========================================================
+<%cleanup>
+($dlg, $obj) = ();
+</%cleanup>
+
+
+
+%#=== @METAGS attr =========================================================
+<%attr>
+Title => {rus => "—сылка меню", eng => "Menu link"}
+</%attr>
+
+
+%#=== @METAGS onStartRequest ====================================================
+<%method onStartRequest><%perl>
+  $link = new ePortal::MenuLink;
+	$dlg = new ePortal::HTML::Dialog(obj => $link);
+	my $location = $dlg->handle_request;
+	return $location if $location;
+
+	$link->menu_id( $ARGS{menu_id} ) if exists $ARGS{menu_id};
+	$link->menu_id( $link->parent->menu_id ) if $link->section_id;
+	$link->menu_id(undef) if $dlg->isButtonPressed('copy');
+</%perl></%method>
+
+

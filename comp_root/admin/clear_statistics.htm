@@ -1,0 +1,55 @@
+%#============================================================================
+%# ePortal - WEB Based daily organizer
+%# Author - S.Rusakov <rusakov_sa@users.sourceforge.net>
+%#
+%# Copyright (c) 2001 Sergey Rusakov.  All rights reserved.
+%# This program is free software; you can redistribute it
+%# and/or modify it under the same terms as Perl itself.
+%#
+%# $Revision: 3.2 $
+%# $Date: 2003/04/24 05:36:51 $
+%# $Header: /home/cvsroot/ePortal/comp_root/admin/clear_statistics.htm,v 3.2 2003/04/24 05:36:51 ras Exp $
+%#
+%#----------------------------------------------------------------------------
+
+% if ($confirmed and $yes) {
+%  ePortal::Catalog::ClearStatistics();
+  <& /message.mc, GoodMessage => pick_lang(
+      rus => "Статистика очищена", eng => "Statistics cleared")  &>
+
+% } elsif ($confirmed and $no) {
+  <& /message.mc, ErrorMessage => pick_lang(
+      rus => "Действие отменено", eng => "Action denied")  &>
+
+
+% } else {
+  <& /message.mc, ErrorMessage => pick_lang(
+      rus => "Статистика будет очищена. Вы уверены?",
+      eng => "Clear Statistics? Are you shure?") &>
+  <div align="center">
+  <form method="GET" action="<% $ENV{SCRIPT_NAME} %>">
+  <% CGI::hidden({-name => 'confirmed', -value => 1}) %>
+  <% CGI::submit({-name => 'yes', -value => pick_lang(rus => "ДА", eng => "YES")}) %>
+  <% CGI::submit({-name => 'no', -value => pick_lang(rus => "Нет", eng => "No")}) %>
+  </div>
+  </form>
+% }
+
+
+%#=== @metags onStartRequest ====================================================
+<%method onStartRequest><%perl>
+
+</%perl></%method>
+
+%#=== @METAGS attr =========================================================
+<%attr>
+Title => {rus => "Сброс статистики Каталога", eng => "Clear Catalogue statistics"}
+</%attr>
+
+
+%#=== @METAGS args =========================================================
+<%args>
+$confirmed => undef
+$yes => undef
+$no => undef
+</%args>

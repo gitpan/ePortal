@@ -1,0 +1,42 @@
+%#============================================================================
+%# ePortal - WEB Based daily organizer
+%# Author - S.Rusakov <rusakov_sa@users.sourceforge.net>
+%#
+%# Copyright (c) 2001 Sergey Rusakov.  All rights reserved.
+%# This program is free software; you can redistribute it
+%# and/or modify it under the same terms as Perl itself.
+%#
+%# $Revision: 3.1 $
+%# $Date: 2003/04/24 05:36:51 $
+%# $Header: /home/cvsroot/ePortal/comp_root/go.htm,v 3.1 2003/04/24 05:36:51 ras Exp $
+%#
+%#----------------------------------------------------------------------------
+
+<& /message.mc, ErrorMessage => pick_lang(
+		rus => "Не могу найти указанный адрес",
+		eng => "Cannot find requested address") &>
+
+<% pick_lang(
+	rus => q{Попробуйте найти нужный Вам ресурс с <a href="/index.htm">главной страницы</a>.},
+	eng => q{Try to find the resource from <a href="/index.htm">home page</a>.} ) %>
+
+% if ($ePortal->sysacl_check("menu", "a")) {
+<div class="smallfont">
+ID: <% $ARGS{id} %>
+</div>
+%}
+
+
+
+
+%#=== @metags onStartRequest ====================================================
+<%method onStartRequest><%perl>
+	my $id = $ARGS{id};
+	my $ml = new ePortal::MenuLink;
+
+	if ($ml->restore($id)) {
+		$ml->CountClick;
+		return $ml->url;
+	}
+
+</%perl></%method>

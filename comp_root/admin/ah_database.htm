@@ -1,0 +1,328 @@
+%#============================================================================
+%# ePortal - WEB Based daily organizer
+%# Author - S.Rusakov <rusakov_sa@users.sourceforge.net>
+%#
+%# Copyright (c) 2001 Sergey Rusakov.  All rights reserved.
+%# This program is free software; you can redistribute it
+%# and/or modify it under the same terms as Perl itself.
+%#
+%# $Revision: 3.5 $
+%# $Date: 2003/04/24 05:36:51 $
+%# $Header: /home/cvsroot/ePortal/comp_root/admin/ah_database.htm,v 3.5 2003/04/24 05:36:51 ras Exp $
+%#
+%#----------------------------------------------------------------------------
+%# autohandler for using with xxx_database.htm scripts to setup data storage
+%# for applications
+%#
+%#----------------------------------------------------------------------------
+<%perl>
+  use ePortal::ThePersistent::Tools;
+  $gdata{app_name} = $m->request_comp->attr('Application');
+  if ( $gdata{app_name} eq '' or $gdata{app_name} eq 'ePortal') {
+    $m->comp("/message.mc", ErrorMessage => "Attribute [Application] is not defined");
+    return;
+  }
+  $gdata{app} = $ePortal->Application($gdata{app_name}, unconfigured => 1);
+  $gdata{app_dbh} = $gdata{app}->dbh;
+  $gdata{do_it} = $ARGS{do_it};
+  $gdata{something_failed} = 0;
+
+</%perl>
+<p>
+<& /item_caption.mc, title =>
+  pick_lang(rus => "Результаты проверки структуры БД", eng => "Database check results") &>
+
+<table width="80%" border="1" align="center" cols="2">
+  <thead><tr>
+    <th><% pick_lang(rus => "Имя таблицы или действия", eng => "Table name or action") %></th>
+    <th><% pick_lang(rus => "Результат", eng => "Result") %></th>
+  </tr></thead>
+
+  <tbody>
+  <% $m->call_next %>
+  </tbody>
+
+  <tfoot><tr>
+  <td colspan="2" align="center" valign="bottom">
+      <% $gdata{do_it}
+        ? pick_lang(rus => "Изменения внесены в БД", eng => "Commit to database")
+        : pick_lang(rus => "Изменения не внесены в БД", eng => "Read only check") %>
+      <br>
+% if (! $gdata{do_it}) {
+      <form method="GET" action="<% $ENV{SCRIPT_NAME} %>">
+      <% CGI::hidden({-name => 'do_it', -value => 1}) %>
+      <% CGI::submit({-name => 'save', -value => pick_lang(rus => "Внести изменения", eng => "Save & Upgrade") }) %>
+      </form>
+% }
+  </td>
+  </tr></tfoot>
+</table>
+
+<p>
+<% plink( pick_lang(rus => "Обратно на страницу администратора", eng => "Back to admin home page"), -href => 'index.htm') %>
+<p>
+
+
+<%perl>
+  # Save application state
+  $ePortal->{applications}{$gdata{app_name}} = $gdata{something_failed} ? undef: 1;
+  $ePortal->config_save;
+
+</%perl>
+
+%#=== @METAGS attr =========================================================
+<%attr>
+Title => {rus => "Создание структуры БД приложения", eng => "Application's database creation page"}
+</%attr>
+
+
+%#=== @METAGS report ====================================================
+<%method report>
+% $gdata{something_failed} = 1 if $ARGS{bad};
+% $ARGS{good} = 'Ok' if $ARGS{good} eq '' and $ARGS{bad} eq '';
+<tr>
+  <td>
+    <% $ARGS{label} %>
+  </td>
+  <td>
+    <font color="red"><% $ARGS{bad} %></font>
+    <font color="green"><% $ARGS{good} %></font>
+  </td>
+</tr>
+</%method>
+
+
+%#=== @METAGS table_exists ====================================================
+<%method table_exists><%perl>
+  my $table = $ARGS{table};
+  my $SQL = $ARGS{SQL};
+  my ($result_bad, $result_good);
+
+  if ( table_exists($gdata{app_dbh}, $table) ) {
+    $result_good = 'Ok';
+  } else {
+    if ( $gdata{do_it} ) {
+      $result_good = try {
+        $gdata{app_dbh}->do($SQL);
+        "Table created";
+      } catch ePortal::Exception::DBI with {
+        my $E = shift;
+        $result_bad = "DBI error. Cannot create table\n" .
+          "<!-- $E -->";
+        undef;
+      }
+
+    } else {
+      $result_bad = 'Table not exists';
+    }
+  }
+
+</%perl>
+<& SELF:report, label => "table $table", bad => $result_bad, good => $result_good &>
+</%method>
+
+
+%#=== @metags drop_table ====================================================
+<%method drop_table><%perl>
+  my $table = $ARGS{table};
+  my ($result_bad, $result_good);
+
+  if ( ! table_exists($gdata{app_dbh}, $table) ) {
+    $result_good = undef;
+  } else {
+    if ( $gdata{do_it} ) {
+      $result_good = try {
+        $gdata{app_dbh}->do("DROP TABLE $table");
+        "Table dropped";
+      } catch ePortal::Exception::DBI with {
+        my $E = shift;
+        $result_bad = "DBI error. Cannot drop table\n" .
+          "<!-- $E -->";
+        undef;
+      }
+
+    } else {
+      $result_bad = 'To be removed';
+    }
+  }
+
+</%perl>
+% if ($result_bad or $result_good) {
+<& SELF:report, label => "table $table", bad => $result_bad, good => $result_good &>
+% }
+</%method>
+
+
+
+
+%#=== @metags drop_column ====================================================
+<%method drop_column><%perl>
+  my $table = $ARGS{table};
+  my $column = $ARGS{column};
+  my ($result_bad, $result_good);
+
+  if ( ! table_exists($gdata{app_dbh}, $table) or ! column_exists($gdata{app_dbh}, $table, $column) ) {
+    $result_good = undef;
+  } else {
+    if ( $gdata{do_it} ) {
+      $result_good = try {
+        $gdata{app_dbh}->do("ALTER TABLE $table DROP COLUMN $column");
+        "Column removed";
+      } catch ePortal::Exception::DBI with {
+        my $E = shift;
+        $result_bad = "DBI error. Cannot remove column\n" .
+          "<!-- $E -->";
+        undef;
+      }
+
+    } else {
+      $result_bad = 'To be removed';
+    }
+  }
+
+</%perl>
+% if ($result_bad or $result_good) {
+<& SELF:report, label => "column $table.$column", bad => $result_bad, good => $result_good &>
+% }
+</%method>
+
+
+%#=== @METAGS add_column ====================================================
+<%method add_column><%perl>
+  my $table = $ARGS{table};
+  my $column = $ARGS{column};
+  my $spec = $ARGS{spec};
+  my ($result_bad, $result_good);
+
+  if ( table_exists($gdata{app_dbh}, $table) and column_exists($gdata{app_dbh}, $table, $column) ) {
+    $result_good = 'Ok';
+  } else {
+    if ( $gdata{do_it} ) {
+      $result_good = try {
+        $gdata{app_dbh}->do("ALTER TABLE $table ADD COLUMN $column $spec");
+        "Column added";
+      } catch ePortal::Exception::DBI with {
+        my $E = shift;
+        $result_bad = "DBI error. Cannot add column\n" .
+          "<!-- $E -->";
+        undef;
+      }
+
+    } else {
+      $result_bad = 'Column does not exists';
+    }
+  }
+
+</%perl>
+<& SELF:report, label => "column $table.$column", bad => $result_bad, good => $result_good &>
+</%method>
+
+
+
+%#=== @METAGS modify_column ====================================================
+<%method modify_column><%perl>
+  my $table = $ARGS{table};
+  my $column = $ARGS{column};
+  my $match = $ARGS{match};
+  my $spec = $ARGS{spec};
+  my ($result_bad, $result_good);
+
+  if ( table_exists($gdata{app_dbh}, $table) and column_type($gdata{app_dbh}, $table, $column) =~ /$match/) {
+    $result_good = '';
+  } else {
+    if ( $gdata{do_it} ) {
+      $result_good = try {
+        $gdata{app_dbh}->do("ALTER TABLE $table MODIFY $column $spec");
+        "Column modified";
+      } catch ePortal::Exception::DBI with {
+        my $E = shift;
+        $result_bad = "DBI error. Cannot modify column\n" .
+          "<!-- $E -->";
+        undef;
+      }
+
+    } else {
+      $result_bad = 'Wrong data type';
+    }
+  }
+
+</%perl>
+% if ($result_bad or $result_good) {
+<& SELF:report, label => "column $table.$column", bad => $result_bad, good => $result_good &>
+% }
+</%method>
+
+
+%#=== @METAGS index_exists ====================================================
+<%method index_exists><%perl>
+  my $table = $ARGS{table};
+  my $index = $ARGS{index};
+  my $spec = $ARGS{spec};
+  my ($result_bad, $result_good);
+
+  if ( table_exists($gdata{app_dbh}, $table) and index_exists($gdata{app_dbh}, $table, $index) ) {
+    $result_good = 'Ok';
+  } else {
+    if ( $gdata{do_it} ) {
+      $result_good = try {
+        $gdata{app_dbh}->do("ALTER TABLE $table ADD INDEX $index $spec");
+        "Index created";
+      } catch ePortal::Exception::DBI with {
+        my $E = shift;
+        $result_bad = "DBI error. Cannot create index\n" .
+          "<!-- $E -->";
+        undef;
+      }
+
+    } else {
+      $result_bad = 'Index not exists';
+    }
+  }
+
+</%perl>
+<& SELF:report, label => "index $index of $table", bad => $result_bad, good => $result_good &>
+</%method>
+
+
+
+
+%#=== @METAGS default_data ====================================================
+<%method default_data><%perl>
+  my $table = $ARGS{table};
+  my $where = $ARGS{where};
+  my $SQL_ary = $ARGS{SQL_ary};
+  my ($result_bad, $result_good);
+
+  if ( ! table_exists($gdata{app_dbh}, $table) ) {
+    $result_bad = 'table is not exists';
+  } else {
+    my $sql = "SELECT count(*) FROM $table";
+    $sql .= " WHERE $where" if $where;
+    my $data_count = $gdata{app_dbh}->selectrow_array($sql);
+
+    if ( $data_count > 0 ) {
+      $result_good = 'Ok';
+    } else {
+      if ( $gdata{do_it} ) {
+        $result_good = try {
+          foreach my $s (@$SQL_ary) {
+            $gdata{app_dbh}->do($s);
+          }
+          "Data inserted";
+        } catch ePortal::Exception::DBI with {
+          my $E = shift;
+          $result_bad = "DBI error. Cannot insert data\n" .
+            "<!-- $E -->";
+          undef;
+        }
+
+      } else {
+        $result_bad = 'Table empty';
+      }
+    }
+  }
+
+</%perl>
+<& SELF:report, label => "default data in table $table", bad => $result_bad, good => $result_good &>
+</%method>
+

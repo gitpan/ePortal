@@ -1,0 +1,98 @@
+%#============================================================================
+%# ePortal - WEB Based daily organizer
+%# Author - S.Rusakov <rusakov_sa@users.sourceforge.net>
+%#
+%# Copyright (c) 2001 Sergey Rusakov.  All rights reserved.
+%# This program is free software; you can redistribute it
+%# and/or modify it under the same terms as Perl itself.
+%#
+%# $Revision: 3.1 $
+%# $Date: 2003/04/24 05:36:51 $
+%# $Header: /home/cvsroot/ePortal/comp_root/admin/users_list.htm,v 3.1 2003/04/24 05:36:51 ras Exp $
+%#
+%#----------------------------------------------------------------------------
+%#
+%# Description: View list of ePortal users
+%#----------------------------------------------------------------------------
+
+<% $list->draw_list %>
+
+%#=== @metags user_info ====================================================
+<%method user_info><%perl>
+	my $list = $ARGS{list};
+	my $obj = $list->{obj};
+</%perl>
+	<span class="smallfont">
+		<font COLOR="green">
+		<% plink(pick_lang(rus => "„ленство в группах", eng => "Group membership"),
+				href => href("users_member.htm", objid => $obj->id)) %>
+		</font>
+		<br>
+		<font COLOR="#6CAFB3">
+		<% $obj->department %> <% $obj->title %>
+		</font>
+	</span>
+</%method>
+
+
+
+%#=== @metags onStartRequest ====================================================
+<%method onStartRequest><%perl>
+  $obj = new ePortal::epUser;
+
+  $search_object = new ePortal::Dual::SimpleSearch;
+  $search_object->handle_request( objid => $ENV{SCRIPT_NAME} );
+
+  $list = new ePortal::HTML::List(obj => $obj,
+      edit_url => 'users_edit.htm', 
+			class => "smallfont", after_row => "user_info" );
+	$list->add_column_image();
+  $list->add_column( id => "username", url => "users_edit.htm?objid=#id#", sorting => 1);
+  $list->add_column( id => "fullname", sorting => 1);
+  $list->add_column( id => "last_login", sorting => 1);
+	$list->add_column_enabled( );
+  $list->add_column_system(delete  => 1);
+
+  my $location = $list->handle_request;
+  return $location if $location;
+
+  $list->{obj}->restore_where( $list->restore_parameters, text => $search_object->Text );
+
+</%perl></%method>
+
+
+
+%#=== @METAGS flags =========================================================
+<%flags>
+inherit => "autohandler_users.mc"
+</%flags>
+
+%#=== @METAGS attr =========================================================
+<%attr>
+Title => {rus => "—писок пользователей ePortal", eng => "ePortal users"}
+</%attr>
+
+
+
+%#=== @metags once =========================================================
+<%once>
+my ($list, $obj, $search_object);
+</%once>
+
+%#=== @metags cleanup =========================================================
+<%cleanup>
+($list, $obj, $search_object) = ();
+</%cleanup>
+
+
+%#=== @metags MenuItems ====================================================
+<%method MenuItems><%perl>
+	return [
+	@{$m->comp("PARENT:MenuItems")},
+	["---" => "---"],
+	["" => ""],
+  ["html" => $search_object->draw_dialog() ],
+	];
+</%perl></%method>
+
+

@@ -1,0 +1,62 @@
+<HTML>
+<HEAD>
+<TITLE>ePortal::Global.pm - Global variables for entire ePortal.</TITLE>
+<LINK REV="made" HREF="mailto:rusakov_sa@users.sourceforge.net">
+</HEAD>
+
+<BODY>
+
+<A NAME="__index__"></A>
+<!-- INDEX BEGIN -->
+
+<UL>
+
+	<LI><A HREF="#name">NAME</A></LI>
+	<LI><A HREF="#synopsis">SYNOPSIS</A></LI>
+	<UL>
+
+		<LI><A HREF="#%24eportal">$ePortal</A></LI>
+		<LI><A HREF="#%25eportal_servers">%ePortal_servers</A></LI>
+		<LI><A HREF="#%24dbh">$dbh</A></LI>
+		<LI><A HREF="#%25session">%session</A></LI>
+		<LI><A HREF="#%25gdata">%gdata</A></LI>
+	</UL>
+
+	<LI><A HREF="#author">AUTHOR</A></LI>
+</UL>
+<!-- INDEX END -->
+
+<HR>
+<P>
+<H1><A NAME="name">NAME</A></H1>
+<P>ePortal::Global.pm - Global variables for entire ePortal.</P>
+<P>
+<HR>
+<H1><A NAME="synopsis">SYNOPSIS</A></H1>
+<P>This package exports some global variables. Use this package everywhere
+when you need these variables.</P>
+<P>
+<H2><A NAME="%24eportal">$ePortal</A></H2>
+<P>Global object blessed to ePortal::Server. This is main engine.</P>
+<P>
+<H2><A NAME="%25eportal_servers">%ePortal_servers</A></H2>
+<P>Cache of created servers. User in Apache environment for hosting more than
+one virtual server.</P>
+<P>
+<H2><A NAME="%24dbh">$dbh</A></H2>
+<P>Global database handle</P>
+<P>
+<H2><A NAME="%25session">%session</A></H2>
+<P>This is tied hash to Apache::Session</P>
+<P>
+<H2><A NAME="%25gdata">%gdata</A></H2>
+<P>This is temporary hash object. It exists only during apache request
+processing.</P>
+<P>
+<HR>
+<H1><A NAME="author">AUTHOR</A></H1>
+<P>Sergey Rusakov, &lt;<A HREF="mailto:rusakov_sa@users.sourceforge.net">rusakov_sa@users.sourceforge.net</A>&gt;</P>
+
+</BODY>
+
+</HTML>

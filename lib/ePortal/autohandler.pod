@@ -1,0 +1,298 @@
+#!/usr/bin/perl
+#
+# ePortal - WEB Based daily organizer
+# Author - S.Rusakov <rusakov_sa@users.sourceforge.net>
+#
+# Copyright (c) 2001 Sergey Rusakov.  All rights reserved.
+# This program is free software; you can redistribute it
+# and/or modify it under the same terms as Perl itself.
+#
+# $Revision: 3.1 $
+# $Date: 2003/04/24 05:36:52 $
+# $Header: /home/cvsroot/ePortal/lib/ePortal/autohandler.pod,v 3.1 2003/04/24 05:36:52 ras Exp $
+#
+#----------------------------------------------------------------------------
+# This is documentation for base autohandler.mc Mason component
+# ------------------------------------------------------------------------
+
+=head1 NAME
+
+autohandler.mc - Base Mason component
+
+
+=head1 SYNOPSIS
+
+autohandler.mc is base Mason component for entire ePortal site.
+
+
+
+
+
+
+=head1 ATTRIBUTES
+
+Attributes are defined via E<lt>attrE<gt> mason tag:
+
+ <%attr>
+ Attribute => value
+ </%attr>
+
+
+=head2 Title
+
+This is title for the page. This title is used for E<lt>TITLEE<gt> HTML tag 
+and displayed at top of every ePortal's page.
+
+This attribute is used for static Title. For dynamic Title see C<Title> method
+
+
+=head2 Popup
+
+May be 1 or 0. Default is 0.
+
+Used for popup windows. No windows caption, no APP bar, no menus.
+
+
+
+
+
+
+=head2 Directory browsing
+
+There are some attributes to control directory browsing process. Browsing 
+is go when no index.htm file in directory.
+
+
+
+=head3 dir_enabled
+
+Enable or disable directory browsing. Default is 1. Is browsing is disabled 
+then redirect to /errors/not_found.htm is done.
+
+
+
+=head3 dir_nobackurl
+
+Show or not C<..> at top of list of files.
+
+
+
+=head3 dir_sortcode
+
+Should be sub ref. Two arguments ($a,$b) are passed to sub which both are 
+absolute filenames.
+
+
+=head3 dir_description
+
+How to discover a description of a file? May be HASH with filenames or sub 
+ref. Two arguments C<(absolute_filename,filename)> are passed to sub.
+
+The default is C<\&ePortal::Utils::filter_auto_title>
+
+
+=head3 dir_columns
+
+How many columns and which to show? This is array ref. Possible values are:
+/icon name size modified description/
+
+
+
+=head3 dir_include,dir_exclude
+
+Array ref with regexs. First all dir_include regexs work then dir_exclude. 
+Default is to include all files.
+
+=head3 dir_title
+
+How to title the directory listing? Default is directory name.
+
+
+
+
+
+=head2 Access control
+
+You always may restrict access to some pages with a help of .htaccess. Use 
+C<require> directives to to this.
+
+Here is another way to do this. You may use the following attributes in 
+pages or directory autohandlers to restrict access to some parts of your 
+site.
+
+Attributes are processed in given order. If any of them are true then 
+access is allowed else redirect is made to /errors/require_xxx.htm page.
+
+=head3 require_registered => boolean
+
+Requre user to be registered. Deny access for anonymous users.
+
+=head3 require_user => [ ]
+
+Require user to be registered and be listed. Argument if array ref to list 
+of valid user names.
+
+=head3 require_group => [ ]
+
+Require user to be registered and be member of a group. Argument if array ref to list 
+of valid group names.
+
+=head3 require_admin => boolean
+
+Require user to be registered and be an admin. 
+
+=head3 require_sysacl => [aclname, right]
+
+Require call to $ePortal-E<gt>sysacl_check(aclname,right) to be true.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+=head1 METHODS TO OVERLOAD
+
+You may overload some autohandler's method to add more functionality to a 
+page.
+
+ <%method method_name>
+ .. your code goes here
+ return "something";
+ </%method>
+
+Overloaded parent can be called as 
+
+ <& PARENT:method_name, %ARGS &>
+
+
+=head2 HTMLhead
+
+Add any HTML text to put in E<lt>HEADE<gt> section of HTML page.
+
+
+
+
+=head2 onStartRequest
+
+This method is called just after request processing preparation (check 
+user, etc.) but before any content is sent to client. This method is useful 
+for client events processing and handling redirects.
+
+Any string returned is passed to redirect.mc to do external redirect.
+
+
+
+=head2 Title
+
+This is the same functionality as C<Title> attribute. This method is used 
+to make the Title be dynamic not static.
+
+
+
+
+=head2 Footer
+
+This is very last part of screen. Useful to show copyright messages
+
+
+
+=head2 MenuItems
+
+This method is used to show a menu on the left side of the screen. It 
+returns an array or pairs.
+
+ <% method MenuItems>
+ % return [
+   ['menu1' => 'http://...'],
+   ['---' => '---'],
+   ['html' => '<b>this is HTML</b>']
+  ];
+ </%method>
+
+Every pair may be any of the following
+
+=over 4
+
+=item * ['title','URL']
+
+Used to make usual menu item
+
+=item * ['---','---']
+
+Make a horizontal separator 1 pixel height
+
+=item * ['require-user','username']
+
+Require C<username> to be registered to see next items.
+
+=item * ['require-group','groupname']
+
+Require the user to be member to the C<groupname> to see next items.
+
+=item * ['require-none','']
+
+Turns off any restriction on user or group to see next items.
+
+=item * ['html','any HTML text']
+
+This pair is used to produce any HTML text at this point.
+
+=item * ['img','http://www/images/file.gif']
+
+Just insert an image at this point
+
+=item * ['',5]
+
+Insert blank row 5 pixels width.
+
+=back
+
+
+
+
+
+=head1 COMMON URL ARGUMENTS
+
+Some arguments names are reserved for internal purposes. Here are:
+
+=over 4
+
+=item * objid
+
+Object identifier. The ID of the current object to work with it.
+
+=item * objtype
+
+Type of the object. It means ref($object) in Perl.
+
+
+=item * cal_xxx
+
+Reserved for C<calendar> component
+
+=item * dlg_xxx,dlgb_xxx
+
+Reserved for Dialog controls and buttons.
+
+=item * list_xxx
+
+Reserved for C<list> component.
+
+=back
+
+
+=head1 AUTHOR
+
+Sergey Rusakov, E<lt>rusakov_sa@users.sourceforge.netE<gt>
+
+=cut
+

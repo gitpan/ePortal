@@ -1,0 +1,50 @@
+%#============================================================================
+%# ePortal - WEB Based daily organizer
+%# Author - S.Rusakov <rusakov_sa@users.sourceforge.net>
+%#
+%# Copyright (c) 2001 Sergey Rusakov.  All rights reserved.
+%# This program is free software; you can redistribute it
+%# and/or modify it under the same terms as Perl itself.
+%#
+%# $Revision: 3.1 $
+%# $Date: 2003/04/24 05:36:52 $
+%# $Header: /home/cvsroot/ePortal/comp_root/pv/setup.htm,v 3.1 2003/04/24 05:36:52 ras Exp $
+%#
+%#----------------------------------------------------------------------------
+
+<%perl>
+	$session{us} = $ARGS{us} if $ARGS{us};
+
+	my $section = new ePortal::UserSection;
+	if (! $section->restore($session{us}) ) {
+		$m->comp("/message.mc", ErrorMessage => pick_lang(rus => "Не могу найти секцию: $session{us}", eng => "Cannot load section: $session{us}"));
+		return;
+	}
+
+	my $module = "/pv/sections/" . $section->component;
+	my $comp = $m->fetch_comp($module);
+
+	if (! $comp->method_exists("Setup")) {
+		$m->comp("/message.mc", ErrorMessage => pick_lang(
+			rus => "Секция ".$section->title." не имеет настройки",
+			eng => "The section ".$section->title." does not support setup"));
+		return;
+	}
+
+	$m->comp(".ControlBar");
+	$comp->call_method("Setup", section => $section, %ARGS);
+	$m->comp(".ControlBar");
+
+</%perl>
+
+
+
+
+%#=== @METAGS ControlBar ====================================================
+<%def .ControlBar>
+	<table width="100%" border=0 bgcolor="#EEEEEE">
+		<tr><td align="right">
+			<% plink({rus => "Назад, на главную страницу", eng => "Back to home"}, -href => "/index.htm") %>
+		</td></tr>
+	</table>
+</%def>

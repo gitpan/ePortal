@@ -1,0 +1,178 @@
+<HTML>
+<HEAD>
+<TITLE>ePortal::Server - The core module of ePortal project.</TITLE>
+<LINK REV="made" HREF="mailto:rusakov_sa@users.sourceforge.net">
+</HEAD>
+
+<BODY>
+
+<A NAME="__index__"></A>
+<!-- INDEX BEGIN -->
+
+<UL>
+
+	<LI><A HREF="#name">NAME</A></LI>
+	<LI><A HREF="#synopsis">SYNOPSIS</A></LI>
+	<LI><A HREF="#methods">METHODS</A></LI>
+	<UL>
+
+		<LI><A HREF="#application%28app_name%2C%20%28options%20h">Application(app_name, (options hash))</A></LI>
+		<LI><A HREF="#applicationsconfigured%28%29"><CODE>ApplicationsConfigured()</CODE></A></LI>
+		<LI><A HREF="#applicationsinstalled%28%29"><CODE>ApplicationsInstalled()</CODE></A></LI>
+		<LI><A HREF="#checkuseraccount%28%24username%2C%24pass"><CODE>CheckUserAccount($username,$password)</CODE></A></LI>
+		<LI><A HREF="#cleanup_request%28%29"><CODE>cleanup_request()</CODE></A></LI>
+		<LI><A HREF="#isadmin%28%29"><CODE>isAdmin()</CODE></A></LI>
+		<LI><A HREF="#userconfig%28%29"><CODE>UserConfig()</CODE></A></LI>
+		<LI><A HREF="#config">Config</A></LI>
+		<LI><A HREF="#dbconnect%28%29"><CODE>DBConnect()</CODE></A></LI>
+		<LI><A HREF="#send_email%28%24receipient%2C%24subject%2C"><CODE>send_email($receipient,$subject,$text)</CODE></A></LI>
+		<LI><A HREF="#ondeleteuser">onDeleteUser</A></LI>
+		<LI><A HREF="#ondeletegroup">onDeleteGroup</A></LI>
+		<LI><A HREF="#max_allowed_packet">max_allowed_packet</A></LI>
+	</UL>
+
+	<LI><A HREF="#login%20process">LOGIN PROCESS</A></LI>
+	<UL>
+
+		<LI><A HREF="#login.htm">login.htm</A></LI>
+		<LI><A HREF="#quick%20validation.">Quick validation.</A></LI>
+		<LI><A HREF="#external%20users">External users</A></LI>
+	</UL>
+
+	<LI><A HREF="#author">AUTHOR</A></LI>
+</UL>
+<!-- INDEX END -->
+
+<HR>
+<P>
+<H1><A NAME="name">NAME</A></H1>
+<P>ePortal::Server - The core module of ePortal project.</P>
+<P>
+<HR>
+<H1><A NAME="synopsis">SYNOPSIS</A></H1>
+<P>ePortal is a set of perl packages and HTML::Mason components to easy
+implement intranet WEB site for a company. ePortal is writen with a help of
+Apache, mod_perl, HTML::Mason. The current version of ePortal use MySQL as
+database backend.</P>
+<P>
+<HR>
+<H1><A NAME="methods">METHODS</A></H1>
+<P>
+<H2><A NAME="application%28app_name%2C%20%28options%20h">Application(app_name, (options hash))</A></H2>
+<P>Returns ePortal::Application object or undef if no such object exists.</P>
+<P>Returns $ePortal itself for application called 'ePortal'.</P>
+<P>Returns array of registered applications names if app_name is undef.</P>
+<P>Options:</P>
+<P>throw =&gt; 1 throw Exception::ApplicationNotInstalled if the application is
+not installed.</P>
+<P>
+<H2><A NAME="applicationsconfigured%28%29"><CODE>ApplicationsConfigured()</CODE></A></H2>
+<P>Returns array of installed and configured application names.</P>
+<P>
+<H2><A NAME="applicationsinstalled%28%29"><CODE>ApplicationsInstalled()</CODE></A></H2>
+<P>Returns array of installed application names based on modules found in
+ePortal::App directory</P>
+<P>
+<H2><A NAME="checkuseraccount%28%24username%2C%24pass"><CODE>CheckUserAccount($username,$password)</CODE></A></H2>
+<P>Complete checks for a user account. If it is external user then local copy
+is created. If local copy is expired, then it is refreshed.</P>
+<P>This function is used during login phase.</P>
+<P>Parameters:</P>
+<UL>
+<LI><STRONG><A NAME="item_username">username</A></STRONG><BR>
+
+User name to check. It is from login dialog box
+<P></P>
+<LI><STRONG><A NAME="item_password">password</A></STRONG><BR>
+
+A password from login dialog box to verify
+<P></P></UL>
+<P>Returns: <CODE>(username,reason)</CODE> in array context and <A HREF="#item_username"><CODE>username</CODE></A> in scalar
+context.</P>
+<P>In case of bad login the <A HREF="#item_username"><CODE>username</CODE></A> is undefined and <CODE>reason</CODE> is
+the code of denial.</P>
+<P>In case of successful login <A HREF="#item_username"><CODE>username</CODE></A> returned</P>
+<P>
+<H2><A NAME="cleanup_request%28%29"><CODE>cleanup_request()</CODE></A></H2>
+<P>Cleans all internal variables and caches after request is completed.</P>
+<P>
+<H2><A NAME="isadmin%28%29"><CODE>isAdmin()</CODE></A></H2>
+<P>Check current for for admin privilegies.</P>
+<P>If the server run under command line then the user always is admin.</P>
+<P>Returns [1|0]</P>
+<P>
+<H2><A NAME="userconfig%28%29"><CODE>UserConfig()</CODE></A></H2>
+<P>Retrieve/store configuration parameter for a user. Anonymous users share
+the same parameters. Use $session hash for session specific parameters.</P>
+<PRE>
+ UserConfig(parameter, value)</PRE>
+<P>Optional <CODE>value</CODE> may be hashref of arrayref</P>
+<P>Returns current or new value of the parameter.</P>
+<P>
+<H2><A NAME="config">Config</A></H2>
+<P>The same as <CODE>UserConfig</CODE> but stores server specific parameters.</P>
+<P>
+<H2><A NAME="dbconnect%28%29"><CODE>DBConnect()</CODE></A></H2>
+<P>In general <CODE>DBConnect()</CODE> is used to get ePortal's database handle.</P>
+<P>This function returns <CODE>$dbh</CODE> - database handle or throws
+<A HREF="Exception.html">ePortal::Exception::DBI</A>.</P>
+<P>
+<H2><A NAME="send_email%28%24receipient%2C%24subject%2C"><CODE>send_email($receipient,$subject,$text)</CODE></A></H2>
+<P>Send an e-mail on behalf of ePortal server. <CODE>send_email()</CODE> make all character
+set conversions needed for e-mail.</P>
+<P>
+<H2><A NAME="ondeleteuser">onDeleteUser</A></H2>
+<P>This is callback function. Do not call it directly. It calls once
+<CODE>onDeleteUser(username)</CODE> for every application installed.</P>
+<P>Parameters:</P>
+<UL>
+<LI><STRONG>username</STRONG><BR>
+
+User name to delete.
+<P></P></UL>
+<P>
+<H2><A NAME="ondeletegroup">onDeleteGroup</A></H2>
+<P>This is callback function. Do not call it directly. It calls once
+<CODE>onDeleteGroup(groupname)</CODE> for every application installed.</P>
+<P>Parameters:</P>
+<UL>
+<LI><STRONG><A NAME="item_groupname">groupname</A></STRONG><BR>
+
+Group name to delete.
+<P></P></UL>
+<P>
+<H2><A NAME="max_allowed_packet">max_allowed_packet</A></H2>
+<P>Maximum allowed packet size for database. By default MySQL server has
+limit to 1M packet size but this limit may be changed.</P>
+<P>
+<HR>
+<H1><A NAME="login%20process">LOGIN PROCESS</A></H1>
+<P>User authorization and authentication is ticket based. The ticked is
+created during login process and saved in user's cookie. The ticked is
+validated on every request.</P>
+<P>
+<H2><A NAME="login.htm">login.htm</A></H2>
+<P>It is main login point. The authentication thicket is created here. The
+ticked is stored in user cookie. Format of the ticked is:</P>
+<PRE>
+ secret:username:remoteip:md5hash</PRE>
+<P>Complete user validation procedure is done by <CODE>CheckUserAccount()</CODE></P>
+<P>
+<H2><A NAME="quick%20validation.">Quick validation.</A></H2>
+<P>Quick validation of a user is done in
+<CODE>ePortal::AuthCookieHandler::recognize_user()</CODE>. The user is checked with a
+cookie based ticked. The ticked is signed with MD5 checksum. If something
+is wrong then ticket is cancelled.</P>
+<P>Quick validation process is done by <CODE>CheckUserAccount(quick=</CODE>1)&gt;</P>
+<P>
+<H2><A NAME="external%20users">External users</A></H2>
+<P>ePortal may authenticate an user in external directory like LDAP.
+Currently only Novell Netware LDAP server is tested.</P>
+<P>
+<HR>
+<H1><A NAME="author">AUTHOR</A></H1>
+<P>Sergey Rusakov, &lt;<A HREF="mailto:rusakov_sa@users.sourceforge.net">rusakov_sa@users.sourceforge.net</A>&gt;</P>
+
+</BODY>
+
+</HTML>

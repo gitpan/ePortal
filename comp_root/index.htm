@@ -1,0 +1,249 @@
+%#============================================================================
+%# ePortal - WEB Based daily organizer
+%# Author - S.Rusakov <rusakov_sa@users.sourceforge.net>
+%#
+%# Copyright (c) 2001 Sergey Rusakov.  All rights reserved.
+%# This program is free software; you can redistribute it
+%# and/or modify it under the same terms as Perl itself.
+%#
+%# $Revision: 3.3 $
+%# $Date: 2003/04/24 05:36:51 $
+%# $Header: /home/cvsroot/ePortal/comp_root/index.htm,v 3.3 2003/04/24 05:36:51 ras Exp $
+%#
+%#----------------------------------------------------------------------------
+
+
+%#=== @METAGS onStartRequest ====================================================
+<%method onStartRequest><%perl>
+  $PV = new ePortal::PageView;
+  #
+  # Нам могут передать значение нового PageView по умолчанию.
+  # Если оно правильное и сохранилось успешно, то восстанавливаем этот PV
+  #
+  $PV->SetDefaultPageView($ARGS{pv}) if $ARGS{pv};
+  $PV->restore();
+
+  return $PV->handle_request();
+</%perl></%method>
+
+
+
+%#=== @METAGS body ====================================================
+% my @width = $PV->ColumnsWidthPercent;
+
+  <& /message.mc &>
+  <& .PageViewList &>
+  <& /pv/admin_section.mc &>
+
+<table width="100%" border=0 cellpadding=0 cellspacing=0>
+  <tr>
+%   for(my $i=1; $i <= $PV->ColumnsCount; $i++) {
+      <td width="<% $width[$i-1] %>%" valign="top">
+        <& .ColumnContent, column => $i &>
+      </td>
+
+%     if ($i != $PV->ColumnsCount ) {      # Разделитель колонок
+        <% empty_td( width => 5 ) %>
+%     }
+%   } # end of for()
+  </tr>
+</table>
+
+<& .SetupSection &>
+
+% undef $PV;
+%# ===== END OF INDEX.HTM ====================================================
+
+
+%#=== @METAGS PageViewList ===================================================
+<%def .PageViewList><%perl>
+  my @PVlist;   # Сюда будем засовывать все доступные юзеру PageView в виде
+                # (ID, название) . ИД=0 если это текущий PV
+  my $pv = new ePortal::PageView;
+
+  # Админ может кроме своих страниц также видеть шаблоны и страницу по умолчанию
+  for my $i (1..2) {
+    $pv->restore_all_for_user     if $i == 1;
+    $pv->restore_all_templates if $i == 2;
+
+    my $suffix;
+    while($pv->restore_next) {
+      if ($ePortal->isAdmin) {
+        $suffix = " (U)" if $pv->pvtype eq "user";
+        $suffix = " (D)" if $pv->pvtype eq "default";
+        $suffix = " (T)" if $pv->pvtype eq "template";
+      }
+
+      if ($PV->id == $pv->id) {
+        push @PVlist, 0, $pv->Title . $suffix;
+      } else {
+        push @PVlist, $pv->id, $pv->Title . $suffix;
+      }
+    }
+
+    last unless ($ePortal->isAdmin and $ePortal->UserConfig("ShowTemplates"));
+  }
+
+  return if scalar @PVlist == 0;
+
+  </%perl>
+  <table width="100%" border=0 cellpadding=0 cellspacing=0 bgcolor="#EEEEEE">
+  <tr><td class="sidemenu">
+  <%perl>
+
+  $m->out("&nbsp;&middot;&nbsp;");
+  while (scalar @PVlist) {
+    my $id = shift @PVlist;
+    my $title = shift @PVlist;
+    if ($id == 0) {
+      $m->out("&lt;&lt;<b>$title</b>&gt;&gt;&nbsp;&middot");
+    } else {
+      $m->out(CGI::a( {-href=>href($ENV{SCRIPT_NAME}, pv => $id)}, $title ) . "&nbsp;&middot");
+    }
+  }
+  $m->out("</td></tr></table>");
+</%perl>
+</%def>
+
+
+
+
+
+
+
+%#=== @METAGS attr =========================================================
+<%attr>
+Title => {rus => "Домашняя страница", eng => "Home page"}
+FullPage => 1
+</%attr>
+
+
+
+
+
+
+
+%#=== @METAGS ColumnContent ====================================================
+<%def .ColumnContent><%perl>
+    my $column = $ARGS{column};
+
+    my $S = $PV->get_UserSection($column);
+    while($S->restore_next) {
+      $m->comp(".Section", section => $S);
+    }
+
+</%perl></%def>
+
+
+
+
+
+
+%#=== @METAGS Section ====================================================
+<%def .Section><%perl>
+    my $section = $ARGS{section};
+    my $dlg = new ePortal::HTML::Dialog;
+    my $content = $section->content;
+    return if ! $content;
+</%perl>
+
+  <% $dlg->dialog_start(
+        formname => undef,
+        title => $section->title,
+        title_url => $section->URL,
+        objid => $section->id,
+        $PV->xacl_check_update ? (
+          $section->minimized ? (max_button => 1) : (min_button => 1),
+          $section->setup_button() ?
+            (edit_button => => href("/pv/setup.htm", us => $section->id))
+            : (),
+        ) : (),
+        x_button => $section->cancel_button(),
+        ) %>
+% if ( not $section->minimized ) {
+  <% $dlg->row( $content, -align => "left" ) %>
+% }
+  <% $dlg->dialog_end %>
+% undef $dlg;
+
+  <% empty_table(height => 5) %>
+
+</%def>
+
+
+
+
+
+
+%#=== @metags SetupSection ====================================================
+<%def .SetupSection><%perl>
+  my @width = $PV->ColumnsWidthPercent;
+  my $dlg = new ePortal::HTML::Dialog;
+</%perl>
+
+  <% $dlg->dialog_start(
+      title => pick_lang(rus => "Настройка домашней страницы", eng => "Home page setup"),
+      title_url => "/pv/pvhelp.htm",
+      q_button => "/pv/pvhelp.htm",
+      formname => undef,
+      x_button => 0, width => "100%" ) %>
+
+% if ($PV->xacl_check_update) {
+
+  <tr><td colspan=2 class="smallfont"><% pick_lang(
+    rus => "Добавление нового раздела на свою домашнюю страницу:",
+    eng => "Add new section to personal home page:") %>
+  </td></tr>
+
+  <tr><td colspan=2>
+  <table width="100%" border=0 cellspacing=0 cellpadding=0><tr>
+
+%foreach my $column (1 .. $PV->ColumnsCount) {
+
+    <form name="pv_column$column" action="<% $ENV{SCRIPT_NAME} %>" method="GET">
+    <td width="<% $width[$column-1] %>%" nowrap valign="top" align="center">
+% my ($values, $labels) = $PV->AvailableSections($column);
+    <% CGI::popup_menu( -name => "ps",
+        -labels => $labels, -values => $values) %>
+    <% CGI::submit( -name => "submit", -value => "+", -title => pick_lang(rus => "Добавить раздел", eng => "Add section")) %>
+    <% CGI::hidden( -name => "colnum", -value => $column) %>
+    <% CGI::hidden( -name => "addsection", -value => 1) %>
+    </td></form>
+
+% if ($column != $PV->ColumnsCount ) {
+    <% empty_td( width => 5 ) %>
+% }
+
+%}  # end of foreach column
+
+  </tr></table><!-- table with combo boxes -->
+  </td></tr><!-- adjust dialog -->
+
+  <tr><td>
+    <hr width="80%">
+  </td></tr>
+
+  <tr><td align="center">
+    <% plink({rus => "Изменить название страницы", eng => "Edit home page options"},
+              href=> href("/pv/pv_edit.htm", objid => $PV->id)) %>
+    <% plink({rus => "Удалить эту страницу", eng => "Delete this home page"},
+              href => href("/index.htm", deletepv => $PV->id)) %>
+% if ($ePortal->isAdmin) {
+    <% plink({rus => "Настройка секций", eng => "Sections setup"},
+              href => "/pv/ps_list.htm") %>
+% }
+  </td><tr>
+% }
+
+  <% $dlg->dialog_end %>
+% undef $dlg;
+  <% empty_table(height => 10) %>
+</%def>
+
+
+
+
+%#=== @metags once =========================================================
+<%once>
+  our ($PV);
+</%once>

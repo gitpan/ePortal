@@ -1,0 +1,47 @@
+%#============================================================================
+%# ePortal - WEB Based daily organizer
+%# Author - S.Rusakov <rusakov_sa@users.sourceforge.net>
+%#
+%# Copyright (c) 2001 Sergey Rusakov.  All rights reserved.
+%# This program is free software; you can redistribute it
+%# and/or modify it under the same terms as Perl itself.
+%#
+%# $Revision: 3.1 $
+%# $Date: 2003/04/24 05:36:51 $
+%# $Header: /home/cvsroot/ePortal/comp_root/on_off.htm,v 3.1 2003/04/24 05:36:51 ras Exp $
+%#
+%#----------------------------------------------------------------------------
+%# Description:
+%#  Turns on|off attribute on $object->{enabled}
+%#
+%# Parameters:
+%#	objid => ID of object
+%#  objtype => ref of object
+%#	location => URL to redirect after deletion
+%#----------------------------------------------------------------------------
+
+%#=== @metags onStartRequest ====================================================
+<%method onStartRequest><%perl>
+	my $objid = $ARGS{objid};
+	my $objtype = $ARGS{objtype};
+  my $return_uri = $ARGS{location} || $ENV{HTTP_REFERER} || '/';
+
+	if ($objid > 0 and $objtype =~ /^ePortal::/) {
+		my $object = eval { new $objtype; };
+		if ($@) {
+			logline('crit', $@);
+			$session{ErrorMessage} = pick_lang(rus => "Произошла системная ошибка", eng => "System error");
+		} else {
+			if ($object->restore($objid)) {
+				$object->enabled( $object->enabled ? 0 : 1 );
+				$object->update;
+			} else {
+				$session{ErrorMessage} = pick_lang(rus => "Указанный объект не найден", eng => "Object not found");
+			}
+		}
+	} else {
+		$session{ErrorMessage} = pick_lang(rus => "Не указано ни одного объекта", eng => "No objects to enable");
+	}
+
+	return $return_uri;
+</%perl></%method>
