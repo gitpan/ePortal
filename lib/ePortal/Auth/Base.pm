@@ -24,7 +24,7 @@ this.
 
 
 package ePortal::Auth::Base;
-    our $VERSION = '4.1';
+    our $VERSION = '4.2';
 
     use ePortal::Exception;
     use ePortal::Global;

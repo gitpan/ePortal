@@ -28,7 +28,7 @@ INSERT, DELETE.
 
 
 package ePortal::ThePersistent::Base;
-    our $VERSION = '4.1';
+    our $VERSION = '4.2';
 
     use strict;
     use Carp;

@@ -27,7 +27,7 @@ Some functions are very useful anywhere. They are collected here.
 =cut
 
 package ePortal::Utils;
-    our $VERSION = '4.1';
+    our $VERSION = '4.2';
 
     use CGI qw/-nosticky -no_xhtml -no_debug/;
     CGI->compile(':all');
@@ -137,7 +137,7 @@ sub logline(;@) {   #11/03/00 10:16
     }
 
     # adjust log text
-    $line = $ePortal->vhost . ": $line" . "\n";
+    $line = $ePortal->vhost.':'.$ePortal->username . ": $line" . "\n";
 
     # log the text to file or STDERR
     my $filename = $ePortal->log_filename;
@@ -897,7 +897,7 @@ sub escape  {   #03/18/02 10:49
     my $str = shift;
 #    if ($Apache::Util::VERSION) {
     if (ref("Apache::Util::escape_uri")) {
-        $str = Apache::Util::escape_uri($str);
+        $str = Apache::Util::escape_urio($str);
     } else {
         $str =~ s/\%/%25/ogs;   # Percent FIRST!
         $str =~ s/\?/%3F/ogs;

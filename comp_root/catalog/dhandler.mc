@@ -31,47 +31,24 @@
 
 %#=== @metags onStartRequest ====================================================
 <%method onStartRequest><& PARENT:onStartRequest, %ARGS &><%perl>
-  ($catid, $file) = split('/', $m->dhandler_arg, 2);
+  # This request to catalog is not cacheable
+  # THIS OPTION IS INCOMPATIBLE WITH IE 4.0 !!!!!!!!!!!!!!!!!!!!!
+  #$r->no_cache(1);
+
+  my $dh_args = $m->dhandler_arg;
+  ($catid, $file) = split('/', $dh_args, 2);
+
+  # A request to /catalog/num should be rewrited to /catalog/num/
+  if ( $catid ne '' and $file eq '' and $ENV{REQUEST_URI} !~ m|/$| ) {
+    throw ePortal::Exception::Abort(-text => $catid . '/');
+  }
+
   $C = new ePortal::Catalog;
   my $last_modified = undef;
 
-  # This request to catalog is not cacheable
-  $r->no_cache(1);
-
-  if ((! $C->restore($catid)) and $session{last_catalog_id}) {
-    # requested catalog item not found. May be it is included file
-    # in HTML text of resource?
-    # When request goes to /catalog/123/ and 
-    # resource 123 has <img src="image.gif"> then request to image.gif
-    # will be as /catalog/image.gif
-    # 
-    my $dummy_att = new ePortal::Attachment;
-    $dummy_att->restore_where(
-          filename => $catid, 
-          object_id => 'ePortal::Catalog='.$session{last_catalog_id});
-
-    if ( $dummy_att->restore_next ) {   # the file found in last visited
-                                        # resource item
-      $file = $catid;
-      $catid = $session{last_catalog_id};
-      if (! $C->restore($catid)) {
-        throw ePortal::Exception::FileNotFound(
-              -file => "/catalog/" . $m->dhandler_arg);
-      }
-
-    } else {            # no. The file still not found
-      throw ePortal::Exception::FileNotFound(
-            -file => "/catalog/" . $m->dhandler_arg);
-    }
-
-  }
+  throw ePortal::Exception::FileNotFound( -file => "/catalog/" . $m->dhandler_arg)
+    if ! $C->restore($catid);
   
-  # remember last visited catalog item ID
-  if ( $catid != $session{last_catalog_id}) {
-    $session{last_catalog_id} = $catid;
-    $m->comp('/pv/destroy_session.mc:flush');
-  }
-
   $C->ClickTheLink;          # Increment number of clicks
   $last_modified = $C->LastModified;
 
@@ -96,7 +73,7 @@
   if ( $file ) {
     my $att = new ePortal::Attachment;
     $att->restore_where(obj => $C, filename => $file);
-    throw ePortal::Exception::FileNotFound(-file => "/catalog/" . $m->dhandler_arg)
+    throw ePortal::Exception::FileNotFound(-file => '/catalog/' . $m->dhandler_arg)
       if ( ! $att->restore_next );
 
       # Determine mime type

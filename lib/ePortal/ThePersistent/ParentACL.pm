@@ -63,7 +63,7 @@ for details.
 
 package ePortal::ThePersistent::ParentACL;
     use base qw/ePortal::ThePersistent::ACL/;
-    our $VERSION = '4.1';
+    our $VERSION = '4.2';
 
     use ePortal::Global;
     use ePortal::Utils;     # import logline, pick_lang

@@ -28,7 +28,7 @@ This module is used to make a dialog with a monthly calendar.
 =cut
 
 package ePortal::HTML::Calendar;
-    our $VERSION = '4.1';
+    our $VERSION = '4.2';
 
 	use ePortal::Global;
     use ePortal::Utils;     # import logline, pick_lang, CGI

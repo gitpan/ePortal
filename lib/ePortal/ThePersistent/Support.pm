@@ -28,7 +28,7 @@ ePortal::ThePersistent::Support is medium layer between them.
 =cut
 
 package ePortal::ThePersistent::Support;
-    our $VERSION = '4.1';
+    our $VERSION = '4.2';
     use base qw/ePortal::ThePersistent::Cached/;
 
     use Carp;

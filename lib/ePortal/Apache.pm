@@ -15,12 +15,11 @@ BEGIN {
 }
 
 package ePortal::Apache;
-    our $VERSION = '4.1';
+    our $VERSION = '4.2';
 
     # --------------------------------------------------------------------
     # Packages of ePortal itself
     # --------------------------------------------------------------------
-    use ePortal::AuthCookieHandler;
     use ePortal::Global;
     use ePortal::Utils;
     use ePortal::Server;

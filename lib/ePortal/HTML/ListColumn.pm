@@ -11,7 +11,7 @@
 #----------------------------------------------------------------------------
 
 package ePortal::HTML::ListColumn;
-    our $VERSION = '4.1';
+    our $VERSION = '4.2';
 
 	use Carp;
 	use ePortal::Utils;

@@ -43,7 +43,7 @@
     skip_attributes => [qw/text/]} &>
   
     <& /list.mc:column_image &>
-    <&| /list.mc:column, id => 'title', url => '/catalog/'.$_->id &>
+    <&| /list.mc:column, id => 'title', url => '/catalog/'.$_->id. '/' &>
       <% $_->title |h %>
     </&>
 

@@ -11,7 +11,7 @@
 #----------------------------------------------------------------------------
 
 package ePortal::HTML::Tree;
-    our $VERSION = '4.1';
+    our $VERSION = '4.2';
 
 	use ePortal::Global;
     use ePortal::Utils;     # import logline, pick_lang, CGI

@@ -19,11 +19,11 @@
       title => pick_lang(rus => "Управление каталогом", eng => "Manage catalogue") &>
 <b><% pick_lang(rus => "Добавление в каталог", eng => "Catalogue additions") %></b>
 <ul>
-  <li><a href="<% href('group_edit.htm', parent_id => $group) %>"><% 
+  <li><a href="<% href('/catalog/group_edit.htm', parent_id => $group) %>"><% 
       pick_lang(rus => "Добавить раздел", eng => "Add group") %>
-  <li><a href="<% href('link_edit.htm', parent_id => $group, recordtype => 'link') %>"><% 
+  <li><a href="<% href('/catalog/link_edit.htm', parent_id => $group, recordtype => 'link') %>"><% 
       pick_lang(rus => "Добавить ссылку", eng => "Add link") %>
-  <li><a href="<% href('file_edit.htm', parent_id => $group, recordtype => 'file') %>"><% 
+  <li><a href="<% href('/catalog/file_edit.htm', parent_id => $group, recordtype => 'file') %>"><% 
       pick_lang(rus => "Добавить ресурс", eng => "Add resource") %>
 </ul>
 </&>

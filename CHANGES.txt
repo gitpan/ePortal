@@ -1,5 +1,20 @@
 + points to important changes (storage updates, incompatible changes, etc)
 
+4.2     Start Date: 23.10.2003 9:39
+Notes: This is mostly bugfix release. 
+User recognition system has been changed. Please review your httpd.conf.
+
++ removed ePortal::AuthCookieHandler. Modify your httpd.conf
++ default installation target changed from /home/ePortal to /opt/ePortal. Be 
+  careful when upgrading old version!
+- fixed: IE4 cannot download any file attachment from Catalogue
+- fixed: "xacl_check ..." when creating new section for home page
+- removed references to ePortal.pl from documentation as expired
+- fixed: /catalog/mostpopular.htm not found
+
+
+
+
 4.1     Start Date: 24.09.2003 14:59
 Notes: Catalogue system has been rewrited. Added possibility to store 
 large files, HTML & text resources, attach any number of files to resource.

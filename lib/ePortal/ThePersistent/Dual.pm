@@ -14,7 +14,7 @@
 # ------------------------------------------------------------------------
 
 package ePortal::ThePersistent::Dual;
-    our $VERSION = '4.1';
+    our $VERSION = '4.2';
 	use base qw/ePortal::ThePersistent::Support/;
 
 	use ePortal::Global;

@@ -16,7 +16,7 @@ package ePortal::ThePersistent::DataType::VarChar;
     use strict;
     use Carp;
 
-    our $VERSION = '4.1';
+    our $VERSION = '4.2';
 
 
 sub new {

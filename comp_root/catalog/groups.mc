@@ -53,7 +53,7 @@
 % }  
 
 <b><a class="s9" 
-      href="/catalog/<% $G->id %>" 
+      href="/catalog/<% $G->id %>/" 
       title="<% $G->memo |h%>"><% $G->title |h%></a></b>
 
 
@@ -75,7 +75,7 @@
     last if ! $subgroups->restore_next;
     $subgroups_found ++;
     </%perl>
-    <a class="s8" href="/catalog/<% $subgroups->id %>"><% $subgroups->Title |h%></a>,
+    <a class="s8" href="/catalog/<% $subgroups->id %>/"><% $subgroups->Title |h%></a>,
 % }
 % if ($subgroups_found) { $m->print('...') }
 </%method>

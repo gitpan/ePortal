@@ -29,15 +29,15 @@
                 src => $_->xacl_read eq 'everyone'
                             ? '/images/ePortal/item.gif'
                             : '/images/ePortal/private.gif' &>
-  <&| /list.mc:column, id => 'title', url => '/catalog/'.$_->id &>
+  <&| /list.mc:column, id => 'title', url => '/catalog/'.$_->id.'/' &>
     <% $_->Title %>
   </&>
 
 % if ($_->xacl_check_update) {
     <& /list.mc:column_edit, 
         url => href(($_->recordtype eq 'link' 
-                    ? 'link_edit.htm'
-                    : 'file_edit.htm'), objid => $_->id) &>
+                    ? '/catalog/link_edit.htm'
+                    : '/catalog/file_edit.htm'), objid => $_->id) &>
 % } else {
     <& /list.mc:column, content => '&nbsp;' &>
 % }

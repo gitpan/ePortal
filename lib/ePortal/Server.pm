@@ -32,7 +32,7 @@ database backend.
 
 package ePortal::Server;
 	require 5.6.1;
-    our $VERSION = '4.1';
+    our $VERSION = '4.2';
 
     use ePortal::Global;
     use ePortal::Utils;
@@ -344,10 +344,14 @@ sub username    {   #06/19/2003 4:46
 
     if (@_ and !$self->admin_mode) {
         my $newusername = shift;
-        my ($un, $reason) = $self->CheckUserAccount( user => $self->{user},
-                                username => $newusername, quick => 1 );
+        if ($newusername) {
+            my ($un, $reason) = $self->CheckUserAccount( user => $self->{user},
+                                    username => $newusername, quick => 1 );
 
-        $self->{username} = $un;
+            $self->{username} = $un;
+        } else {
+            $self->{username} = undef;
+        }
     }
 
     return $self->{username};
@@ -983,10 +987,8 @@ Complete user validation procedure is done by C<CheckUserAccount()>
 
 =head2 Quick validation.
 
-Quick validation of a user is done in
-C<ePortal::AuthCookieHandler::recognize_user()>. The user is checked with a
-cookie based ticked. The ticked is signed with MD5 checksum. If something
-is wrong then ticket is cancelled.
+The user is checked with a cookie based ticked. The ticked is signed with 
+MD5 checksum. If something is wrong then ticket is cancelled.
 
 Quick validation process is done by C<CheckUserAccount(quick=>1)>
 
@@ -995,7 +997,6 @@ Quick validation process is done by C<CheckUserAccount(quick=>1)>
 
 ePortal may authenticate an user in external directory like LDAP.
 Currently only Novell Netware LDAP server is tested.
-
 
 
 

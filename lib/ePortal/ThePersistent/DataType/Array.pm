@@ -13,7 +13,7 @@
 #----------------------------------------------------------------------------
 
 package ePortal::ThePersistent::DataType::Array;
-    our $VERSION = '4.1';
+    our $VERSION = '4.2';
     use Carp;
 
 sub new {

@@ -17,7 +17,7 @@ package ePortal::AuthCookieHandler;
     use Apache::Cookie();
     use Digest::MD5;
 
-    our $VERSION = '4.1';
+    our $VERSION = '4.2';
 
 
 ############################################################################

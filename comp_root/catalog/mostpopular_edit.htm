@@ -22,7 +22,7 @@
 
 %#=== @metags onStartRequest ====================================================
 <%method onStartRequest><%perl>
-  my $obj = $m->comp('/catalog/mostpopular.htm:config_object');
+  my $obj = $m->comp('/catalog/mostpopular.mc:config_object');
   $obj->restore;
   $dlg = new ePortal::HTML::Dialog( obj => $obj);
 

@@ -11,7 +11,7 @@
 #----------------------------------------------------------------------------
 
 package ePortal::ThePersistent::Cached;
-    our $VERSION = '4.1';
+    our $VERSION = '4.2';
 
     use base qw /ePortal::ThePersistent::Base/;
     use ePortal::Global;

@@ -43,7 +43,7 @@ C<mod_mime> Apache module and C<mime>.C<types> file for details.
 =cut
 
 package ePortal::Attachment;
-    our $VERSION = '4.1';
+    our $VERSION = '4.2';
     use base qw/ePortal::ThePersistent::Support/;
 
     use ePortal::Utils;
@@ -429,8 +429,10 @@ sub allocate_chunk_table    {   #10/01/2003 10:37
         my ($name,$data_length,$max_data_length,$data_free) = (@ary)[0,5,6,8];
         ($last_found) = ($name =~ /AttChunk(\d\d\d)/o);
         $last_found += 0;       # integerize it
-        throw ePortal::Exception::Fatal(-text => "AttChunk table cannot be counted from 0") 
-            if $last_found == 0;
+
+        next if $last_found <= 0;    
+#        throw ePortal::Exception::Fatal(-text => "AttChunk table cannot be counted from 0") 
+#            if $last_found == 0;
 
         # skip if before we need
         next if $last_found < $start_with;
@@ -456,7 +458,7 @@ sub allocate_chunk_table    {   #10/01/2003 10:37
 sub create_chunk_table  {   #10/01/2003 5:12
 ############################################################################
     my $self = shift;
-    my $chunk_number = shift;
+    my $chunk_number = shift || 1;
 
     my $table_name = $self->chunk_table_name($chunk_number);
     my $dbh = $self->dbh;

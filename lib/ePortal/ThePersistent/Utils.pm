@@ -13,7 +13,7 @@
 #----------------------------------------------------------------------------
 
 package ePortal::ThePersistent::Utils;
-    our $VERSION = '4.1';
+    our $VERSION = '4.2';
     use base qw/Exporter/;
 	use Time::localtime;
 

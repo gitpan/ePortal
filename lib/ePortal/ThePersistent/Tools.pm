@@ -12,7 +12,7 @@
 
 
 package ePortal::ThePersistent::Tools;
-    our $VERSION = '4.1';
+    our $VERSION = '4.2';
 
     # Export section
     our @EXPORT = qw/

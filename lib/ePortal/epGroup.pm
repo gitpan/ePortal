@@ -12,7 +12,7 @@
 
 
 package ePortal::epGroup;
-    our $VERSION = '4.1';
+    our $VERSION = '4.2';
     use base qw/ePortal::ThePersistent::Support/;
 	use ePortal::Utils;
     use ePortal::Global;

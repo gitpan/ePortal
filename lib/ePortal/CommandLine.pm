@@ -21,7 +21,7 @@ BEGIN {
 
 
 package ePortal::CommandLine;
-    our $VERSION = '4.1';
+    our $VERSION = '4.2';
 
     use Getopt::Long qw//;
     use HTML::Mason;

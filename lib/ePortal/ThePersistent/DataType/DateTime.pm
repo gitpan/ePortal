@@ -16,7 +16,7 @@ package ePortal::ThePersistent::DataType::DateTime;
     use strict;
     use Carp;
 
-    our $VERSION = '4.1';
+    our $VERSION = '4.2';
 
   ### month name to number map ###
   my %month_to_num = (

@@ -31,11 +31,31 @@
     $ePortal->initialize();                  # this calls DBConnect and config_load
                                              # may throw DatabaseNotConfigured
     $dbh = $ePortal->DBConnect();               # Global wide $dbh
-    $ePortal->username($r->connection->user);
-    $m->scomp("/pv/create_session.mc");         # create persistent Session hash
     
+    # User recognition
+    if ($r->connection->user) {
+      logline('info', "User ".$r->connection->user." recognized from r->connection->user");
+      $ePortal->username($r->connection->user);
+    } else {
+      my $cookie = new Apache::Cookie($r);
+      my %cookies = $cookie->parse;
+      my $cookie_value = $cookies{ePortal_auth} ? $cookies{ePortal_auth}->value() : undef;
+      my($username, $remoteip, $md5hash) = split(/:/, $cookie_value);
+      my $actualremoteip = $r->get_remote_host;
+      my $mymd5 = Digest::MD5::md5_hex('13', $username, $remoteip);
+      if ( $username and ($mymd5 eq $md5hash)) {
+        logline('info', "User $username recognized from cookie");
+        $ePortal->username($username);
+      } else {
+        $ePortal->username(undef);
+      }
+    }
+      
+    $m->scomp("/pv/create_session.mc");         # create persistent Session hash
     eval {
-      $ePortal->Application($m->request_comp->attr('Application'));
+      # Load and create application object
+      my $app_name = $m->request_comp->attr('Application');
+      $ePortal->Application($app_name) if $app_name;
     };
     warn $@ if $@;
 

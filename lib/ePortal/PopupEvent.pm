@@ -13,7 +13,7 @@
 
 package ePortal::PopupEvent;
 	use base qw/ePortal::ThePersistent::Support/;
-    our $VERSION = '4.1';
+    our $VERSION = '4.2';
 
 	use ePortal::Global;
 
@@ -76,7 +76,7 @@ sub restore_where	{	#12/24/01 4:02
 # ------------------------------------------------------------------------
 package ePortal::PopupEvent::CalendarEvent;
 	use base qw/ePortal::PopupEvent/;
-    our $VERSION = '4.1';
+    our $VERSION = '4.2';
 
 	use ePortal::Global;
 

@@ -12,7 +12,7 @@
 
 
 package ePortal::Exception;
-    our $VERSION = '4.1';
+    our $VERSION = '4.2';
     use base qw/Error/;
 
     use ePortal::Utils;

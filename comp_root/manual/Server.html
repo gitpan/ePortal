@@ -155,10 +155,8 @@ ticked is stored in user cookie. Format of the ticked is:</P>
 <P>Complete user validation procedure is done by <CODE>CheckUserAccount()</CODE></P>
 <P>
 <H2><A NAME="quick%20validation.">Quick validation.</A></H2>
-<P>Quick validation of a user is done in
-<CODE>ePortal::AuthCookieHandler::recognize_user()</CODE>. The user is checked with a
-cookie based ticked. The ticked is signed with MD5 checksum. If something
-is wrong then ticket is cancelled.</P>
+<P>The user is checked with a cookie based ticked. The ticked is signed with
+MD5 checksum. If something is wrong then ticket is cancelled.</P>
 <P>Quick validation process is done by <CODE>CheckUserAccount(quick=</CODE>1)&gt;</P>
 <P>
 <H2><A NAME="external%20users">External users</A></H2>

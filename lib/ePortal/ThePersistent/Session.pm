@@ -14,7 +14,7 @@
 # ------------------------------------------------------------------------
 
 package ePortal::ThePersistent::Session;
-    our $VERSION = '4.1';
+    our $VERSION = '4.2';
 	use base qw/ePortal::ThePersistent::Support/;
 
 	use Carp qw/croak/;

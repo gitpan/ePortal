@@ -911,7 +911,7 @@ See L<DIALOG FORM FIELDS|DIALOG FORM FIELDS> for other parameters.
   my %CGI = (%{$ARGS{CGI}});
   my $obj = $ARGS{obj};
 
-  $CGI{-values} = ['admin', 'everyone', 'uid', 'gid','registered', 'owner'];
+  $CGI{-values} = $ARGS{-values} || ['admin', 'everyone', 'uid', 'gid','registered', 'owner'];
   $CGI{-labels} = {
           admin => pick_lang(rus => 'Только администратор',  eng => 'Admin only'),
           everyone => pick_lang(rus => 'Все', eng => 'Everyone'),

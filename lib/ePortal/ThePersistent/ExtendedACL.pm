@@ -37,7 +37,7 @@ Two attributes are mandatory for C<ePortal::ThePersistent::ExtendedACL>:
 
 package ePortal::ThePersistent::ExtendedACL;
     use base qw/ePortal::ThePersistent::ACL/;
-    our $VERSION = '4.1';
+    our $VERSION = '4.2';
 
     use ePortal::Global;
     use ePortal::Utils;     # import logline, pick_lang

@@ -44,7 +44,7 @@
   <br><b><% pick_lang(rus => "Дата изменения", eng => "Time stamp") %></b>: <% $item->ts %>
 % if ($item->xacl_check_update) {
   <br><% plink( pick_lang(rus => "Редактировать данный ресурс", eng => "Edit this resource"),
-        -href => href('file_edit.htm', objid => $item->id) ) %>
+        -href => href('/catalog/file_edit.htm', objid => $item->id) ) %>
 % }
   </p>
 

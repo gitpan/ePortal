@@ -17,7 +17,7 @@
 <table border=0 cellspacing=0 cellpadding=0 width="98%">
 % while ($catalog->restore_next) {
     <tr><td class="sidemenu" nowrap>
-        <a href="<% '/catalog/' . $catalog->id %>"><% $catalog->Title %></a>
+        <a href="<% '/catalog/' . $catalog->id %>/"><% $catalog->Title %></a>
     </td></tr>
 % }
 </table>

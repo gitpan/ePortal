@@ -17,7 +17,7 @@
   my %cookies = $cookie->parse;
 
   foreach (keys %cookies) {
-    logline('debug', "Cookie $_=$cookies{$_}");
+    logline('debug', "Cookie $_=".$cookies{$_}->value);
   }
 
   # clear session hash

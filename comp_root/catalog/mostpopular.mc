@@ -17,7 +17,7 @@ my $d = new ePortal::HTML::Dialog(
                 eng => "Most popular"),
               formname => '',
               width => $config->ctlg_mp_width,
-              edit_button => $ePortal->isAdmin ? 'mostpopular_edit.htm' : undef,
+              edit_button => $ePortal->isAdmin ? '/catalog/mostpopular_edit.htm' : undef,
   );
 </%perl>
 
@@ -85,7 +85,7 @@ $razdel = pick_lang(rus => "Раздел:", eng => "Section:") . $parent->Title . "\n"
 </td><td>
   <a class="smallbold"
   title="<% $razdel . $link->Memo |h%>"
-  href="/catalog/<% $link->id %>">
+  href="/catalog/<% $link->id %>/">
   <% $link->Title %></a>&nbsp;<span class="memo">(<% $link->Clicks %>)</span>
 </td></tr>
 </%method>

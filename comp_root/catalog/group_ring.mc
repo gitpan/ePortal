@@ -19,12 +19,12 @@
 
   while( $current_group and $G->restore($current_group) ) {
     if ( $current_group == $ARGS{group} ) { # First group object. Last (rightmost) item in the ring
-      $HTML = '<b>' . CGI::a({-href => "/catalog/" . ($G->Nickname? $G->Nickname : $G->id)}, $G->Title) . '</b>';
+      $HTML = '<b>' . CGI::a({-href => "/catalog/" . ($G->Nickname? $G->Nickname : $G->id) . '/'}, $G->Title) . '</b>';
       $group_memo = $G->Memo;
       $xacl_check_insert = $G->xacl_check_insert;
 
     } else {                                # second or more item
-      $HTML = CGI::a({-href => "/catalog/" . ($G->Nickname? $G->Nickname : $G->id)}, $G->Title)
+      $HTML = CGI::a({-href => "/catalog/" . ($G->Nickname? $G->Nickname : $G->id) . '/'}, $G->Title)
             . "&nbsp;&gt;&nbsp;" . $HTML;
     }
 

@@ -26,7 +26,7 @@ This manual is incomplete !!!
 =cut
 
 package ePortal::Application;
-    our $VERSION = '4.1';
+    our $VERSION = '4.2';
     use base qw/ePortal::ThePersistent::ACL/;
 
 	use ePortal::Global;

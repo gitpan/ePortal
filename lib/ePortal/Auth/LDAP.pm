@@ -10,7 +10,7 @@
 #----------------------------------------------------------------------------
 
 package ePortal::Auth::LDAP;
-    our $VERSION = '4.1';
+    our $VERSION = '4.2';
     use base qw/ePortal::Auth::Base/;
 
     use ePortal::Exception;

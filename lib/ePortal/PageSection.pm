@@ -24,7 +24,7 @@ PageView.
 =cut
 
 package ePortal::PageSection;
-    our $VERSION = '4.1';
+    our $VERSION = '4.2';
     use base qw/ePortal::ThePersistent::ExtendedACL/;
 
 	use ePortal::Global;
@@ -211,6 +211,8 @@ sub xacl_check_insert   {   #04/17/03 11:18
     my $self = shift;
     return $ePortal->isAdmin;
 }##xacl_check_insert
+
+sub xacl_check_update { $ePortal->isAdmin; }
 
 1;
 

@@ -41,7 +41,7 @@ new personal home page.
 =cut
 
 package ePortal::PageView;
-    our $VERSION = '4.1';
+    our $VERSION = '4.2';
     use base qw/ePortal::ThePersistent::ExtendedACL/;
 
 	use ePortal::Global;
