@@ -3,13 +3,10 @@
 # ePortal - WEB Based daily organizer
 # Author - S.Rusakov <rusakov_sa@users.sourceforge.net>
 #
-# Copyright (c) 2001 Sergey Rusakov.  All rights reserved.
+# Copyright (c) 2000-2003 Sergey Rusakov.  All rights reserved.
 # This program is free software; you can redistribute it
 # and/or modify it under the same terms as Perl itself.
 #
-# $Revision: 3.4 $
-# $Date: 2003/04/24 05:49:21 $
-# $Header: /home/cvsroot/ePortal/lib/ePortal/HTML/List.pm,v 3.4 2003/04/24 05:49:21 ras Exp $
 #
 #----------------------------------------------------------------------------
 
@@ -51,11 +48,10 @@ This module is used to make a list of objects. Example:
 =cut
 
 package ePortal::HTML::List;
-	our $VERSION = sprintf '%d.%03d', q$Revision: 3.4 $ =~ /: (\d+).(\d+)/;
+    our $VERSION = '4.1';
 
 	use ePortal::Global;
-	use ePortal::Utils;		# import logline, pick_lang
-	#use CGI qw/-nosticky -no_xhtml -no_debug/;	# CGI used in ePortal::Apache
+    use ePortal::Utils;     # import logline, pick_lang, CGI
 	use Carp;
 
 	use ePortal::HTML::ListColumn;
@@ -970,9 +966,6 @@ sub column_system	{	#12/17/01 4:22
 	if ( $column->{"show_edit"} ) {
         push @out, icon_edit( $self->{obj}, url => $self->{edit_url}, objtype => $column->{objtype} );
 	}
-	if ($column->{"show_acl"}) {
-		push @out, icon_access( $self->{obj} );
-	}
 	if ($column->{"show_export"}) {
 		push @out, icon_export( $self->{obj} );
 	}
@@ -992,11 +985,11 @@ sub column_enabled	{	#12/17/01 4:35
 
 	if ($self->{obj}->enabled != 0) {
 		$content = img( src => "/images/ePortal/on.gif",
-			href => href("/on_off.htm", objid => $self->{objid}, objtype => $self->{objtype}),
+            href => href("/on_off.htm", objid => $self->{obj}->id, objtype => $column->{objtype}),
 			title => pick_lang(rus => "Выключить", eng => 'Disable') );
 	} else {
 		$content = img( src => "/images/ePortal/off.gif",
-			href => href("/on_off.htm", objid => $self->{objid}, objtype => $self->{objtype}),
+            href => href("/on_off.htm", objid => $self->{obj}->id, objtype => $column->{objtype}),
 			title => pick_lang(rus => "Включить", eng => 'Enable') );
 	}
 	return $content;

@@ -1,0 +1,190 @@
+%#============================================================================
+%# ePortal - WEB Based daily organizer
+%# Author - S.Rusakov <rusakov_sa@users.sourceforge.net>
+%#
+%# Copyright (c) 2000-2003 Sergey Rusakov.  All rights reserved.
+%# This program is free software; you can redistribute it
+%# and/or modify it under the same terms as Perl itself.
+%#
+%#
+%#----------------------------------------------------------------------------
+
+&nbsp;
+<&| /dialog.mc:edit_dialog, 
+        title => pick_lang(rus => "Ресурс каталога", eng => "Catalogue resource"),
+        width => 550, 
+        obj => $obj, 
+        multipart => 1,
+        focus => 'title' &>
+
+  <& /dialog.mc:read_only, id => 'recordtype' &>
+  <&| /dialog.mc:cell &>
+    <hr>
+  </&>
+  <& /dialog.mc:field, id => 'parent_id' &>
+  <& /dialog.mc:field, id => 'title' &>
+  <& /dialog.mc:field, id => 'nickname' &>
+  <& /dialog.mc:field, id => 'priority' &>
+  <& /dialog.mc:field, id => 'memo' &>
+  <& /dialog.mc:buttons, ok_label => pick_lang(rus => "Сохранить ресурс", eng => "Save the resource"),
+      apply_button => 1 &>
+
+
+%#
+%# Text of resource ============================================================
+%#
+  <&| /dialog.mc:cell &><hr></&>
+  <&| /dialog.mc:cell, -align => 'center' &>
+  <span class="dlglabel"><% pick_lang(rus => "Текст ресурса", eng => "Text of resource") %></span>
+  <br>
+  <& /dialog.mc:textarea, id => 'text', -class => 's10' &>
+  </&>
+  <& /dialog.mc:field, id => 'texttype' &>
+
+
+%#
+%# New Attachment ============================================================
+%#
+
+  <&| /dialog.mc:cell &><hr></&>
+  <&| /dialog.mc:label_value_row, label => pick_lang(rus => "Файл", eng => "File"), id => "upload_file" &>
+  <% CGI::filefield({-name => 'upload_file', -class => 'dlgfield'}) %>
+  <br>
+  <% CGI::submit({-name => 'dlgb_upload', -class => 'button', -value => pick_lang(rus => "Прикрепить!", eng => "Attach!")}) %>
+  <% CGI::submit({-name => 'dlgb_utext', -class => 'button', -value => pick_lang(rus => "Загрузить как текст ресурса!", eng => "Upload as text!")}) %>
+  </&>
+
+%#
+%# List Attachments ============================================================
+%#
+
+% $att = new ePortal::Attachment;
+% $att->restore_where(obj => $obj);
+% if ($att->rows) {
+  <&| /dialog.mc:cell, -align => 'center' &>
+    <br>
+   <&| /list.mc, obj => new ePortal::Attachment, no_footer => 2,
+        -width => '80%', rows => 10, restore_where => { obj => $obj } &>
+
+    <& /list.mc:column_image &>
+    <&| /list.mc:column, id => 'filename', 
+              -style => 'color: #9966ff;',
+              title => pick_lang(rus => "Имя файла", eng => "File name") &>
+      <b><% $_->filename |h %></b>
+    </&>
+
+    <&| /list.mc:column, id => 'filesize', title => pick_lang(rus => "Размер", eng => "Size"), -align => 'center' &>
+      <% $_->FileSize . '&nbsp;' . pick_lang(rus => "байт", eng => "bytes") %>
+    </&>
+
+    <& /list.mc:column_checkbox &>
+
+    <& /list.mc:action_bar, popup_menu => {
+                        -values => ['delete'],
+                        -labels => { delete => pick_lang(rus => "Удалить", eng => "Delete")}} &>
+   </&><!-- list -->
+  </&><!-- cell -->
+% }
+
+%#
+%# Access rights ============================================================
+%#
+
+% if ($obj->xacl_check_admin) {
+  <&| /dialog.mc:cell &><hr></&>
+  <& /dialog.mc:read_only, id => 'uid' &>
+  <& /dialog.mc:field, id => 'xacl_read' &>
+  <& /dialog.mc:field, id => 'xacl_write' &>
+  <& /dialog.mc:field, id => 'xacl_admin' &>
+% }
+  
+  <&| /dialog.mc:cell &>&nbsp;</&>
+  <& /dialog.mc:buttons, ok_label => pick_lang(rus => "Сохранить ресурс", eng => "Save the resource"),
+      apply_button => 1 &>
+
+
+%#
+%# Additional information ===================================================
+%#
+
+  <&| /dialog.mc:cell &>
+    <hr>
+  </&>
+  <& /dialog.mc:read_only, id => 'ts' &>
+  <& /dialog.mc:read_only, id => 'clicks' &>
+  <& /dialog.mc:read_only, id => 'hits' &>
+
+</&>
+
+<p>
+
+%#=== @METAGS attr =========================================================
+<%attr>
+Title => {rus => "Ресурс каталога", eng => "Catalogue resource"}
+</%attr>
+
+
+%#=== @METAGS onStartRequest ====================================================
+<%method onStartRequest><%perl>
+  $obj = new ePortal::Catalog;
+
+  $m->comp('/dialog.mc:handle_request', obj => $obj);
+
+  #initialize ACL
+  if ( ! $obj->check_id ) {  # new object
+    my $parent = $obj->parent;
+    $obj->set_acl_from_obj($parent) if $parent;
+  }
+
+  # file upload
+  if ( $m->comp('/dialog.mc:isButtonPressed', button => 'upload') ) {
+    my $new_att = new ePortal::Attachment;
+    if ( $new_att->upload(r => $r) ) {
+      $obj->Title( $new_att->Filename ) if $obj->Title eq '';
+      $obj->save; # insert or update
+      $new_att->link_with_object($obj);
+      throw ePortal::Exception::Abort(-text => href($ENV{SCRIPT_NAME},
+        objid => $obj->id,
+        back_url => $m->comp('/dialog.mc:back_url')
+        ));
+    }
+  }
+
+  # file upload into text
+  if ( $m->comp('/dialog.mc:isButtonPressed', button => 'utext') ) {
+    my $upload = $r->upload;
+    if ( $upload ) {
+      my $fh = $upload->fh;
+      my @txt = <$fh>;
+      $obj->Text( join "\n", @txt);
+      $obj->Title($upload->filename) if $obj->Title eq '';
+      $obj->save;
+    }
+  }
+
+
+  # delete attachment
+  if ( $m->comp('/list.mc:list_action') eq 'delete' ) {
+    my $new_att = new ePortal::Attachment;
+    foreach ($m->comp('/list.mc:checkboxes')) {
+      if ( $new_att->restore($_) ) {
+        $new_att->delete;
+      }
+    }  
+  }
+
+</%perl></%method>
+
+
+
+
+%#=== @metags once =========================================================
+<%once>
+my ($dlg, $obj, $att);
+</%once>
+
+%#=== @metags cleanup =========================================================
+<%cleanup>
+($dlg, $obj, $att) = ();
+</%cleanup>
+

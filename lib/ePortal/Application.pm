@@ -3,13 +3,10 @@
 # ePortal - WEB Based daily organizer
 # Author - S.Rusakov <rusakov_sa@users.sourceforge.net>
 #
-# Copyright (c) 2001 Sergey Rusakov.  All rights reserved.
+# Copyright (c) 2000-2003 Sergey Rusakov.  All rights reserved.
 # This program is free software; you can redistribute it
 # and/or modify it under the same terms as Perl itself.
 #
-# $Revision: 3.5 $
-# $Date: 2003/04/24 05:36:52 $
-# $Header: /home/cvsroot/ePortal/lib/ePortal/Application.pm,v 3.5 2003/04/24 05:36:52 ras Exp $
 #
 #----------------------------------------------------------------------------
 
@@ -19,60 +16,84 @@ ePortal::Application - The base class for ePortal applications.
 
 =head1 SYNOPSIS
 
-An application is registered with ePortal via parameter
+To create an application derive it from ePortal::Application and place base
+module in lib/ePortal/App/YourModule.pm
 
- application ePortal::App:ApplicationName
-
-To create an application derive it from ePortal::Application and register
-in ePortal.conf.
-
-
-=head1 INITIALIZATION
-
-During Apache's startup phase an application object will be created and
-initialized.
-
-  new()
-  initialize_config() (overwrite it)
-    read [common:ApplicationName] (by ePortal::Application)
-    read [vhost:ApplicationName] (by ePortal::Application)
-  initialize() (overwrite it)
-    create DBISource if needed (by ePortal::Application)
-    create sysacl if needed
-    create user groups if needed
-  ?????
-  register PageView sections
-  register cron events
-  register database upgrade script
-
-
-=head1 DATABASE ACCESS
-
-ePortal::Application registers in initialize_config() three parameters for
-you: dbi_source, dbi_user, dbi_password. During initialize() a DBISource
-object will be create with a name of ApplicationName().
-
-Use this new DBISource as the follows:
-
- my $obj = new ePortal::ThePersistent::Support("SQL", undef, "ApplicationName");
- my $obj = new ePortal::ThePersistent::Support($attributes, "table_name", "ApplicationName");
- # here ApplicationName is a name of DBISource object.
-
-
-=head1 SECURITY
-
+This manual is incomplete !!!
 
 =head1 METHODS
 
 =cut
 
 package ePortal::Application;
-	our $VERSION = sprintf '%d.%03d', q$Revision: 3.5 $ =~ /: (\d+).(\d+)/;
+    our $VERSION = '4.1';
+    use base qw/ePortal::ThePersistent::ACL/;
 
 	use ePortal::Global;
 	use ePortal::Utils;
 
-    use ePortal::MethodMaker( read_only => [qw/ dbi_source dbi_username dbi_password /]);
+
+############################################################################
+sub new {   #09/08/2003 1:53
+############################################################################
+    my $class = shift;
+    my $self = $class->SUPER::new(@_);
+    $self->config_load;
+    return $self;
+}##new
+
+=head2 initialize()
+
+This is application initializer. By default initialize() creates new
+DBISource if any of dbi_xxx parameters are meet in config file.
+
+=cut
+
+################################################################################################################
+sub initialize  {   #05/31/00 8:50
+############################################################################
+    my $self = shift;
+    my %p = @_;
+
+    # Add attributes to config object
+    $p{Attributes}{uid} ||= {};
+    $p{Attributes}{id} = { 
+            type => 'ID', 
+            default => '!' . $self->ApplicationName . '!',
+            dtype => 'VarChar'};
+    $p{Attributes}{dbi_source_type} = {
+          type => 'Transient',
+          fieldtype => 'radio_group',
+          default => 'ePortal',
+          values => ['ePortal', 'custom'],
+          label => pick_lang(rus => "Подключение к базе данных", eng => "Database connect"),
+          labels => { 
+            ePortal => pick_lang(rus => "Стандартное", eng => "Standard"),
+            custom  => pick_lang(rus => "Специальное", eng => "Custom"),
+          }};
+
+    $p{Attributes}{dbi_source} = {
+            size => 50,
+#            label => pick_lang(rus => "Источник данных DBI", eng => "DBI connect string"),
+            default => 'ePortal',
+      };
+    $p{Attributes}{dbi_username} = {
+            size => 20,
+#            label => pick_lang(rus => "Имя пользователя DBI", eng => "DBI user name")
+      };
+    $p{Attributes}{dbi_password} = {
+            size => 20,
+#            label => pick_lang(rus => "Пароль пользователя DBI", eng => "DBI password")
+      };
+    $p{Attributes}{storage_version} = {
+            dtype => 'Number',
+    };
+
+    $self->SUPER::initialize(%p);
+
+    # Base method new() calls clear after initialize()
+#    $self->config_load;
+}##initialize
 
 
 =head2 ApplicationName
@@ -92,28 +113,6 @@ sub ApplicationName	{	#04/18/02 2:33
 }##ApplicationName
 
 
-=head2 new($config)
-
-Application constructor. Should be never overwrited. Use Initialize_xxx
-methods if you need an extra initialization.
-
-=cut
-
-############################################################################
-sub new	{	#12/26/00 3:34
-############################################################################
-	my $proto = shift;
-	my $class = ref($proto) || $proto;
-
-    my $self = {};
-	bless $self, $class;
-
-    $self->config_load;
-	$self->initialize;
-
-	return $self;
-}##new
-
 
 ############################################################################
 sub config_load {   #03/17/03 4:55
@@ -121,9 +120,22 @@ sub config_load {   #03/17/03 4:55
     my $self = shift;
     my @parameters = @_;
 
-    foreach (qw/ dbi_source dbi_username dbi_password /, @parameters) {
-        $self->{$_} = $ePortal->_Config('!' . $self->ApplicationName . '!', $_);
+    $self->_id('!' . $self->ApplicationName . '!');
+
+    # Try load config hash
+    my $c = $ePortal->_Config('!' . $self->ApplicationName . '!', 'config');
+    if ( ref($c) eq 'HASH' ) {
+        foreach ($self->attributes_a) {
+            $self->value($_, $c->{$_}) if exists $c->{$_};
+        }
+
+    } else {    # Old style 'row per parameter' config
+        foreach (qw/ dbi_source dbi_username dbi_password /) {
+            $self->value($_, $ePortal->_Config('!' . $self->ApplicationName . '!', $_));
+        }
     }
+    
+    $self->dbi_source_type( $self->dbi_source eq 'ePortal' ? 'ePortal' : 'custom' );
 }##config_load
 
 
@@ -134,33 +146,33 @@ sub config_save {   #03/17/03 4:55
     my $self = shift;
     my @parameters = @_;
 
-    foreach (qw/ dbi_source dbi_username dbi_password /, @parameters) {
-        $ePortal->_Config('!' . $self->ApplicationName . '!', $_, $self->{$_});
+    my $c = {};
+
+    # Save configuration parameters
+    foreach ($self->attributes_a ) {
+        $c->{$_} = $self->value($_);
+    }
+    $ePortal->_Config('!' . $self->ApplicationName . '!', 'config', $c);
+
+
+    # Special handling for dbi_xxx parameters
+    # These parameters shuld be accessible alone for DBConnect to work
+    foreach (qw/ dbi_source dbi_username dbi_password /) {
+        $ePortal->_Config('!' . $self->ApplicationName . '!', $_, $self->value($_) );
     }
 
 }##config_save
 
 
-
-
-=head2 initialize()
-
-This is application initializer. By default initialize() creates new
-DBISource if any of dbi_xxx parameters are meet in config file.
-
-=cut
-
 ############################################################################
-# Function: initialize
-# Description: Application initializator. Called once during server startup
-# and after config is read.
-#
+sub Config  {   #07/29/2003 11:21
 ############################################################################
-sub initialize	{	#04/18/02 2:19
-############################################################################
-	my $self = shift;
+    my $self = shift;
+    $ePortal->_Config('!' . $self->ApplicationName . '!', @_);
+}##Config
 
-}##initialize
+
+
 
 
 ############################################################################
@@ -206,29 +218,91 @@ sub onDeleteGroup    {   #11/19/02 2:14
 
 }##onDeleteGroup
 
-
 ############################################################################
-sub xacl_check  {   #02/20/03 8:29
+# Load attributes from ApplicationObject->{attribute}
+sub restore {   #11/22/01 11:49
 ############################################################################
     my $self = shift;
-    my $xacl_field = shift;
+    $self->config_load;
+    1;
+}##restore
 
-    my $dummy = new ePortal::ThePersistent::ExtendedACL(
-        XACL_Attributes => { $xacl_field => "Dummy xacl attribute" }
-        );
-    $dummy->value($xacl_field, $self->{$xacl_field});
-    return $dummy->xacl_check($xacl_field);
-}##xacl_check
+
+############################################################################
+sub restore_where   {   #11/22/01 11:52
+############################################################################
+    my $self = shift;
+
+    throw ePortal::Exception::Fatal(-text => "restore_where is not supported by ".__PACKAGE__);
+}##restore_where
+
+############################################################################
+sub restore_next    {   #11/22/01 11:50
+############################################################################
+    my $self = shift;
+    undef;
+}##restore_next
+
+############################################################################
+sub update  {   #11/22/01 11:53
+############################################################################
+    my $self = shift;
+    
+    $self->dbi_source('ePortal') if $self->dbi_source_type eq 'ePortal';
+
+    # clear storage_version for external storages
+    if ($self->dbi_source ne 'ePortal') {
+        $self->storage_version(0);
+    }
+
+    if ($self->dbi_source ne 'ePortal') {
+        my $d = eval {
+            DBI->connect( $self->dbi_source, $self->dbi_username, $self->dbi_password);
+        };
+        if (! $d or $@) {
+            throw ePortal::Exception::DataNotValid(-text => 
+                pick_lang(rus => "Не могу подключиться к БД", eng => "Cannot connect to database") . "<br><small>$@</small>");
+        }
+    }
+
+    $self->config_save;
+    1;
+}##update
+
+
+############################################################################
+sub insert  {   #11/22/01 11:53
+############################################################################
+    my $self = shift;
+    $self->update;
+}##insert
+
 
 
 # ------------------------------------------------------------------------
 # This is standard set of XACL methods
 # Other Applications may have another methods
-# 
-sub xacl_check_read { 1; }
-sub xacl_check_update   { shift->xacl_check('xacl_write'); }
-sub xacl_check_children { shift->xacl_check_update; }
-sub xacl_check_insert {0; }     # impossible for Application
-sub xacl_check_delete {0; }     # impossible for Application
+#
+#sub xacl_check_read { 1; }
+#sub xacl_check_children { shift->xacl_check_update; }
+sub xacl_check_insert { 0; }     # impossible for Application
+sub xacl_check_delete { 0; }     # impossible for Application
+sub xacl_check_admin  { $ePortal->isAdmin; }
+sub xacl_check_update   { 
+    my $self = shift;
+    if ($self->attribute('xacl_write')) {
+        return $self->xacl_check('xacl_write');
+    } else {
+        return $ePortal->isAdmin;
+    }
+}
+
+
 
 1;
+
+=head1 AUTHOR
+
+Sergey Rusakov, E<lt>rusakov_sa@users.sourceforge.netE<gt>
+
+=cut

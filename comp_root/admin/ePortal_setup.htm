@@ -2,13 +2,10 @@
 %# ePortal - WEB Based daily organizer
 %# Author - S.Rusakov <rusakov_sa@users.sourceforge.net>
 %#
-%# Copyright (c) 2001 Sergey Rusakov.  All rights reserved.
+%# Copyright (c) 2000-2003 Sergey Rusakov.  All rights reserved.
 %# This program is free software; you can redistribute it
 %# and/or modify it under the same terms as Perl itself.
 %#
-%# $Revision: 3.2 $
-%# $Date: 2003/04/24 05:36:51 $
-%# $Header: /home/cvsroot/ePortal/comp_root/admin/ePortal_setup.htm,v 3.2 2003/04/24 05:36:51 ras Exp $
 %#
 %#----------------------------------------------------------------------------
 <& /message.mc &>
@@ -28,11 +25,12 @@
   <% $dlg->field('admin') %>
   <% $dlg->field('days_keep_sessions') %>
   <% $dlg->field('refresh_interval') %>
-  <% $dlg->field('date_field_style') %>
+%#  <% $dlg->field('date_field_style') %>
   <% $dlg->field('smtp_server') %>
   <% $dlg->field('www_server') %>
   <% $dlg->field('mail_domain') %>
   <% $dlg->field('vhost') %>
+  <% $dlg->field('comp_root', RO=>1) %>
 
 <% $dlg->row('&nbsp;') %>
 <% $dlg->row('<b>Language settings</b>') %>
@@ -67,7 +65,6 @@
 <% $dlg->dialog_end %>
 <p>
 
-
 %#=== @metags once =========================================================
 <%once>
 my ($dlg, $obj);
@@ -82,14 +79,14 @@ my ($dlg, $obj);
 %#=== @METAGS attr =========================================================
 <%attr>
 Title => {rus => "Настройка ePortal", eng => "ePortal setup page"}
+Layout => 'Dialog'
 </%attr>
 
 
 %#=== @METAGS onStartRequest ====================================================
 <%method onStartRequest><%perl>
-    my $obj = new ePortal::ApplicationConfig(
-      ApplicationObject => $ePortal,
-      Attributes => [
+    $obj = new ePortal::ThePersistent::Dual(
+      Attributes => {
         # main_parameters
         dbi_source   => { default => $ePortal->dbi_source },
         dbi_username => { default => $ePortal->dbi_username },
@@ -108,16 +105,16 @@ Title => {rus => "Настройка ePortal", eng => "ePortal setup page"}
             fieldtype => 'popup_menu',
             values => [qw/debug info notice warn error crit alert emerg/],
             labels => {
-                emerg => 'Emergencies - system is unusable',
-                alert => 'Action must be taken immediately',
-                crit  => 'Critical Conditions',
-                error => 'Error conditions',
-                warn  => 'Warning conditions',
-                notice => 'Normal but significant condition',
-                info   => 'Informational',
-                debug  => 'Debug-level messages'
+                'emerg'  => pick_lang(rus => "emerg - Авария. Система неработоспособна", eng => 'Emergencies - system is unusable'),
+                'alert'  => pick_lang(rus => "alert - Внимание. Серьезные ошибкы", eng => 'Action must be taken immediately'),
+                'crit'   => pick_lang(rus => "crit - Критические ошибки", eng => 'Critical Conditions'),
+                'error'  => pick_lang(rus => "error - Ошибки", eng => 'Error conditions'),
+                'warn'   => pick_lang(rus => "warn - Предупреждения", eng => 'Warning conditions'),
+                'notice' => pick_lang(rus => "notice - Нормальный уровень", eng => 'Normal but significant condition'),
+                'info'   => pick_lang(rus => "info - Информационные", eng => 'Informational'),
+                'debug'  => pick_lang(rus => "debug - отладочные сообщения", eng => 'Debug-level messages')
             },
-            default => 'error',
+            default => 'warn',
         },
         vhost => {},
         log_filename => {
@@ -141,65 +138,92 @@ Title => {rus => "Настройка ePortal", eng => "ePortal setup page"}
         language => {
             fieldtype => 'popup_menu',
             values => [qw/eng rus/],
-            default => 'rus',
+            default => 'eng',
         },
         refresh_interval => {
             dtype => 'Number',
             default => 300,
         },
-        date_field_style => {
-            fieldtype => 'popup_menu',
-            values => [qw/java nonjava/],
-            default => 'java',
-        },
+#        date_field_style => {
+#            fieldtype => 'popup_menu',
+#            values => [qw/java nonjava/],
+#            default => 'java',
+#        },
         smtp_server => {
-            default => 'localhost',
-        },
-        www_server => { },
-        mail_domain => { },
-        ldap_server => { },
-        ldap_base => { },
-        ldap_binddn => { },
-        ldap_bindpw => { },
-        ldap_charset => {
+            default => $ENV{SERVER_NAME},
+            },
+        www_server  => {
+            default => "http://$ENV{SERVER_NAME}/",
+            },
+        mail_domain => {
+            default => $ENV{SERVER_NAME},
+            },
+        comp_root   => { },
+
+        ldap_server   => { },
+        ldap_base     => { },
+        ldap_binddn   => { },
+        ldap_bindpw   => { },
+        ldap_charset  => {
             fieldtype => 'popup_menu',
             values => [qw/UTF8 DOS WIN KOI8/],
             default => 'UTF8',
         },
-        ldap_uid_attr => {
-            default => 'uid',
-        },
-        ldap_fullname_attr => {
-            default => 'fullName',
-        },
-        ldap_title_attr => {
-            default => 'title',
-        },
-        ldap_ou_attr => {
-            default => 'ou',
-        },
-        ldap_group_attr => {
-            default => 'groupMembership',
-        },
-        ldap_groupdesc_attr => {
-            default => 'description',
-        },
+        ldap_uid_attr => {          default => 'uid' },
+        ldap_fullname_attr => {     default => 'fullName' },
+        ldap_title_attr => {        default => 'title' },
+        ldap_ou_attr => {           default => 'ou'},
+        ldap_group_attr => {        default => 'groupMembership' },
+        ldap_groupdesc_attr => {    default => 'description'},
 
-      ],
+      },
     );
+    foreach ($obj->attributes_a) {
+      $obj->value($_, $ePortal->{$_});
+    }
 
-    $obj->restore();
 
   # Handle Dialog events
   $dlg = new ePortal::HTML::Dialog( obj => $obj, width => 450);
-  my $location = $dlg->handle_request;
+  my $dialog_done;
+  try {
+    $dlg->handle_request( );
 
-  # Every application has it's own DBISource object
-  if ( $dlg->isButtonPressed('ok') ) {
-    return "index.htm";
+    # Data checking
+    if ( $dlg->isButtonPressed('ok') ) {
+      throw ePortal::Exception::DataNotValid (-text => pick_lang(
+            rus => "Параметр www_server не определен",
+            eng => "www_server parameter is empty"))
+            if ! $obj->www_server;
+      throw ePortal::Exception::DataNotValid (-text => pick_lang(
+            rus => "Параметр www_server не правильный. Должен быть вида http://www.server.com/",
+            eng => "www_server parameter is wrong. Should be like http://www.server.com/"))
+            if $obj->www_server !~ m|^https?://.*/$|;
 
-  } elsif ( $dlg->isButtonPressed('cancel')) {
-    return "index.htm";
+
+      throw ePortal::Exception::DataNotValid (-text => pick_lang(
+            rus => "Параметр mail_domain не определен",
+            eng => "mail_domain parameter is empty"))
+            if ! $obj->mail_domain;
+
+      foreach ($obj->attributes_a) {
+        $ePortal->{$_} = $obj->value($_);
+        $ePortal->config_save;
+      }
+      $dialog_done = 1;
+    } elsif ( $dlg->isButtonPressed('cancel') ) {
+      $dialog_done = 1;
+    }
+  } catch ePortal::Exception::DataNotValid with {
+    my $E = shift;
+    $session{ErrorMessage} = $E->text;
+  };
+
+  if ($dialog_done) {
+      # clear extra reference to ePortal object or else
+      # disconnect invalidates 1 active statement handle ...
+    $obj->{obj} = undef;
+    return "index.htm"
   }
 
 </%perl></%method>

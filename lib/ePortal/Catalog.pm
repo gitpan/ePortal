@@ -3,19 +3,16 @@
 # ePortal - WEB Based daily organizer
 # Author - S.Rusakov <rusakov_sa@users.sourceforge.net>
 #
-# Copyright (c) 2001 Sergey Rusakov.  All rights reserved.
+# Copyright (c) 2000-2003 Sergey Rusakov.  All rights reserved.
 # This program is free software; you can redistribute it
 # and/or modify it under the same terms as Perl itself.
 #
-# $Revision: 3.4 $
-# $Date: 2003/04/24 05:36:52 $
-# $Header: /home/cvsroot/ePortal/lib/ePortal/Catalog.pm,v 3.4 2003/04/24 05:36:52 ras Exp $
 #
 #----------------------------------------------------------------------------
 
 
 package ePortal::Catalog;
-    our $VERSION = sprintf '%d.%03d', q$Revision: 3.4 $ =~ /: (\d+).(\d+)/;
+    our $VERSION = '4.1';
     use base qw/ePortal::ThePersistent::ExtendedACL/;
 
     use ePortal::Utils;
@@ -31,136 +28,136 @@ package ePortal::Catalog;
     our $MAX_MONTH_SHOW = 2;        # A number of distinct months to keep statistics
 
 
-    # Declare $attributes as our so link_edit_type.htm may use it
-    our $attributes = {
-        id => {     type => 'ID',           # ID, Pe (default)
-                    dtype => 'Number',      # Data type (Varchar as default)
-                    auto_increment => 1,
-        },
-        recordtype => {
-                    label => {rus => 'Тип ресурса', eng => 'Resource type'},
-                    dtype => 'VarChar',
-                    maxlength => 64,
-                    fieldtype => 'popup_menu',
-                    values => ['link', 'group', 'text', 'textHTML', 'textpara', 'file'],
-                    labels => {
-                        link  => {rus => 'Ссылка', eng => 'Link'},
-                        group => {rus => 'Группа ресурсов', eng => 'Group of resources'},
-                        text  => {rus => 'Текст как есть', eng => 'Preformatted text'},
-                        textHTML  => {rus => 'Текст HTML', eng => 'HTML text'},
-                        textpara  => {rus => 'Текст по параграфам', eng => 'Text with paragraphs'},
-                        textline  => {rus => 'Строка это параграф', eng => 'A line is paragraph'},
-                        file  => {rus => 'Файл', eng => 'File'},
-                    },
-        },
-        parent_id => {
-                    label => {rus => "Входит в состав", eng => "A part of"},
-                    dtype => 'Number',
-                    maxlength => 11,
-                    fieldtype => 'popup_menu',
-                    popup_menu => sub {
-                        my $self = shift;
-                        my (@values, %labels);
-                        my $tab = '&nbsp' x 2;
-
-                        # Walk through parents up to top object
-                        my $current_parent = $self->parent_id;
-                        my $obj = new ePortal::Catalog;
-                        while($obj->restore($current_parent)) {
-                            unshift @values, $obj->id;
-                            $labels{ $obj->id } = $obj->Title;
-                            $current_parent = $obj->parent_id;
-                        }
-
-                        # do indentation
-                        my $level = 1;
-                        foreach (@values) {
-                            $labels{$_} = $tab x $level++ . $labels{$_};
-                        }
-
-                        # load siblings of me and siblings of parent
-                        my @parents_to_load;
-                        push(@parents_to_load, $values[$#values]);      # this is ID of my parent (siblings of me)
-                        push(@parents_to_load, $values[$#values-1]) if $#values >= 0; # siblings of parent
-                        push(@parents_to_load, $values[$#values-2]) if $#values >= 1;
-                        push(@parents_to_load, 0) if $#values <= 1;     # top level containers
-
-                        foreach my $p (@parents_to_load) {
-                            my $obj = new ePortal::Catalog;
-                            $obj->restore_where(parent_id => $p, recordtype => 'group');
-                            ITEM: while($obj->restore_next) {
-                                next ITEM if $obj->id == $self->id;
-                                foreach (@values) { next ITEM if $obj->id == $_; }
-                                push @values, $obj->id;
-                                $labels{ $obj->id } = $tab x $level . $obj->Title;
-                            }
-                            $level --;
-                        }
-
-                        # Top level
-                        unshift @values, 0;
-                        $labels{0} = pick_lang(rus => "-Начало каталога-", eng => "-Top of catalogue-");
-
-                        return (\@values, \%labels);
-                    },
-        },
-        %ePortal::FieldDomain::priority,
-        %ePortal::FieldDomain::title,
-        %ePortal::FieldDomain::nickname,
-        url => {
-                    label => {rus => "Адрес URL", eng => "URL address"},
-                    dtype => 'Varchar',
-                    size => 64,
-        },
-        %ePortal::FieldDomain::ts,
-        memo => {
-                label => {rus => "Описание", eng => "Description"},
-                dtype => 'Varchar',
-                maxlength => 255,
-                fieldtype => 'textarea',
-        },
-        clicks => {
-                label => {rus => "Переходов", eng => "Clicks"},
-                dtype => 'Number',
-                maxlength => 11,
-                default => 0,
-        },
-        hits => {
-                label => {rus => "Обращений", eng => "Hits"},
-                dtype => 'Number',
-                maxlength => 11,
-                default => 0,
-        },
-        text  => {
-                label => {rus => 'Текст ресурса', eng => 'Text of resource'},
-                dtype => 'VarChar',
-                maxlength => 16777215,
-                fieldtype => 'textarea',
-                rows => 20,
-        },
-        filename => {
-                label => { rus => 'Загружен файл', eng => 'Uploaded file'},
-                dtype => 'Varchar',
-                #fieldtype => 'upload',
-        },
-        upload_file => {
-                type => 'Transient',
-                label => { rus => 'Загрузить файл', eng => 'Upload a file'},
-                dtype => 'Varchar',
-                fieldtype => 'upload',
-        },
-    };
-
 ############################################################################
 sub initialize  {   #05/31/00 8:50
 ############################################################################
-    my $self = shift;
+    my ($self, %p) = @_;
 
-    $self->SUPER::initialize(Attributes => $attributes,
-        XACL_Attributes => {
-            xacl_write => pick_lang(rus => "Доступ по записи", eng => "Write access"),
-            xacl_admin => pick_lang(rus => "Изменение прав", eng => "Change ACL"),
-        });
+    $p{Attributes}{id} ||= {};
+    $p{Attributes}{recordtype} ||= {
+                label => {rus => 'Тип ресурса', eng => 'Resource type'},
+                dtype => 'VarChar',
+                maxlength => 64,
+                fieldtype => 'popup_menu',
+                values => ['link', 'group', 'text', 'textHTML', 'textpara', 'file'],
+                default => 'link',
+                labels => {
+                    link  => {rus => 'Ссылка', eng => 'Link'},
+                    group => {rus => 'Группа ресурсов', eng => 'Group of resources'},
+                    text  => {rus => 'Текст как есть', eng => 'Preformatted text'},
+                    textHTML  => {rus => 'Текст HTML', eng => 'HTML text'},
+                    textpara  => {rus => 'Текст по параграфам', eng => 'Text with paragraphs'},
+                    textline  => {rus => 'Строка это параграф', eng => 'A line is paragraph'},
+                    file  => {rus => 'Файл', eng => 'File'},
+                },
+    };
+    $p{Attributes}{parent_id} ||= {
+                label => {rus => "Входит в состав", eng => "A part of"},
+                dtype => 'Number',
+                maxlength => 11,
+                fieldtype => 'popup_menu',
+                popup_menu => sub {
+                    my $self = shift;
+                    my (@values, %labels);
+                    my $tab = '&nbsp' x 2;
+
+                    # Walk through parents up to top object
+                    my $current_parent = $self->parent_id;
+                    my $obj = new ePortal::Catalog;
+                    while($current_parent and $obj->restore($current_parent)) {
+                        unshift @values, $obj->id;
+                        $labels{ $obj->id } = $obj->Title;
+                        $current_parent = $obj->parent_id;
+                    }
+
+                    # do indentation
+                    my $level = 1;
+                    foreach (@values) {
+                        $labels{$_} = $tab x $level++ . $labels{$_};
+                    }
+
+                    # load siblings of me and siblings of parent
+                    my @parents_to_load;
+                    push(@parents_to_load, $values[$#values]);      # this is ID of my parent (siblings of me)
+                    push(@parents_to_load, $values[$#values-1]) if $#values >= 0; # siblings of parent
+                    push(@parents_to_load, $values[$#values-2]) if $#values >= 1;
+                    push(@parents_to_load, 0) if $#values <= 1;     # top level containers
+
+                    foreach my $p (@parents_to_load) {
+                        my $obj = new ePortal::Catalog;
+                        $obj->restore_where(parent_id => $p, recordtype => 'group');
+                        ITEM: while($obj->restore_next) {
+                            next ITEM if $obj->id == $self->id;
+                            foreach (@values) { next ITEM if $obj->id == $_; }
+                            push @values, $obj->id;
+                            $labels{ $obj->id } = $tab x $level . $obj->Title;
+                        }
+                        $level --;
+                    }
+
+                    # Top level
+                    unshift @values, 0;
+                    $labels{0} = pick_lang(rus => "-Начало каталога-", eng => "-Top of catalogue-");
+
+                    return (\@values, \%labels);
+                },
+    };
+    $p{Attributes}{priority} ||= {};
+    $p{Attributes}{title}    ||= {};
+    $p{Attributes}{nickname} ||= {};
+    $p{Attributes}{ts}       ||= {};
+    $p{Attributes}{url} ||= {
+                label => {rus => "Адрес URL", eng => "URL address"},
+                dtype => 'Varchar',
+                size => 64,
+    };
+    $p{Attributes}{memo} ||= {
+            label => {rus => "Краткое описание", eng => "Short description"},
+            dtype => 'Varchar',
+            maxlength => 255,
+            fieldtype => 'textarea',
+    };
+    $p{Attributes}{clicks} ||= {
+            label => {rus => "Переходов", eng => "Clicks"},
+            dtype => 'Number',
+            default => 0,
+    };
+    $p{Attributes}{hits} ||= {
+            label => {rus => "Обращений", eng => "Hits"},
+            dtype => 'Number',
+            default => 0,
+    };
+    $p{Attributes}{state} ||= {
+        values => ['unknown', 'ok'],
+        default => 'ok',
+        #description => 'The state of attachment. unknown when actial object is not saved',
+    };
+    $p{Attributes}{text} ||= {
+            label => {rus => 'Текст ресурса', eng => 'Text of resource'},
+            dtype => 'VarChar',
+            maxlength => 16777215,
+            fieldtype => 'textarea',
+            rows => 7,
+            cols => 80,
+    };
+    $p{Attributes}{texttype} ||= {
+                label => {rus => 'Формат текста', eng => 'Text format'},
+                dtype => 'VarChar',
+                maxlength => 64,
+                fieldtype => 'radio_group',
+                values => ['text', 'HTML', 'pre'],
+                default => 'text',
+                labels => {
+                    pre   => {rus => 'Текст как есть', eng => 'Preformatted text'},
+                    HTML  => {rus => 'Текст HTML', eng => 'HTML text'},
+                    text  => {rus => 'Автоформат', eng => 'Autoformat'},
+                },
+    };
+    $p{Attributes}{upload_file} ||= { type => 'Transient',};
+    $p{Attributes}{xacl_write}  ||= {};
+    $p{Attributes}{xacl_admin}  ||= {};
+
+    $self->SUPER::initialize(%p);
 }##initialize
 
 ############################################################################
@@ -170,9 +167,9 @@ sub xacl_check_insert   {   #04/01/03 3:01
 
     my $parent = $self->parent;
     if (!$parent) {
-        return $ePortal->isAdmin;   # only Admin may create top level 
+        return $ePortal->isAdmin;   # only Admin may create top level
                                     # Catalog objects
-    } else {    
+    } else {
         return $self->SUPER::xacl_check_insert;
     }
 }##xacl_check_insert
@@ -186,12 +183,12 @@ sub validate    {   #07/06/00 2:35
     my $self = shift;
     my $beforeinsert = shift;
 
-    if ($self->RecordType eq 'file') {
-        $self->Title( $self->Filename ) unless $self->Title;
-    }
+#    if ($self->RecordType eq 'file') {
+#        $self->Title( $self->Filename ) unless $self->Title;
+#    }
 
     # Check title
-    unless ( $self->title ) {
+    if ( ! $self->title ) {
         return pick_lang(rus => "Не указано наименование", eng => 'No name');
     }
 
@@ -213,8 +210,29 @@ sub validate    {   #07/06/00 2:35
         return pick_lang(rus => "Текст ресурса пуст", eng => "Resource text is empty");
     }
 
+    if ($self->RecordType eq 'file' and ! $self->Title) {
+        my $att = new ePortal::Attachment;
+    }    
+
     undef;
 }##validate
+
+
+############################################################################
+sub delete  {   #06/18/2003 1:15
+############################################################################
+    my $self = shift;
+
+    my $att = $self->Attachment;
+    my $result = $self->SUPER::delete;
+
+    while($result and $att) {
+        $result += $att->delete;
+        last if ! $att->restore_next;
+    }
+
+    return $result;
+}##delete
 
 
 ############################################################################
@@ -271,16 +289,11 @@ sub Records {   #06/19/02 10:47
     return undef unless $self->RecordType eq 'group';
 
     my $C = new ePortal::Catalog;
-    my $count = $C->restore_where(
-            count_rows => 1,
-            parent_id => $self->id, where => "recordtype != 'group'"  );
+    my $count = $self->dbh->selectrow_array("SELECT count(*) as cnt
+            FROM Catalog WHERE recordtype != 'group' AND parent_id=?",
+            undef, $self->id);
 
-#    my $count=0;
-#    my $children = $self->children;
-#    while($children->restore_next) {
-#        $count ++ if $children->RecordType eq 'link';
-#    }
-    return $count;
+    return 0+$count;
 }##Records
 
 
@@ -320,29 +333,14 @@ sub ClickTheLink    {   #07/09/02 9:14
     my $self = shift;
     my $go = shift;
 
-    return undef if (! $self->restore($go) );
-
     # I have to do it manualy to avoid ACL denial
-    my $dbh = $self->_get_dbh;
+    my $dbh = $self->dbh;
+    
     # replace null to 0
     $dbh->do("UPDATE Catalog SET clicks=0 WHERE clicks is null AND id=?", undef, $self->id);
+    
     # increment counter
     $dbh->do("UPDATE Catalog SET clicks=clicks+1 WHERE id=?", undef, $self->id);
-
-    if ($self->RecordType eq 'group') {
-        return href('/catalog/index.htm', group => $self->id);
-
-    } elsif ($self->RecordType eq 'file') {
-        return href('/catalog/download.htm/'.$self->Filename, link => $self->id);
-
-    } elsif ($self->RecordType eq 'link') {
-        return $self->URL;
-
-    } elsif ($self->RecordType =~ /^text/) {
-        return href('/catalog/showtext.htm', link => $self->id);
-    }
-
-    return undef;
 }##ClickTheLink
 
 
@@ -371,7 +369,7 @@ sub HitTheLink  {   #12/24/02 1:56
     }
 
     # I do it with natural SQL for speed reason
-    my $dbh = $self->_get_dbh;
+    my $dbh = $self->dbh;
     my $visitor = eval { $ePortal->r->connection->remote_ip } . ':' . $ePortal->username;
 
     # Count hits only if SECONDS_BETWEEN_HITS secs past
@@ -401,7 +399,7 @@ sub HitTheLink  {   #12/24/02 1:56
 sub HitsToday   {   #12/24/02 2:27
 ############################################################################
     my $self = shift;
-    return ($self->_get_dbh->selectrow_array(
+    return ($self->dbh->selectrow_array(
         "SELECT sum(hits) from Statistics WHERE catalog_id=? AND date=curdate()",
         undef, $self->id))[0];
 }##HitsToday
@@ -410,7 +408,7 @@ sub HitsToday   {   #12/24/02 2:27
 sub VisitorsTotal   {   #12/24/02 2:27
 ############################################################################
     my $self = shift;
-    return ($self->_get_dbh->selectrow_array(
+    return ($self->dbh->selectrow_array(
         "SELECT count(distinct visitor) from Statistics WHERE catalog_id=?",
         undef, $self->id))[0];
 }##HitsToday
@@ -419,55 +417,27 @@ sub VisitorsTotal   {   #12/24/02 2:27
 sub VisitorsToday   {   #12/24/02 2:27
 ############################################################################
     my $self = shift;
-    return ($self->_get_dbh->selectrow_array(
+    return ($self->dbh->selectrow_array(
         "SELECT count(distinct visitor) from Statistics WHERE catalog_id=? AND date=curdate()",
         undef, $self->id))[0];
 }##HitsToday
 
+
 ############################################################################
-# Function: htmlSave
-# Description:
-# Parameters:
-# Returns:
-#
-############################################################################
-sub htmlSave    {   #08/16/02 9:28
+sub htmlSave    {   #06/16/2003 3:49
 ############################################################################
     my $self = shift;
-    my %ARGS = @_;
+    my $result = $self->SUPER::htmlSave(@_);
+    if ($result) {
+        my $old_att = $self->Attachment;
 
-    if ($ARGS{recordtype} eq 'file') {
-        my $upload = $ePortal->r->upload;
-        if ( $upload ) {
-            # Get filename
-            my $filename = $upload->filename;
-            $filename =~ s|.*[/\\]||;       # remove trailing slash
-
-            if ($upload->size > $ePortal->max_allowed_packet) {  # 1Meg MySQL soft limit
-                throw ePortal::Exception::DataNotValid(
-                        -text => pick_lang(rus => "Файл слишком большой", eng => "File too big"),
-                        -object => $self);
-            }
-
-            # Get the file
-            my $fh = $upload->fh;
-            my $buffer = undef;
-            while(my $line = <$fh>) {
-                $buffer .= $line;
-            }
-
-            if ($filename and $buffer) {
-                $self->Filename($filename);
-                $self->Text($buffer);
-            }
+        my $att = new ePortal::Attachment(obj => $self);
+        if ($att->upload(r => $ePortal->r)) {
+            $old_att->delete if $old_att;   # delete old if exists and
+                                            # new upload is successful
         }
-
-        # Remove 'file' parameter. We managed it
-        delete $ARGS{upload_file};
-        delete $ARGS{text};
     }
-
-    $self->SUPER::htmlSave(%ARGS);
+    return $result;
 }##htmlSave
 
 
@@ -518,24 +488,37 @@ sub AddCatalogItem  {   #12/15/02 3:44
     }
 
     # We trying to upgrade existing items
-    $newitem->restore( $p{nickname} );
+    my $exists = $newitem->restore( $p{nickname} );
     foreach (qw/ nickname title recordtype url memo /) {
         $newitem->value($_, $p{$_});
     }
     $newitem->parent_id( $iditem->id );
     $newitem->Priority( $p{priority} );
-    $newitem->Clicks(0);
-    $newitem->Hits(0);
     $newitem->uid('admin');
     my $ret = $newitem->save;
 
-    $newitem->xacl_read(undef);
-    $newitem->xacl_read('everyone') if $p{all_r};
-    $newitem->xacl_read('registered') if $p{all_reg};
+    # Do not reset ACL and statistics on existing items
+    if ( !$exists) {
+        $newitem->Clicks(0);
+        $newitem->Hits(0);
+        $newitem->xacl_read(undef);
+        $newitem->xacl_read('everyone') if $p{all_r};
+        $newitem->xacl_read('registered') if $p{all_reg};
 
-    $newitem->update;
+        $newitem->update;
+    }
 
-    return 1;
+    return $exists ? 0 : 1;
 }##AddCatalogItem
+
+############################################################################
+sub LastModified    {   #10/17/2003 3:42
+############################################################################
+    my $self = shift;
+    
+    return scalar $self->dbh->selectrow_array(
+        "SELECT unix_timestamp(ts) from Catalog WHERE id=?",
+        undef, $self->id);
+}##LastModified
 
 1;

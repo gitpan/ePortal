@@ -3,13 +3,10 @@
 # ePortal - WEB Based daily organizer
 # Author - S.Rusakov <rusakov_sa@users.sourceforge.net>
 #
-# Copyright (c) 2001 Sergey Rusakov.  All rights reserved.
+# Copyright (c) 2000-2003 Sergey Rusakov.  All rights reserved.
 # This program is free software; you can redistribute it
 # and/or modify it under the same terms as Perl itself.
 #
-# $Revision: 3.7 $
-# $Date: 2003/04/24 05:36:52 $
-# $Header: /home/cvsroot/ePortal/lib/ePortal/PageSection.pm,v 3.7 2003/04/24 05:36:52 ras Exp $
 #
 #----------------------------------------------------------------------------
 
@@ -27,7 +24,7 @@ PageView.
 =cut
 
 package ePortal::PageSection;
-	our $VERSION = sprintf '%d.%03d', q$Revision: 3.7 $ =~ /: (\d+).(\d+)/;
+    our $VERSION = '4.1';
     use base qw/ePortal::ThePersistent::ExtendedACL/;
 
 	use ePortal::Global;
@@ -36,47 +33,38 @@ package ePortal::PageSection;
 ############################################################################
 sub initialize	{	#05/31/00 8:50
 ############################################################################
-	my $self = shift;
+    my ($self, %p) = @_;
 
-    $self->SUPER::initialize(Attributes => [
-        id => { type => 'ID',
-                order => 1,
-                dtype => 'Number',
-                auto_increment => 1,
+    $p{Attributes}{id} ||= {};
+    $p{Attributes}{title} ||= {};
+    $p{Attributes}{params} ||= {
+        label => {rus => 'Параметры секции', eng => 'Section parameters'},
+        size => 60,
+        # description => 'There may be a few sections with one template',
+        };
+    $p{Attributes}{width} ||= {
+        label => {rus => 'Ширина секции', eng => 'Section width'},
+        fieldtype => 'popup_menu',
+        values => [ qw/N W/ ],
+        labels => {
+            N => {rus => 'узкая', eng => 'narrow'},
+            W => {rus => 'широкая', eng => 'wide'},
         },
-        title => {
-                label => {rus => 'Наименование', eng => 'Name'},
-        },
-        params => {
-                label => {rus => 'Параметры секции', eng => 'Section parameters'},
-                size => 60,
-                # description => 'There may be a few sections with one template',
-        },
-        width => {
-                label => {rus => 'Ширина секции', eng => 'Section width'},
-                fieldtype => 'popup_menu',
-                values => [ qw/N W/ ],
-                labels => {
-                    N => {rus => 'узкая', eng => 'narrow'},
-                    W => {rus => 'широкая', eng => 'wide'},
-                },
-        },
-        url => {
-                label => {rus => 'URL для заголовка', eng => 'URL for section title'},
-                size => 60,
-                #description => 'URL for section caption',
-        },
-        component => {
-                label => {rus => 'Файл компоненты', eng => 'Component file name'},
-                fieldtype => 'popup_menu',
-                values => \&ComponentNames,
-                #description => 'filename of mason component',
-        },
-        memo => {
-                label => {rus => 'Примечание', eng => 'Memo'},
-                fieldtype => 'textarea',
-        },
-    ]);
+        };
+    $p{Attributes}{url} ||= {
+        label => {rus => 'URL для заголовка', eng => 'URL for section title'},
+        size => 60,
+        #description => 'URL for section caption',
+        };
+    $p{Attributes}{component} ||= {
+        label => {rus => 'Файл компоненты', eng => 'Component file name'},
+        fieldtype => 'popup_menu',
+        values => \&ComponentNames,
+        #description => 'filename of mason component',
+        };
+    $p{Attributes}{memo} ||= {};
+
+    $self->SUPER::initialize(%p);
 }##initialize
 
 
@@ -96,7 +84,7 @@ sub ComponentNames	{	#10/09/01 11:25
     my @files = $ePortal->m->interp->resolver->glob_path('/pv/sections/*.mc');
     foreach (@files) {
         $_ =~ s|^.*/||g;    # remove dir path
-    }    
+    }
 
 	return [ sort @files ];
 }##ComponentNames
@@ -211,7 +199,7 @@ sub delete	{	#10/15/01 11:32
 ############################################################################
 	my $self = shift;
 
-	my $dbh = $self->_get_dbh();
+    my $dbh = $self->dbh();
 	$dbh->do("DELETE FROM UserSection WHERE ps_id=?", undef, $self->id);
 
 	$self->SUPER::delete();

@@ -3,13 +3,10 @@
 # ePortal - WEB Based daily organizer
 # Author - S.Rusakov <rusakov_sa@users.sourceforge.net>
 #
-# Copyright (c) 2001 Sergey Rusakov.  All rights reserved.
+# Copyright (c) 2000-2003 Sergey Rusakov.  All rights reserved.
 # This program is free software; you can redistribute it
 # and/or modify it under the same terms as Perl itself.
 #
-# $Revision: 3.3 $
-# $Date: 2003/04/24 05:36:52 $
-# $Header: /home/cvsroot/ePortal/lib/ePortal/AuthCookieHandler.pm,v 3.3 2003/04/24 05:36:52 ras Exp $
 #
 #----------------------------------------------------------------------------
 
@@ -18,10 +15,9 @@ package ePortal::AuthCookieHandler;
 	use Apache;
 	use Apache::Constants qw(:common);
     use Apache::Cookie();
-	use MD5;
-	use ePortal::Server;
+    use Digest::MD5;
 
-	our $VERSION = sprintf '%d.%03d', q$Revision: 3.3 $ =~ /: (\d+).(\d+)/;
+    our $VERSION = '4.1';
 
 
 ############################################################################
@@ -37,7 +33,7 @@ sub authen_ses_key ($$$) {
 	my $actualremoteip = $r->get_remote_host;
 	my $result;
 
-	my $mymd5 = MD5->hexhash('13', $username, $remoteip);
+    my $mymd5 = Digest::MD5::md5_hex('13', $username, $remoteip);
 	if ( $mymd5 ne $md5hash) {
         $r->log_error("authen_ses_key: MD5 check sum bad: $username, $actualremoteip\n");
 

@@ -3,13 +3,10 @@
 # ePortal - WEB Based daily organizer
 # Author - S.Rusakov <rusakov_sa@users.sourceforge.net>
 #
-# Copyright (c) 2001 Sergey Rusakov.  All rights reserved.
+# Copyright (c) 2000-2003 Sergey Rusakov.  All rights reserved.
 # This program is free software; you can redistribute it
 # and/or modify it under the same terms as Perl itself.
 #
-# $Revision: 3.2 $
-# $Date: 2003/04/24 05:36:52 $
-# $Header: /home/cvsroot/ePortal/lib/ePortal/ThePersistent/UserConfig.pm,v 3.2 2003/04/24 05:36:52 ras Exp $
 #
 #----------------------------------------------------------------------------
 # The main ThePersistent class without ACL checking. All system tables
@@ -35,7 +32,6 @@ C<Support.pm>
  $obj->add_attribute(attr_name => {
                     dtype => 'VarChar',
                     maxlength => 64,
-                    order => 8,
                     label => {rus => 'label rus', eng => 'Label eng'});
  $obj->restore();
  $obj->attr_name('value');
@@ -48,7 +44,7 @@ ID attribute is added internally.
 =cut
 
 package ePortal::ThePersistent::UserConfig;
-    our $VERSION = sprintf '%d.%03d', q$Revision: 3.2 $ =~ /: (\d+).(\d+)/;
+    our $VERSION = '4.1';
     use base qw/ePortal::ThePersistent::Support/;
 
     use Carp qw/croak/;

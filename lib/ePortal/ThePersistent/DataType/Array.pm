@@ -3,53 +3,32 @@
 # ePortal - WEB Based daily organizer
 # Author - S.Rusakov <rusakov_sa@users.sourceforge.net>
 #
-# Copyright (c) 2001 Sergey Rusakov.  All rights reserved.
+# Copyright (c) 2000-2003 Sergey Rusakov.  All rights reserved.
 # This program is free software; you can redistribute it
 # and/or modify it under the same terms as Perl itself.
 #
-# $Revision: 3.1 $
-# $Date: 2003/04/24 05:36:52 $
-# $Header: /home/cvsroot/ePortal/lib/ePortal/ThePersistent/DataType/Array.pm,v 3.1 2003/04/24 05:36:52 ras Exp $
 #
 #----------------------------------------------------------------------------
 # Original idea:   David Winters <winters@bigsnow.org>
 #----------------------------------------------------------------------------
 
 package ePortal::ThePersistent::DataType::Array;
-
-our $VERSION = sprintf '%d.%03d', q$Revision: 3.1 $ =~ /: (\d+).(\d+)/;
-use Carp;
-
+    our $VERSION = '4.1';
+    use Carp;
 
 sub new {
-  my $proto = shift;
-  my $class = ref($proto) || $proto;
+    my $proto = shift;
+    my $class = ref($proto) || $proto;
+    my %p = @_;
 
-  my $self = {
-    Value => [],
-    };
-  bless $self, $class;
-  $self->initialize(@_);  ### call hook for subclass initialization ###
+    my $self = {
+      Value => [],
+      %p,
+      };
+    bless $self, $class;
+    $self->value($self->{default}) if $self->{default};
 
-  return $self;
-}
-
-########################################################################
-# initialize
-########################################################################
-
-=head2 Constructor -- Creates the Array Object
-
-  eval {
-    my $string = new ePortal::ThePersistent::DataType::Array($arrayref);
-  };
-=cut
-
-sub initialize {
-    my($self, $value) = @_;
-
-	$self->value($value) if ($value);
-	return;
+    return $self;
 }
 
 sub value {
@@ -59,7 +38,7 @@ sub value {
   if (@_) {
     my $value = shift;
     $value = [] if ref($value) ne 'ARRAY';
-    $self->{Value} = $value;
+    $self->{Value} = [ @{$value} ]; # duplicate array
   }
 
   ### return the value ###
@@ -68,20 +47,6 @@ sub value {
 
 
 
-sub length {
-  my $self = shift;
-
-  ### return the length ###
-  scalar( @{$self->value} );
-}
-
-
-############################################################################
-# Function: sql_value
-# Description:
-# Parameters:
-# Returns:
-#
 ############################################################################
 sub sql_value   {   #09/30/02 2:34
 ############################################################################
@@ -89,6 +54,12 @@ sub sql_value   {   #09/30/02 2:34
     return $self->value();
 }##sql_value
 
+############################################################################
+sub clear   {   #06/19/2003 11:38
+############################################################################
+    my $self = shift;
+    $self->value( $self->{default} );
+}##clear
 
-### end of library ###
+
 1;

@@ -3,13 +3,10 @@
 # ePortal - WEB Based daily organizer
 # Author - S.Rusakov <rusakov_sa@users.sourceforge.net>
 #
-# Copyright (c) 2001 Sergey Rusakov.  All rights reserved.
+# Copyright (c) 2000-2003 Sergey Rusakov.  All rights reserved.
 # This program is free software; you can redistribute it
 # and/or modify it under the same terms as Perl itself.
 #
-# $Revision: 3.3 $
-# $Date: 2003/04/24 05:36:52 $
-# $Header: /home/cvsroot/ePortal/lib/ePortal/HTML/Dialog.pm,v 3.3 2003/04/24 05:36:52 ras Exp $
 #
 #----------------------------------------------------------------------------
 
@@ -35,12 +32,19 @@ context.
     <p>
 
     <%method onStartRequest><%perl>
-      $obj = new ePortal::ThePersistent::SupportObject;
-      $dlg = new ePortal::HTML::Dialog( obj => $obj);
+        $obj = new ePortal::ThePersistent::SupportObject;
+        $dlg = new ePortal::HTML::Dialog( obj => $obj);
 
-      my $location = $dlg->handle_request();
-      if ($dlg->isButtonPressed('ok') { ... }
-      return $location if $location;
+        my $location = try {
+          $dlg->handle_request( );
+        } catch ePortal::Exception::DataNotValid with {
+          my $E = shift;
+          $session{ErrorMessage} = $E->text;
+          '';
+        };
+
+        if ($dlg->isButtonPressed('ok') { ... }
+        return $location if $location;
     </%perl></%method>
 
     %#=== @metags once =========================================================
@@ -59,11 +63,10 @@ context.
 =cut
 
 package ePortal::HTML::Dialog;
-	our $VERSION = sprintf '%d.%03d', q$Revision: 3.3 $ =~ /: (\d+).(\d+)/;
+    our $VERSION = '4.1';
 
 	use ePortal::Global;
-	use ePortal::Utils;		# import logline, pick_lang
-	#use CGI qw/-nosticky -no_xhtml -no_debug/;	# CGI used in ePortal::Apache
+    use ePortal::Utils;     # import logline, pick_lang, CGI
 	use Carp;
     use Params::Validate qw/:types/;
 
@@ -130,9 +133,6 @@ sub new	{	#11/20/01 2:49
 	$self->{copy_button} 	  	= 0;
 	$self->{copy_button_url}  	= undef;
 	$self->{copy_button_title}	= pick_lang(rus => "Копировать", eng => "Copy object");
-	$self->{acl_button} 	  	= 0;
-	$self->{acl_button_url}   	= undef;
-	$self->{acl_button_title} 	= pick_lang(rus => "Права доступа", eng => "ACL for the object");
 
 	# Buttons
 	$self->{ok_button}		= 1;
@@ -145,6 +145,8 @@ sub new	{	#11/20/01 2:49
 	$self->{more_label}		= pick_lang(rus => "Дальше", eng => "More");
     $self->{delete_button}  = 0;
 	$self->{delete_label}   = pick_lang(rus => "Удалить !!!", eng => "Delete !!!");
+    $self->{apply_button}   = 0;
+    $self->{apply_label}    = pick_lang(rus => "Применить", eng => "Apply");
 
 	# some private attributes used in dialog's methods
 	# We define these here for methods don't blame me about unknown attributes
@@ -190,7 +192,7 @@ sub initialize	{	#11/20/01 2:54
 	$self->{method} = 'POST' if $self->{multipart_form};
 
 	# Adjust URLs for caption buttons
-	foreach (qw/q acl edit min max x copy/) {
+    foreach (qw/q edit min max x copy/) {
         $self->{$_.'_button_url'} = $self->{$_."_button"} eq '1'
             ? href( $self->{action}, 'dlgb_'.$_ => 1, objid => $self->{objid}, back_url => $self->{back_url})
             : $self->{$_."_button"};
@@ -200,17 +202,10 @@ sub initialize	{	#11/20/01 2:54
 	if ($self->{objid} == 0) {
 		$self->{delete_button} = 0;
 		$self->{copy_button} = 0;
-		$self->{acl_button} = 0;
 
-    } elsif (UNIVERSAL::isa($self->{obj}, 'ePortal::ThePersistent::ACL') ) {
-		my $acl_w = eval { $self->{obj}->acl_check('w'); }; # may fail on non acl objects
-		my $acl_a = eval { $self->{obj}->acl_check('a'); };
-		if (!$acl_w and !$ePortal->isAdmin) {	# admin may delete even if acl_w not exists
-			$self->{delete_button} = 0;
-			$self->{copy_button} = 0;
-		}
-		$self->{acl_button} = 0 if !$acl_a;
-		$self->{delete_button} = 0 if $self->{objtype} =~ /:Dual:/;
+    } elsif (UNIVERSAL::isa($self->{obj}, 'ePortal::ThePersistent::ExtendedACL') ) {
+        $self->{ok_button} = 0 if ! $self->{obj}->xacl_check_update;
+        $self->{delete_button} = 0 if ! $self->{obj}->xacl_check_delete;
 	}
 
 
@@ -270,8 +265,8 @@ sub handle_request	{	#09/07/01 2:08
 	# Check if a button was pressed
 	$self->{button_pressed} = undef;
 	$self->{button_pressed} = 'ok' if $args{dialog_submit}; # as default
-	foreach (qw/q acl max min edit delete copy x
-				ok cancel more/) {
+    foreach (qw/q max min edit delete copy x
+                ok cancel more apply/) {
 		$self->{button_pressed} = $_ if $args{'dlgb_'.$_};
 	}
 
@@ -280,7 +275,7 @@ sub handle_request	{	#09/07/01 2:08
 		$location = $self->{cancel_url} || $self->{back_url};
 
 	# process OK
-	} elsif ($self->isButtonPressed('ok')) {			# "Ok" button
+    } elsif ($self->isButtonPressed('ok') or $self->isButtonPressed('apply')) {           # "Ok" button
 		if (ref $self->{obj}) {				# we have an object?
 			if ($self->{obj}->htmlSave(%args)) {
 				$location = $self->{ok_url} || $self->{back_url};
@@ -290,6 +285,7 @@ sub handle_request	{	#09/07/01 2:08
 		} else {
 			$location = $self->{ok_url} || $self->{back_url};
 		}
+        $location = undef if $self->isButtonPressed('apply');
 
 	# Process DELETE
 	} elsif ($self->isButtonPressed('delete')) {
@@ -322,7 +318,7 @@ sub handle_request	{	#09/07/01 2:08
 Checks is a button was pressed. Use this function only after call to
 handle_request().
 
-I<button_name> is one of: qw/q acl max min edit delete copy x ok cancel
+I<button_name> is one of: qw/q max min edit delete copy x ok cancel
 more/
 
 =cut
@@ -380,7 +376,6 @@ sub dialog_start	{	#11/21/01 3:48
 						-class => 'sidemenu', -nowrap => 1},
 						[ $self->{title_as_html} ]);
 	my @buttons;
-	push @buttons, icon_access( $self->{obj}, dialog => 1 ) if $self->{"acl_button"};
 	foreach (qw/edit q copy min max x/) {
 		push @buttons, img( src => "/images/ePortal/dlg_" . $_ . ".png",
 						href => $self->{$_ . "_button_url"},
@@ -537,7 +532,7 @@ sub field	{	#11/21/01 4:47
                 -name => $field,
 				-value => exists $p{value}
 					? $p{value}
-                    : $self->{obj}->value($field),
+                    : Apache::Util::escape_html($self->{obj}->value($field)),
 				-override => 1});
             $value = exists $p{value}
                 ? $p{value}
@@ -548,7 +543,7 @@ sub field	{	#11/21/01 4:47
                 -name => $field,
                 -value => exists $p{value}
                     ? $p{value}
-                    : $self->{obj}->value($field),
+                    : Apache::Util::escape_html($self->{obj}->value($field)),
 				-override => 1});
 			$label = $value = undef;
 
@@ -568,7 +563,7 @@ sub field	{	#11/21/01 4:47
 
         if ( $p{vertical} ) {
             $html .= $self->row($label . '<br>' . $value, %p);
-        } elsif ( $p{horizontal} ) {
+        } elsif ( $p{horizontal} or ($p{decoration} eq 'none')) {
             $html .= $label . $value;
         } else {
             $html .= $self->row($label, $value);
@@ -592,9 +587,11 @@ and cancel_button. See L<initialize()|initialize()> for details.
 sub buttons	{	#11/21/01 4:52
 ############################################################################
     my ($self, %p) = @_;
+
+    my $decoration = $p{decoration};
+    delete $p{decoration};
 	$self->initialize(%p);
 
-	my $html;
 	my $m = $HTML::Mason::Commands::m;
 
 	my @buttons;
@@ -603,15 +600,14 @@ sub buttons	{	#11/21/01 4:52
 #        if ($b eq 'cancel') {
 #               BAD IDEA. sometimes I need to travel through a list and then press a cancel
 #            push @buttons, CGI::button( -name => "dlgb_$b", -value => $self->{$b."_label"}, -class => 'button', -onClick => "javascript:history.go(-1);");
-#        } else {    
+#        } else {
             push @buttons, CGI::submit( -name => "dlgb_$b", -value => $self->{$b."_label"}, -class => 'button');
 #        }
 	}}
 
-	$html = CGI::Tr({},
-            CGI::td({-colspan => 2, -align => 'right'},
-				join('&nbsp;&nbsp;&nbsp;&nbsp;', @buttons) . '&nbsp;'
-			));
+    my $html = join('&nbsp;&nbsp;&nbsp;&nbsp;', @buttons) . '&nbsp;';
+    $html = CGI::Tr({}, CGI::td({-colspan => 2, -align => 'right'}, $html ))
+        if $decoration ne 'none';
 
 	# Return resulting HTML or output it directly to client
     defined wantarray ? $html : $m->print( $html );
@@ -693,7 +689,7 @@ Item name to focus the cursor. Set automaticaly
 
 =item * xxx_button, xxx_button_title
 
-A button at top of dialog. xxx may be (q edit min max x copy acl)
+A button at top of dialog. xxx may be (q edit min max x copy )
 
 Set xxx_button=1 to make default action or set to any URL
 

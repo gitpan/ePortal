@@ -2,13 +2,10 @@
 %# ePortal - WEB Based daily organizer
 %# Author - S.Rusakov <rusakov_sa@users.sourceforge.net>
 %#
-%# Copyright (c) 2001 Sergey Rusakov.  All rights reserved.
+%# Copyright (c) 2000-2003 Sergey Rusakov.  All rights reserved.
 %# This program is free software; you can redistribute it
 %# and/or modify it under the same terms as Perl itself.
 %#
-%# $Revision: 3.1 $
-%# $Date: 2003/04/24 05:36:51 $
-%# $Header: /home/cvsroot/ePortal/comp_root/dhandler.mc,v 3.1 2003/04/24 05:36:51 ras Exp $
 %#
 %#----------------------------------------------------------------------------
 
@@ -19,10 +16,10 @@
 #    $m->comp("/redirect.mc",
 #      location => href("/errors/error404.htm", url => $m->dhandler_arg));
 
-    $m->comp('/errors/error404.htm');
-    return;
-#    throw ePortal::Exception::FileNotFound(-file => $r->filename);
+#    $m->comp('/errors/error404.htm');
 #    return;
+    throw ePortal::Exception::FileNotFound(-file => $r->filename);
+    return;
   }
 
 	# Due to location of dhandler at component root it inherits only base
@@ -45,8 +42,7 @@
 	}
 
 	if ( ! $attrib_comp->attr('dir_enabled') ) {
-    $m->comp("/redirect.mc",
-      location => href("/errors/error404.htm", url => $m->dhandler_arg));
+    throw ePortal::Exception::FileNotFound(-file => $r->filename);
     return;
 	}
 </%perl>
@@ -65,8 +61,10 @@
 %#=== @METAGS onStartRequest ====================================================
 <%method onStartRequest><%perl>
   if (! -d $r->filename and ! -f $r->filename) {
-    $m->comp('/errors/error404.htm');
-    return '';  # do not redirect but stop further processing
+    throw ePortal::Exception::FileNotFound(-file => $ENV{REQUEST_URI});
+    return;
+#    $m->comp('/errors/error404.htm');
+#    return '';  # do not redirect but stop further processing
   }
 </%perl></%method>
 

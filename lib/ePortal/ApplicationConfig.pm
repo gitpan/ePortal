@@ -3,13 +3,10 @@
 # ePortal - WEB Based daily organizer
 # Author - S.Rusakov <rusakov_sa@users.sourceforge.net>
 #
-# Copyright (c) 2001 Sergey Rusakov.  All rights reserved.
+# Copyright (c) 2000-2003 Sergey Rusakov.  All rights reserved.
 # This program is free software; you can redistribute it
 # and/or modify it under the same terms as Perl itself.
 #
-# $Revision: 3.2 $
-# $Date: 2003/04/24 05:36:52 $
-# $Header: /home/cvsroot/ePortal/lib/ePortal/ApplicationConfig.pm,v 3.2 2003/04/24 05:36:52 ras Exp $
 #
 #----------------------------------------------------------------------------
 # The main ThePersistent class without ACL checking. All system tables
@@ -35,7 +32,6 @@ C<Support.pm>
  $obj->add_attribute(attr_name => {
                     dtype => 'VarChar',
                     maxlength => 64,
-                    order => 8,
                     label => {rus => 'label rus', eng => 'Label eng'});
  $obj->restore();
  $obj->attr_name('value');
@@ -48,7 +44,7 @@ ID attribute is added internally.
 =cut
 
 package ePortal::ApplicationConfig;
-    our $VERSION = sprintf '%d.%03d', q$Revision: 3.2 $ =~ /: (\d+).(\d+)/;
+    our $VERSION = '4.1';
     use base qw/ePortal::ThePersistent::Support/;
 
     use Carp qw/croak/;
@@ -66,9 +62,35 @@ sub initialize  {   #05/31/00 8:50
     throw ePortal::Exception::Fatal(-text => "Object needed for ePortal::ApplicationConfig")
         unless ref($self->{obj});
 
-    $self->SUPER::initialize(%p);
+    # Add attributes to config object
+    $p{Attributes}{id} = { type => 'ID', dtype => 'VarChar'};
+    $p{Attributes}{dbi_source_type} = {
+          type => 'Transient',
+          fieldtype => 'radio_group',
+          default => 'ePortal',
+          values => ['ePortal', 'custom'],
+          label => pick_lang(rus => "Подключение к базе данных", eng => "Database connect"),
+          labels => { 
+            ePortal => pick_lang(rus => "Стандартное", eng => "Standard"),
+            custom  => pick_lang(rus => "Специальное", eng => "Custom"),
+          }};
 
-    $self->add_attribute( id => { type => 'ID', dtype => 'VarChar'} );
+    $p{Attributes}{dbi_source} = {
+            size => 50,
+#            label => pick_lang(rus => "Источник данных DBI", eng => "DBI connect string"),
+            default => 'ePortal',
+      };
+    $p{Attributes}{dbi_username} = {
+            size => 20,
+#            label => pick_lang(rus => "Имя пользователя DBI", eng => "DBI user name")
+      };
+    $p{Attributes}{dbi_password} = {
+            size => 20,
+#            label => pick_lang(rus => "Пароль пользователя DBI", eng => "DBI password")
+      };
+
+
+    $self->SUPER::initialize(%p);
 }##initialize
 
 ############################################################################
@@ -81,11 +103,12 @@ sub restore {   #11/22/01 11:49
     $self->_id('!' . $self->{obj}->ApplicationName . '!');
     $self->{obj}->config_load;  # once again. Refresh config
 
-    foreach my $attr ($self->attributes) {
-        next if $attr eq 'id';
+    foreach my $attr ($self->attributes_a) {
         my $newvalue = $self->{obj}->{$attr};
         $self->value($attr, $newvalue) if defined $newvalue;
     }
+
+    $self->dbi_source_type( $self->dbi_source eq 'ePortal' ? 'ePortal' : 'custom' );
     1;
 }##restore
 
@@ -119,13 +142,20 @@ sub update  {   #11/22/01 11:53
 ############################################################################
     my $self = shift;
 
-    return undef if not $self->{obj};
-
-    foreach my $attr ($self->attributes) {
-        next if $attr eq 'id';
+    $self->dbi_source('ePortal') if $self->dbi_source_type eq 'ePortal';
+    foreach my $attr ($self->attributes_a) {
         $self->{obj}->{$attr} = $self->value($attr);
     }
     $self->{obj}->config_save;
+
+    # test database connection. This will throw ePortal::Exception::DBI
+    $self->{obj}->dbh;
+
+    # clear storage_version for external storages
+    if ($self->{obj}->dbi_source ne 'ePortal') {
+        $self->{obj}->{storage_version} = 0;
+        $self->{obj}->config_save;
+    }
 
     1;
 }##update

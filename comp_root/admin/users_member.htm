@@ -2,13 +2,10 @@
 %# ePortal - WEB Based daily organizer
 %# Author - S.Rusakov <rusakov_sa@users.sourceforge.net>
 %#
-%# Copyright (c) 2001 Sergey Rusakov.  All rights reserved.
+%# Copyright (c) 2000-2003 Sergey Rusakov.  All rights reserved.
 %# This program is free software; you can redistribute it
 %# and/or modify it under the same terms as Perl itself.
 %#
-%# $Revision: 3.2 $
-%# $Date: 2003/04/24 05:36:51 $
-%# $Header: /home/cvsroot/ePortal/comp_root/admin/users_member.htm,v 3.2 2003/04/24 05:36:51 ras Exp $
 %#
 %#----------------------------------------------------------------------------
 &nbsp;
@@ -79,7 +76,7 @@
 %#=== @METAGS attr =========================================================
 <%attr>
 Title => {rus => "„ленство пользовател€ в группах", eng => "Group membership"}
-Layout => 'dialog'
+Layout => 'Dialog'
 </%attr>
 
 
@@ -87,7 +84,13 @@ Layout => 'dialog'
 <%method onStartRequest><%perl>
   my $user = new ePortal::epUser;
 	$dlg = new ePortal::HTML::Dialog( obj => $user );
-	my $location = $dlg->handle_request();
+  my $location = try {
+    $dlg->handle_request( );
+  } catch ePortal::Exception::DataNotValid with {
+    my $E = shift;
+    $session{ErrorMessage} = $E->text;
+    '';
+  };
 
 	my @member_of = ref($ARGS{member_of}) eq "ARRAY" ? @{$ARGS{member_of}} : ($ARGS{member_of});
 	my @not_member_of = ref($ARGS{not_member_of}) eq "ARRAY" ? @{$ARGS{not_member_of}} : ($ARGS{not_member_of});

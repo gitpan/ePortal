@@ -1,0 +1,108 @@
+<HTML>
+<HEAD>
+<TITLE>ePortal::Auth::Base - ePortal authentication module.</TITLE>
+<LINK REV="made" HREF="mailto:rusakov_sa@users.sourceforge.net">
+</HEAD>
+
+<BODY>
+
+<A NAME="__index__"></A>
+<!-- INDEX BEGIN -->
+
+<UL>
+
+	<LI><A HREF="#name">NAME</A></LI>
+	<LI><A HREF="#synopsis">SYNOPSIS</A></LI>
+	<LI><A HREF="#methods">METHODS</A></LI>
+	<UL>
+
+		<LI><A HREF="#new">new</A></LI>
+		<LI><A HREF="#initialize">initialize</A></LI>
+		<LI><A HREF="#check_account">check_account</A></LI>
+		<LI><A HREF="#check_password">check_password</A></LI>
+		<LI><A HREF="#dn">dn</A></LI>
+		<LI><A HREF="#title">title</A></LI>
+		<LI><A HREF="#full_name">full_name</A></LI>
+		<LI><A HREF="#department">department</A></LI>
+		<LI><A HREF="#membership">membership</A></LI>
+		<LI><A HREF="#check_group">check_group</A></LI>
+		<LI><A HREF="#group_title">group_title</A></LI>
+	</UL>
+
+	<LI><A HREF="#author">AUTHOR</A></LI>
+</UL>
+<!-- INDEX END -->
+
+<HR>
+<P>
+<H1><A NAME="name">NAME</A></H1>
+<P>ePortal::Auth::Base - ePortal authentication module.</P>
+<P>
+<HR>
+<H1><A NAME="synopsis">SYNOPSIS</A></H1>
+<P>This is base class for authentication modules. Others are inherited from
+this.</P>
+<P>
+<HR>
+<H1><A NAME="methods">METHODS</A></H1>
+<P>
+<H2><A NAME="new">new</A></H2>
+<P>Object constructor.</P>
+<UL>
+<LI><STRONG><A NAME="item_username">username</A></STRONG><BR>
+
+Login user name to deal with.
+<P></P></UL>
+<P>
+<H2><A NAME="initialize">initialize</A></H2>
+<P>Extra initialization module. Derived packages may use it for further
+initialization</P>
+<P>This function is called from object construstor.</P>
+<P>
+<H2><A NAME="check_account">check_account</A></H2>
+<P>Check user account for existance.</P>
+<P>This method is responsible for retrieval of additional user information.
+This information should be cached.</P>
+<P>
+<H2><A NAME="check_password">check_password</A></H2>
+<P>Authenticate the user with password</P>
+<P>
+<H2><A NAME="dn">dn</A></H2>
+<P>DN of user object in external directory. That is LDAP DN. May be different
+from username.</P>
+<P>
+<H2><A NAME="title">title</A></H2>
+<P>Additional user information.</P>
+<P>
+<H2><A NAME="full_name">full_name</A></H2>
+<P>Additional user information</P>
+<P>
+<H2><A NAME="department">department</A></H2>
+<P>Additional user information</P>
+<P>
+<H2><A NAME="membership">membership</A></H2>
+<P>Return array of group names where the user is member.</P>
+<P>
+<H2><A NAME="check_group">check_group</A></H2>
+<P>Check group for existance</P>
+<UL>
+<LI><STRONG><A NAME="item_group_dn">group_dn</A></STRONG><BR>
+
+Group DN to check.
+<P></P></UL>
+<P>
+<H2><A NAME="group_title">group_title</A></H2>
+<P>Group title as present in external directory</P>
+<UL>
+<LI><STRONG>group_dn</STRONG><BR>
+
+Group DN to check.
+<P></P></UL>
+<P>
+<HR>
+<H1><A NAME="author">AUTHOR</A></H1>
+<P>Sergey Rusakov, &lt;<A HREF="mailto:rusakov_sa@users.sourceforge.net">rusakov_sa@users.sourceforge.net</A>&gt;</P>
+
+</BODY>
+
+</HTML>

@@ -19,12 +19,8 @@
 		<LI><A HREF="#new%28%29"><CODE>new()</CODE></A></LI>
 		<LI><A HREF="#initialize%28%29"><CODE>initialize()</CODE></A></LI>
 		<LI><A HREF="#datastore%28%29"><CODE>datastore()</CODE></A></LI>
-		<LI><A HREF="#attribute_object%28%29"><CODE>attribute_object()</CODE></A></LI>
 		<LI><A HREF="#attribute%28%29"><CODE>attribute()</CODE></A></LI>
 		<LI><A HREF="#attributes%28%29"><CODE>attributes()</CODE></A></LI>
-		<LI><A HREF="#attributes_id%28%29"><CODE>attributes_id()</CODE></A></LI>
-		<LI><A HREF="#attributes_notid%28%29"><CODE>attributes_notid()</CODE></A></LI>
-		<LI><A HREF="#attributes_storable%28%29"><CODE>attributes_storable()</CODE></A></LI>
 		<LI><A HREF="#add_attribute%28%29"><CODE>add_attribute()</CODE></A></LI>
 		<LI><A HREF="#value%28%29"><CODE>value()</CODE></A></LI>
 		<LI><A HREF="#clear%28%29"><CODE>clear()</CODE></A></LI>
@@ -47,7 +43,7 @@
 	<UL>
 
 		<LI><A HREF="#_check_dbi_error%28%29"><CODE>_check_dbi_error()</CODE></A></LI>
-		<LI><A HREF="#_get_dbh%28%29"><CODE>_get_dbh()</CODE></A></LI>
+		<LI><A HREF="#dbh%28%29"><CODE>dbh()</CODE></A></LI>
 		<LI><A HREF="#_id%28%29"><CODE>_id()</CODE></A></LI>
 		<LI><A HREF="#check_id%28%29"><CODE>check_id()</CODE></A></LI>
 	</UL>
@@ -121,21 +117,13 @@ Called from <A HREF="#new%28%29">new()</A> constructor.</P>
 <P>Parameters are the same as for <A HREF="#new%28%29">object constructor</A>. See <A HREF="#storage%20related%20variables">Storage related variables</A> for more details.</P>
 <P>Returns newly created database handle.</P>
 <P>
-<H2><A NAME="attribute_object%28%29"><CODE>attribute_object()</CODE></A></H2>
-<P>Returns named attribute object.</P>
-<UL>
-<LI><STRONG><A NAME="item_attribute_name">attribute name</A></STRONG><BR>
-
-Name of attribute to return.
-<P></P></UL>
-<P>
 <H2><A NAME="attribute%28%29"><CODE>attribute()</CODE></A></H2>
 <P>Returns named attribute parameters as hash. In scalar context returns
 hash ref.</P>
 <P>If attribute does not exists then undef is returned. This method is used to
 check attribute existance.</P>
 <UL>
-<LI><STRONG>attribute name</STRONG><BR>
+<LI><STRONG><A NAME="item_attribute_name">attribute name</A></STRONG><BR>
 
 Name of attribute to return.
 <P></P></UL>
@@ -143,39 +131,11 @@ Name of attribute to return.
 <H2><A NAME="attributes%28%29"><CODE>attributes()</CODE></A></H2>
 <P>Returns names of ALL attributes of the object as array.</P>
 <P>
-<H2><A NAME="attributes_id%28%29"><CODE>attributes_id()</CODE></A></H2>
-<P>Returns names of TD attributes of the object as array.</P>
-<P>
-<H2><A NAME="attributes_notid%28%29"><CODE>attributes_notid()</CODE></A></H2>
-<P>Returns names of TD attributes of the object as array.</P>
-<P>
-<H2><A NAME="attributes_storable%28%29"><CODE>attributes_storable()</CODE></A></H2>
-<P>Returns names of attributes of the object as array except Temporary or
-Transient attributes.</P>
-<P>
 <H2><A NAME="add_attribute%28%29"><CODE>add_attribute()</CODE></A></H2>
 <P>Add an attribute to the object. Attribute information is used when SQL
 statement is constructed or when attribute datatype is needed to know.</P>
-<P>There is two modes of parameters passing:</P>
 <UL>
 <LI><STRONG><A NAME="item_name">name</A></STRONG><BR>
-
-<LI><STRONG><A NAME="item_type">type</A></STRONG><BR>
-
-Valid values are <CODE>ID</CODE>, <CODE>Persistent</CODE>, <CODE>Temporary</CODE> or <CODE>Transient</CODE>.
-Attribute type is determined by first character ignoring case.
-<P></P>
-<LI><STRONG><A NAME="item_datatype">datatype</A></STRONG><BR>
-
-Data type of attribute. See <A HREF="#supported%20data%20types">Supported Data Types</A> for details.
-<P></P>
-<LI><STRONG><A NAME="item_arguments">arguments</A></STRONG><BR>
-
-Optional. Arguments to be passed to the data type constructor
-<P></P></UL>
-<P>The second mode is more powerful:</P>
-<UL>
-<LI><STRONG>name</STRONG><BR>
 
 <LI><STRONG><A NAME="item_hashref">hashref</A></STRONG><BR>
 
@@ -378,7 +338,7 @@ not valid.</P>
 Error string prepended to the DBI error message
 <P></P></UL>
 <P>
-<H2><A NAME="_get_dbh%28%29"><CODE>_get_dbh()</CODE></A></H2>
+<H2><A NAME="dbh%28%29"><CODE>dbh()</CODE></A></H2>
 <P>Returns the handle of the database.</P>
 <UL>
 <LI><STRONG><A NAME="item_new_dbh">new dbh</A></STRONG><BR>
@@ -425,7 +385,7 @@ statements.
 <P></P>
 <LI><STRONG><A NAME="item_%2524self%252D%253E%257Bdbi_xxx%257D">$self-&gt;{dbi_xxx}</A></STRONG><BR>
 
-{dbi_source}, {dbi_user}, {dbi_password} - three parameters to create new
+{dbi_source}, {dbi_username}, {dbi_password} - three parameters to create new
 DBH. This is opposite to {DBH} parameter.
 <P></P>
 <LI><STRONG><A NAME="item_%2524self%252D%253E%257BCreatedDBH%25">$self-&gt;{CreatedDBH}</A></STRONG><BR>
@@ -468,10 +428,6 @@ GROUP BY clause added to every SELECT statement with <CODE>restore_where()</CODE
 Attribute object. Every attribute object is persent here. Attributes names
 are in lower case.
 <P></P>
-<LI><STRONG><A NAME="item_%2524self%252D%253E%257BParameters%25">$self-&gt;{Parameters}{attr}</A></STRONG><BR>
-
-Attribute parameters.
-<P></P>
 <LI><STRONG><A NAME="item_%2524self%252D%253E%257BIdAttribute">$self-&gt;{IdAttributes}-&gt;[]</A></STRONG><BR>
 
 Array of names of ID attributes.
@@ -505,7 +461,7 @@ field and consctucted WHERE clause is added. This feature is used in
 <P>A lot of attribute parameters are used for description, detalization and
 visualization.</P>
 <UL>
-<LI><STRONG>type</STRONG><BR>
+<LI><STRONG><A NAME="item_type">type</A></STRONG><BR>
 
 [ ID | Persistent | <CODE>Transient(Temporary)</CODE> ]
 <P>This is field persistent state. Only first 1 character is significant.
@@ -514,11 +470,6 @@ Default is <EM>Persistent</EM>.</P>
 <LI><STRONG><A NAME="item_dtype">dtype</A></STRONG><BR>
 
 Data type. Must correlate with any of <A HREF="#supported%20data%20types">supported datatypes</A>. Default is <EM>Varchar</EM>.
-<P></P>
-<LI><STRONG><A NAME="item_order">order</A></STRONG><BR>
-
-[1..9]. All fields are sorted by this key before table creation process. Default is
-<EM>5</EM>. Deprecated. Use arrays for list of attributes.
 <P></P>
 <LI><STRONG><A NAME="item_label">label</A></STRONG><BR>
 

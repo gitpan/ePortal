@@ -2,58 +2,65 @@
 %# ePortal - WEB Based daily organizer
 %# Author - S.Rusakov <rusakov_sa@users.sourceforge.net>
 %#
-%# Copyright (c) 2001 Sergey Rusakov.  All rights reserved.
+%# Copyright (c) 2000-2003 Sergey Rusakov.  All rights reserved.
 %# This program is free software; you can redistribute it
 %# and/or modify it under the same terms as Perl itself.
 %#
-%# $Revision: 3.2 $
-%# $Date: 2003/04/24 05:36:52 $
-%# $Header: /home/cvsroot/ePortal/comp_root/catalog/search.htm,v 3.2 2003/04/24 05:36:52 ras Exp $
 %#
 %#----------------------------------------------------------------------------
 %# Parameters:
 %#     text - text to search in Catalog
 %#----------------------------------------------------------------------------
 
-<% pick_lang(
-  rus => "Результат поиска ",
-  eng => "Search result of ") %><b><% $ARGS{text} |h%></b>
-<p>
+<table width="100%" border=0>
+<tr><td>
+  <% pick_lang(
+    rus => "Результат поиска ",
+    eng => "Search result of ") %><b><% $ARGS{sd_text} |h%></b>
+  <& SELF:search, %ARGS &>
+</td><td width="10%">
+  <& /catalog/search_dialog.mc &>
+</td></tr></table>
 
-<table border=0 width="96%" align="center">
-<%perl>
-  my $text = $ARGS{text};
-  my $like = '%'.$text.'%';
+
+%#=== @metags search ====================================================
+<%method search><%perl>
   $links_count = 0;
+  my $text = $ARGS{sd_text};
+  my (@sql_where, @sql_bind);
+  foreach my $t (split('\s+', $text)) {
+    my $like = '%'.$t.'%';
+    push @sql_where, "(title like ? OR  memo like ? OR  url like ? OR (recordtype like 'text%' AND text like ?))";
+    push @sql_bind, $like, $like, $like, $like;
+  }
 
   my $catalog = new ePortal::Catalog;
-  $catalog->restore_where(
-    where => "(title like ? OR  memo like ? OR  url like ? OR (recordtype like 'text%' AND text like ?))",
-    bind => [             $like,          $like,         $like,                                $like],
+  </%perl>
+  <&| /list.mc, obj => $catalog, restore_where => {
+    where => join(' AND ', @sql_where),
+    bind => [ @sql_bind ],
     order_by => "Title",
-    skip_attributes => [qw/text/],
-    limit_rows => 50);
+    skip_attributes => [qw/text/]} &>
+  
+    <& /list.mc:column_image &>
+    <&| /list.mc:column, id => 'title', url => '/catalog/'.$_->id &>
+      <% $_->title |h %>
+    </&>
 
-  while($catalog->restore_next) {
-    $links_count ++;
-    $m->comp("links.htm:drawLink", link=> $catalog, highlight => $text);
-  }
-  undef $catalog;
-</%perl>
-
-</table>
-
-% if ($links_count == 0) {
-  <& /message.mc, ErrorMessage => pick_lang(
-      rus => "Поиск не принес результатов",
-      eng => 'Nothing found' ) &>
-% }
-
-<center>
-<% plink(pick_lang(
-  rus => "Вернуться в Каталог Ресурсов", eng => "Back to Resources Catalogue"),
-  -href => href("index.htm", group => $ARGS{group})) %>
-</center>
+    <&| /list.mc:column, id => 'RecordType', -align => 'center' &>
+      <% $_->RecordType eq 'group' 
+        ? pick_lang(rus => "Группа ресурсов", eng => "Group")
+        : pick_lang(rus => "Ресурс", eng => "Resource") %>
+    </&>
+  
+    <&| /list.mc:nodata &>
+      <& /message.mc, ErrorMessage => pick_lang(
+          rus => "Поиск не принес результатов",
+          eng => 'Nothing found' ) &>
+    </&>
+  </&>
+</%perl></%method>
+    
 
 %#=== @METAGS attr =========================================================
 <%attr>
@@ -75,7 +82,7 @@ my $links_count = 0;
 
 %#=== @METAGS onStartRequest ====================================================
 <%method onStartRequest><%perl>
-  if ( ! $ARGS{text} ) {  # nothing to search
+  if ( ! $ARGS{sd_text} ) {  # nothing to search
     return "index.htm";
   }
 </%perl></%method>

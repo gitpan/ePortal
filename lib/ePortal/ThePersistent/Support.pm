@@ -3,13 +3,10 @@
 # ePortal - WEB Based daily organizer
 # Author - S.Rusakov <rusakov_sa@users.sourceforge.net>
 #
-# Copyright (c) 2001 Sergey Rusakov.  All rights reserved.
+# Copyright (c) 2000-2003 Sergey Rusakov.  All rights reserved.
 # This program is free software; you can redistribute it
 # and/or modify it under the same terms as Perl itself.
 #
-# $Revision: 3.5 $
-# $Date: 2003/04/24 05:36:52 $
-# $Header: /home/cvsroot/ePortal/lib/ePortal/ThePersistent/Support.pm,v 3.5 2003/04/24 05:36:52 ras Exp $
 #
 #----------------------------------------------------------------------------
 # The main ThePersistent class without ACL checking. All system tables
@@ -31,13 +28,12 @@ ePortal::ThePersistent::Support is medium layer between them.
 =cut
 
 package ePortal::ThePersistent::Support;
-    our $VERSION = sprintf '%d.%03d', q$Revision: 3.5 $ =~ /: (\d+).(\d+)/;
+    our $VERSION = '4.1';
     use base qw/ePortal::ThePersistent::Cached/;
 
     use Carp;
     use ePortal::Global;
     use ePortal::Utils;     # import logline, pick_lang
-    #use CGI qw/-no_debug/; # CGI used in ePortal::Apache
     use Apache::Util qw/escape_html escape_uri/;
     use Params::Validate qw/:types/;
 
@@ -83,6 +79,87 @@ sub initialize  {   #07/03/00 4:08
 
 
 
+
+
+
+############################################################################
+my %initialize_attribute_defaults = (
+############################################################################
+    id => {
+        type => 'ID',
+        dtype => 'Number',
+        auto_increment => 1,
+    },
+    enabled => {
+        label      => {rus => 'Вкл/выкл', eng => 'Enabled'},
+        dtype      => 'YesNo',
+        default    => 1,
+    },
+    ts => {
+        label      => { rus => 'Последнее изменение', eng => 'Time stamp'},
+        dtype      => 'DateTime',
+    },
+    title => {
+        label      => {rus => 'Наименование', eng => 'Name'},
+        size       => 40,
+    },
+    author => {
+        label      => {rus => 'Автор документа', eng => 'Author'},
+        size       => 64,
+        default    => sub { $ePortal->username },
+    },
+    nickname => {
+        label      => {rus => 'Короткое имя', eng => 'Nickname'},
+        size       => 20,
+    },
+    priority => {
+        label      => {rus => 'Приоритет', eng => 'Priority'},
+        dtype      => 'Number',
+        maxlength  => 4,
+        fieldtype  => 'popup_menu',
+        values     => [ 1 .. 9 ],
+        default    => 5,
+        labels     => {
+                1 => { rus => '1-Высокий', eng => '1-High'},
+                2 => '2',
+                3 => '3',
+                4 => '4',
+                5 => {rus => '5-Средний', eng => '5-Medium'},
+                6 => '6',
+                7 => '7',
+                8 => '8',
+                9 => {rus => '9-Низкий', eng => '9-Low'},
+            },
+    },
+    memo => {
+                label => {rus => 'Примечания', eng => 'Memo'},
+                fieldtype => 'textarea',
+                rows => 4,
+                columns => 50,
+    },
+    upload_file => {
+            type => 'Transient',
+            label => { rus => 'Прикрепить файл', eng => 'Attach a file'},
+            dtype => 'Varchar',
+            fieldtype => 'upload',
+    },
+);
+
+############################################################################
+sub initialize_attribute    {   #05/27/2003 3:37
+############################################################################
+    my ($self, $att_name, $attr) = @_;
+
+    if (my $H = $initialize_attribute_defaults{$att_name}) {
+        foreach (keys %$H) {
+            $attr->{$_} ||= ref($H->{$_}) eq 'CODE'
+                ? $H->{$_}()
+                : $H->{$_};
+        }
+    }
+    $self->SUPER::initialize_attribute($att_name, $attr);
+}##initialize_attribute
+
 ############################################################################
 # Function: newid
 # Description: Calculates new numeric ID vie Oracle sequence
@@ -93,7 +170,7 @@ sub newid   {   #07/03/00 4:21
 ############################################################################
     my $self = shift;
     my $newid;
-    my $dbh = $self->_get_dbh();
+    my $dbh = $self->dbh();
 
     $dbh->do('update sequence set id=LAST_INSERT_ID(id+1)');
     $newid = $dbh->selectrow_array("SELECT id FROM sequence");
@@ -145,7 +222,7 @@ sub insert  {   #07/04/00 1:18
     my $result = $self->SUPER::insert(@_);
 
     if ($id_is_autoincrement and $result) {
-        my $dbh = $self->_get_dbh;
+        my $dbh = $self->dbh;
         my $newid = $dbh->selectrow_array('SELECT last_insert_id()');
         $self->id( $newid );
         warn "Cannot get last_insert_id" if $newid == 0;
@@ -367,6 +444,23 @@ sub validate    {   #02/20/01 4:40
 
     undef;
 }##validate
+
+
+############################################################################
+# Function: value_from_req
+# Description: Unsafe way to assign a value to attribute.
+# Object may check this value for sanity.
+# Parameters:
+#   attribute name
+#   new value
+# Returns:
+#
+############################################################################
+sub value_from_req  {   #09/08/2003 9:45
+############################################################################
+    my ($self, $att, $value) = @_;
+    $self->value($att, $value);
+}##value_from_req
 
 
 
@@ -736,7 +830,7 @@ sub htmlField   {   #03/31/01 11:12
 
         # list of groups
         my $G = new ePortal::epGroup;
-        my ($G_values, $G_labels) = $G->restore_all_hash('groupname','groupname');
+        my ($G_values, $G_labels) = $G->restore_all_hash('groupname','groupname', 'hidden=0');
 
         return CGI::popup_menu( {%CGI} ) .
             '<div id="'. $attr.
@@ -836,16 +930,39 @@ sub htmlSave    {   #04/02/01 1:22
         }
     }
 
-    my $msg = $self->validate($self->id);
-    throw ePortal::Exception::DataNotValid( -text => $msg, -object => $self)
-        if $msg;
-
-    if ($self->check_id()) {
-        return $self->update;
-    } else {
-        return $self->insert;
+    if (! $ARGS{skip_object_insert_update}) {
+        if ($self->check_id()) {
+            return $self->update;
+        } else {
+            return $self->insert;
+        }
     }
 }##htmlSave
+
+############################################################################
+sub htmlSave2    {   #04/02/01 1:22
+############################################################################
+    my $self = shift;
+    my %ARGS = @_;
+
+    # Save attributes from HTTP request into self
+    FIELD:
+    foreach my $field ( $self->attributes_at ) {
+        next if ! exists $ARGS{$field};
+
+        my $A = $self->attribute($field);
+        if ( $A->{dtype} =~ /^Ar/oi) { # Array
+            $ARGS{$field} = [split('\s*,\s*', $ARGS{$field})];
+        }
+
+        try {
+            $self->value_from_req($field, $ARGS{$field});
+        } otherwise {
+            throw ePortal::Exception::DataNotValid(-text => 
+            pick_lang(rus => "Несовместимый формат данных: $field", eng => "Incompatible data format: $field"));
+        };
+    }
+}##htmlSave2
 
 
 ############################################################################
@@ -915,6 +1032,34 @@ sub ObjectDescription   {   #04/15/03 10:46
     return ref($self) . ':' . $self->_id;
 }##ObjectDescription
 
+
+############################################################################
+# Function: attachment
+# Description: Returns ThePersistent object with attachments
+############################################################################
+sub Attachment  {   #06/16/2003 4:53
+############################################################################
+    my $self = shift;
+
+    my $att = new ePortal::Attachment;
+    $att->restore_where(obj => $self);
+    return undef if ! $att->restore_next;
+    return $att;
+}##attachment
+
+############################################################################
+# Function: Attachments
+# Description: Number of attachments of the object
+#
+############################################################################
+sub Attachments {   #10/16/2003 3:04
+############################################################################
+    my $self = shift;
+    
+    return scalar $self->dbh->selectrow_array(
+        "SELECT count(*) FROM Attachment WHERE object_id=?",
+        undef, sprintf("%s=%d", ref($self), $self->id));
+}##Attachments
 
 1;
 

@@ -3,44 +3,19 @@
 # ePortal - WEB Based daily organizer
 # Author - S.Rusakov <rusakov_sa@users.sourceforge.net>
 #
-# Copyright (c) 2001 Sergey Rusakov.  All rights reserved.
+# Copyright (c) 2000-2003 Sergey Rusakov.  All rights reserved.
 # This program is free software; you can redistribute it
 # and/or modify it under the same terms as Perl itself.
 #
-# $Revision: 3.6 $
-# $Date: 2003/04/24 05:36:52 $
-# $Header: /home/cvsroot/ePortal/lib/ePortal/Apache.pm,v 3.6 2003/04/24 05:36:52 ras Exp $
 #
 #----------------------------------------------------------------------------
-
-=head1 NAME
-
-ePortal::Apache - ePortal Intergation with Apache WEB server.
-
-=head1 SYNOPSIS
-
-ePortal is designed to work closely with Apache WEB server.
-
-See at C<samples/httpd.conf> for Apache configuration examples.
-
-=head1 METHODS
-
-=cut
 
 BEGIN {
     $| = 1;
 }
 
 package ePortal::Apache;
-    require 5.6.0;
-    our $VERSION = sprintf '%d.%03d', q$Revision: 3.6 $ =~ /: (\d+).(\d+)/;
-
-    # --------------------------------------------------------------------
-    # HTML and CGI stuff
-    # --------------------------------------------------------------------
-    use CGI qw/ -no_xhtml -no_debug -no_undef_params/;
-    CGI->compile(':all');
-    CGI::autoEscape(undef);
+    our $VERSION = '4.1';
 
     # --------------------------------------------------------------------
     # Packages of ePortal itself
@@ -51,9 +26,6 @@ package ePortal::Apache;
     use ePortal::Server;
 
     # Packages for use under Apache
-    use ePortal::Dual::Login;
-    use ePortal::Dual::Search;
-    use ePortal::Dual::SimpleSearch;
     use ePortal::HTML::Calendar;
     use ePortal::HTML::Dialog;
     use ePortal::HTML::List;
@@ -66,7 +38,7 @@ package ePortal::Apache;
     # System modules.
     #
     use HTML::Mason;
-    use HTML::Mason::ApacheHandler;
+    eval "use HTML::Mason::ApacheHandler;";
     use Apache;
     use Apache::Request;
     use Apache::Constants qw/OK DECLINED/;
@@ -83,9 +55,13 @@ package ePortal::Apache;
     use ePortal::Utils;                 # import global functions (logline)
     use ePortal::Exception;
     use Error qw/:try/;
+    use Params::Validate qw/:types/;
 
     use Apache::Util qw/escape_html escape_uri/;    # Apache is faster then CGI
     use Apache::Cookie;
+    use Apache::Constants qw/OK DECLINED/;
+    use Apache::File;
+
     1;
 }
 
@@ -108,8 +84,10 @@ sub handler
             && $r->content_type !~ m|^text/|io
             && $r->content_type ne 'application/x-javascript'
             && $r->content_type ne 'httpd/unix-directory'
+            && $r->uri !~ m|^/catalog/|o
+            && $r->uri !~ m|^/attachment/|o
     ) {
-        logline('debug', 'Request denied: ' . $r->uri . ' served as ' . $r->content_type);
+        #logline('debug', 'Request denied: ' . $r->uri . ' served as ' . $r->content_type);
         return DECLINED;
     }
 
@@ -123,15 +101,4 @@ sub handler
 
 
 __END__
-
-
-=head1 SEE ALSO
-
-L<ePortal::Server class|ePortal::Server>
-
-=head1 AUTHOR
-
-Sergey Rusakov, E<lt>rusakov_sa@users.sourceforge.netE<gt>
-
-=cut
 

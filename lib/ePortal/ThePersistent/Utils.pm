@@ -3,26 +3,21 @@
 # ePortal - WEB Based daily organizer
 # Author - S.Rusakov <rusakov_sa@users.sourceforge.net>
 #
-# Copyright (c) 2001 Sergey Rusakov.  All rights reserved.
+# Copyright (c) 2000-2003 Sergey Rusakov.  All rights reserved.
 # This program is free software; you can redistribute it
 # and/or modify it under the same terms as Perl itself.
 #
-# $Revision: 3.1 $
-# $Date: 2003/04/24 05:36:52 $
-# $Header: /home/cvsroot/ePortal/lib/ePortal/ThePersistent/Utils.pm,v 3.1 2003/04/24 05:36:52 ras Exp $
 #
 #----------------------------------------------------------------------------
 # Original idea:   David Winters <winters@bigsnow.org>
 #----------------------------------------------------------------------------
 
 package ePortal::ThePersistent::Utils;
-	require Exporter;
+    our $VERSION = '4.1';
+    use base qw/Exporter/;
 	use Time::localtime;
 
-	use vars qw/$VERSION @ISA @EXPORT/;
-	$VERSION = sprintf '%d.%03d', q$Revision: 3.1 $ =~ /: (\d+).(\d+)/;
-	@ISA = qw/Exporter/;
-	@EXPORT = qw/&date2sql &sql2date &isDate &isNumber &P2array &P2hash/;
+    our @EXPORT = qw/&date2sql &sql2date &isDate &isNumber &P2array &P2hash/;
 
 ############################################################################
 # Convert dd.mm.yyyy to yyyy-mm-dd hh:mm:ss

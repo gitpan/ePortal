@@ -1,9 +1,12 @@
 body,div,br,p,td,th,caption,blockquote,ul,ol,{
  font-family:"MS Sans Serif",sans-serif;
  font-size:9pt;}
-form,select,option,input,textarea{
+form,select,option,input{
  font-family:"MS Sans Serif",sans-serif;
  font-size:8pt;}
+textarea{
+ font-family:"MS Sans Serif",sans-serif;
+ font-size:9pt;}
 tr{vertical-align:top;}
 td{vertical-align:top;}
 
@@ -16,11 +19,12 @@ A:hover  {color : #FF5555;}
 	font-weight:bold; font-size:8pt; }
 
 h1, h2, h3, h4 {font-family : Arial, geneva, helvetica; font-weight:bold;}
+h1  { font-size : large; }
 h2  {font-size : medium; margin-top : 0px; margin-bottom : 0px;}
 h3  {font-size : medium;}
 
 ul { margin: 5px 5px 5px 20px }
-p  {margin-left : 1pt;}
+p  {margin-left : 2pt;}
 
 .copyright  {font-family:Sans Serif; font-size:8pt; text-align:left; color:#889999}
 
@@ -88,7 +92,7 @@ p  {margin-left : 1pt;}
 }
 .nav_title:visited {color : <% $nav_title_color %>; }
 .nav_title:active  {color : <% $nav_title_color %>; }
-.nav_title:hover   {color : <% $nav_title_color %>; }
+%#.nav_title:hover   {color : <% $nav_title_color %>; }
 .nav_title:link    {color : <% $nav_title_color %>; }
 
 %# —сылка или команда
@@ -101,7 +105,7 @@ p  {margin-left : 1pt;}
 }
 .nav_command:visited {color: <% $nav_command_color %>; }
 .nav_command:active  {color: <% $nav_command_color %>; }
-.nav_command:hover   {color: <% $nav_command_color %>; }
+%#.nav_command:hover   {color: <% $nav_command_color %>; }
 .nav_command:link    {color: <% $nav_command_color %>; }
 
 %# ќписание команды во второй строке нафигатора

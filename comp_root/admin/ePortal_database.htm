@@ -1,0 +1,768 @@
+%#============================================================================
+%# ePortal - WEB Based daily organizer
+%# Author - S.Rusakov <rusakov_sa@users.sourceforge.net>
+%#
+%# Copyright (c) 2000-2003 Sergey Rusakov.  All rights reserved.
+%# This program is free software; you can redistribute it
+%# and/or modify it under the same terms as Perl itself.
+%#
+%#----------------------------------------------------------------------------
+<%perl>
+  use ePortal::ThePersistent::Tools;
+  # Fresh not initialized ePortal::Server object
+  $ePortal = new ePortal::Server;
+  $ePortal->{language} = $ARGS{language} if $ARGS{language};
+</%perl>
+%#----------------------------------------------------------------------------
+<html>
+  <head>
+    <title>ePortal database setup</title>
+  </head>
+<body>
+  
+<h1>ePortal v.<% $ePortal::Server::VERSION %> Database Setup Page</h1>
+<ul> 
+ <li>DBI source: <% $ePortal->dbi_source %>
+ <li>DBI user name: <% $ePortal->dbi_username %>
+ <li>DBI password: <% 'x' x length($ePortal->dbi_password) %>
+</ul>
+
+%#============================================================================
+%# Ask for language
+% if (! $ePortal->language) {
+  <form method="GET" action="<% $ENV{SCRIPT_NAME} %>">
+    Choose your preferred language:
+    <% CGI::popup_menu(-name => 'language', 
+        -values => ['rus', 'eng'],
+        -labels => { rus => 'Russian', eng => 'English'}, ) %>
+    <% CGI::submit() %>
+  </form>
+
+  </body></html>
+% return;
+% } 
+  
+
+%#============================================================================
+%# Start here
+%#
+<br><% pick_lang(rus => "Язык по умолчанию для данных : ", eng => "Default language for data:") %><% $ePortal->language %>
+
+<%perl>
+try {
+  $gdata{app_dbh} = $ePortal->DBConnect;    $m->flush_buffer;
+  $m->comp('SELF:setup_database');          $m->flush_buffer;
+  $m->comp('SELF:setup_default_config');    $m->flush_buffer;
+  $m->comp('SELF:setup_catalog');           $m->flush_buffer;
+  $m->comp('SELF:setup_PageView');          $m->flush_buffer;
+  $m->comp('SELF:setup_CronJob');           $m->flush_buffer;
+  $m->comp('SELF:upgrade_Attachment41');    $m->flush_buffer;
+  $m->comp('SELF:setup_Applications');      $m->flush_buffer;
+
+} catch ePortal::Exception with {
+  my $E = shift;
+  $m->print(CGI::font({-color=>"red"}, "\n\nError during database setup\n\n"));
+  $m->print( $E->text );
+  $m->print( '</body></html>' );
+  return;
+};
+</%perl>
+
+<p>Finished!
+<br><% pick_lang(rus => "БД обновлена до версии", eng => "Your database has been upgraded to version") %> <% $ePortal->storage_version %>
+<p><% plink( pick_lang(rus => "Вернуться на страницу Администратора", eng => "Return to Administrator's home page") , -href => '/admin/index.htm') %>
+</body>
+</html>
+
+
+
+%#=== @METAGS setup_database ====================================================
+<%method setup_database>
+<br><b><% pick_lang(rus => "Проверка таблиц БД", eng => "Checking database tables") %></b>
+
+<& SELF:table_exists,    table => 'UserConfig',
+  SQL => qq{
+          CREATE TABLE `UserConfig` (
+              `username` varchar(64) NOT NULL default '',
+              `userkey` varchar(255) NOT NULL default '',
+              `val` text,
+          PRIMARY KEY  (`username`,`userkey`)
+    )
+  } &>
+
+<& SELF:table_exists,  table => 'sessions',
+  SQL => qq{
+          CREATE TABLE `sessions` (
+          `id` varchar(32) NOT NULL default '',
+          `a_session` text,
+          `ts` timestamp(14) NOT NULL,
+          PRIMARY KEY  (`id`)
+          )
+  } &>
+
+<& SELF:table_exists,    table => 'PopupEvent',
+  SQL => qq{
+    CREATE TABLE `PopupEvent` (
+      `id` int(11) NOT NULL auto_increment,
+      `event_time` datetime default NULL,
+      `username` varchar(64) default NULL,
+      `instance` varchar(64) default NULL,
+      `originator` varchar(80) default NULL,
+      `memo` text,
+      PRIMARY KEY  (`id`),
+      KEY `username` (`username`)
+    )
+  } &>
+
+<& SELF:table_exists,  table => 'epUser',
+  SQL => qq{
+    CREATE TABLE `epUser` (
+        `id` int(11) NOT NULL auto_increment,
+        `department` varchar(255) default NULL,
+        `title` varchar(255) default NULL,
+        `last_checked` date default NULL,
+        `password` varchar(255) default NULL,
+        `ext_user` decimal(2,0) NOT NULL default '0',
+        `username` varchar(64) default NULL,
+        `dn` varchar(64) default NULL,
+        `fullname` varchar(255) default NULL,
+        `enabled` decimal(2,0) NOT NULL default '0',
+        `last_login` datetime default NULL,
+        `email` varchar(255) default NULL,
+        PRIMARY KEY  (`id`),
+        UNIQUE KEY `username` (`username`)
+      )
+  } &>
+
+<& SELF:table_exists,    table => 'epGroup',
+  SQL => qq{
+    CREATE TABLE `epGroup` (
+        `id` int(11) NOT NULL auto_increment,
+        `ext_group` decimal(2,0) NOT NULL default '0',
+        `hidden` decimal(2,0) NOT NULL default '0',
+        `groupname` varchar(64) default NULL,
+        `groupdesc` varchar(255) default NULL,
+        PRIMARY KEY  (`id`),
+        UNIQUE KEY `groupname` (`groupname`)
+      )
+  } &>
+%# 4.0
+<& SELF:add_column, table => 'epGroup',
+    column => 'hidden',
+    spec => "decimal(2,0) NOT NULL default '0'" &>
+
+<& SELF:table_exists,    table => 'epUsrGrp',
+  SQL => qq{
+            CREATE TABLE `epUsrGrp` (
+            `username` varchar(64) NOT NULL default '',
+            `groupname` varchar(64) NOT NULL default '',
+            PRIMARY KEY  (`username`,`groupname`),
+            KEY `groupname` (`groupname`)
+            )
+  } &>
+%# 4.0
+<& SELF:index_exists,   table => 'epUsrGrp',
+      index => 'groupname',
+      spec => '(groupname)' &>
+
+<& SELF:table_exists,    table => 'PageView',
+  SQL => qq{
+    CREATE TABLE `PageView` (
+      `id` int(11) NOT NULL auto_increment,
+      `pvtype` varchar(255) default NULL,
+      `xacl_read` varchar(64) default NULL,
+      `uid` varchar(64) default NULL,
+      `title` varchar(255) default NULL,
+      `columnswidth` varchar(255) default NULL,
+      PRIMARY KEY  (`id`),
+      KEY `pvtype` (`pvtype`,`uid`)
+    )
+  } &>
+
+<& SELF:table_exists,    table => 'PageSection',
+  SQL => qq{
+    CREATE TABLE `PageSection` (
+      `id` int(11) NOT NULL auto_increment,
+      `params` varchar(255) default NULL,
+      `title` varchar(255) default NULL,
+      `width` varchar(255) default NULL,
+      `mandatory` decimal(2,0) NOT NULL default '0',
+      `component` varchar(255) default NULL,
+      `url` varchar(255) default NULL,
+      `uid` varchar(64) default NULL,
+      `xacl_read` varchar(64) default NULL,
+      `memo` varchar(255) default NULL,
+      PRIMARY KEY  (`id`)
+    )
+  } &>
+
+<& SELF:table_exists,    table => 'UserSection',
+  SQL => qq{
+            CREATE TABLE `UserSection` (
+            `id` int(11) not null auto_increment,
+            `minimized` decimal(2,0) NOT NULL default '0',
+            `pv_id` int(11) default NULL,
+            `ps_id` int(11) default NULL,
+            `colnum` int(11) default NULL,
+            `setupinfo` text,
+            PRIMARY KEY  (`id`),
+            KEY `pv_id` (`pv_id`,`colnum`)
+            )
+  } &>
+
+<& SELF:table_exists,    table => 'Attachment',
+  SQL => qq{
+            CREATE TABLE `Attachment` (
+            `id` int(11) NOT NULL auto_increment,
+            `filename` varchar(255) default NULL,
+            `object_id` varchar(64) default NULL,
+            `filesize` int(11) default NULL,
+            `state` enum('unknown','ok') NOT NULL default 'unknown',
+            `storage` enum('db','file','chunk') NOT NULL default 'chunk',
+            `start_chunk` int(11) default NULL,
+            `chunks` int(11) default NULL,
+            `ts` timestamp(14) NOT NULL,
+            `data` mediumblob,
+            PRIMARY KEY  (`id`),
+            KEY `object_id` (`object_id`)
+            )
+  } &>
+%# 4.1
+<& SELF:modify_column,     table => 'Attachment',
+  column => 'storage',     match => 'chunk',
+  spec => q{enum('db','file','chunk') NOT NULL default 'chunk'} &>
+%#4.1
+<& SELF:add_column, table => 'Attachment', column => 'start_chunk', spec => 'int(11) default NULL' &>
+<& SELF:add_column, table => 'Attachment', column => 'chunks',      spec => 'int(11) default NULL' &>
+
+
+
+<& SELF:table_exists,    table => 'Catalog',
+  SQL => qq{
+    CREATE TABLE `Catalog` (
+      `id` int(11) NOT NULL auto_increment,
+      `RecordType` enum('link','group','text','textHTML','textpara','textline','file') NOT NULL default 'group',
+      `Parent_id` int(11) default NULL,
+      `Title` varchar(255) NOT NULL default '',
+      `Nickname` varchar(255) default NULL,
+      `state` enum('unknown','ok') NOT NULL default 'ok',
+      `URL` varchar(255) default NULL,
+      `Priority` tinyint(4) NOT NULL default '5',
+      `Clicks` int(11) default NULL,
+      `Memo` varchar(255) default NULL,
+      `uid` varchar(64) default NULL,
+      `ts` timestamp(14) NOT NULL,
+      `text` mediumblob,
+      `Hits` int(11) NOT NULL default '0',
+      `xacl_read` varchar(64) default NULL,
+      `xacl_write` varchar(64) default NULL,
+      `xacl_admin` varchar(64) default NULL,
+      PRIMARY KEY  (`id`)
+    )
+  } &>
+%# 4.1
+<& SELF:index_drop, table => 'Catalog', index => 'RecordType' &>
+<& SELF:index_exists, table => 'Catalog', index => 'Parent_id', 
+  spec => "(parent_id)" &>
+
+%# 4.1
+<& SELF:add_column,  table => 'Catalog',
+    column => 'state',
+    spec => "enum('unknown','ok') NOT NULL default 'ok'" &>
+%# 4.1
+% if (! column_exists($gdata{app_dbh}, 'Catalog', 'TextType') ) {
+<& SELF:add_column,  table => 'Catalog',
+    column => 'TextType',
+    spec => "enum('text','pre','HTML') NOT NULL default 'text'" &>
+<%perl>
+  $gdata{app_dbh}->do("UPDATE Catalog SET Text=null WHERE RecordType='file'");
+
+  $gdata{app_dbh}->do("UPDATE Catalog SET TextType='pre'     WHERE RecordType='text'");
+  $gdata{app_dbh}->do("UPDATE Catalog SET RecordType='file'  WHERE RecordType='text'");
+
+  $gdata{app_dbh}->do("UPDATE Catalog SET TextType='HTML'   WHERE RecordType='textHTML'");
+  $gdata{app_dbh}->do("UPDATE Catalog SET RecordType='file' WHERE RecordType='textHTML'");
+
+  $gdata{app_dbh}->do("UPDATE Catalog SET TextType='text'   WHERE RecordType in ('textpara', 'textline')");
+  $gdata{app_dbh}->do("UPDATE Catalog SET RecordType='file' WHERE RecordType in ('textpara', 'textline')");
+</%perl>            
+% }
+
+
+
+
+<& SELF:table_exists,    table => 'Statistics',
+  SQL => qq{
+            CREATE TABLE `Statistics` (
+             `catalog_id` int(11) NOT NULL default '0',
+             `visitor` varchar(64) NOT NULL default '',
+             `date` date NOT NULL default '0000-00-00',
+             `hits` int(11) NOT NULL default '0',
+             `ts` timestamp(14) NOT NULL,
+             KEY `catalog_id` (`catalog_id`,`date`,`visitor`)
+            )
+  } &>
+
+<& SELF:table_exists,    table => 'CronJob',
+  SQL => qq{
+            CREATE TABLE `CronJob` (
+                `id` int(11) NOT NULL auto_increment,
+                `Title` varchar(255) default NULL,
+                `Memo` varchar(255) default NULL,
+                `Period` enum('daily','hourly','5','10','20','30', 'always') default 'daily',
+                `LastRun` datetime default NULL,
+                `LastResult` enum('unknown','no_work','done','failed','running') default 'unknown',
+                `MailResults` enum('never','always','on_error','on_success') default 'never',
+                `JobStatus` enum('enabled','disabled') default 'enabled',
+                `ts` timestamp(14) NOT NULL,
+                `LastResultHTML` text,
+                `JobServer` varchar(255) default NULL,
+                `ForceRun` tinyint(4) NOT NULL default '0',
+                PRIMARY KEY  (`id`)
+                )
+  } &>
+%# 4.0
+<& SELF:add_column,    table => 'CronJob',
+      column => 'JobServer',
+      spec => 'varchar(255) default NULL' &>
+%# 4.0
+<& SELF:add_column,    table => 'CronJob',
+      column => 'ForceRun',
+      spec => "tinyint not NULL default '0'" &>
+</%method>
+
+
+
+%#=== @METAGS setup_catalog ====================================================
+<%method setup_catalog>
+<p><b><% pick_lang(rus => "Добавление ресурсов в Каталог", eng => "Checking ePortal Catalogue") %></b>
+<& SELF:add_catalog, 
+        nickname   => 'ePortal',
+        title      => 'ePortal',
+        recordtype => 'group',
+        priority   => 9,
+        all_r      => 1,
+        memo       => pick_lang(
+               rus => "Меню встроенных ресурсов ePortal",
+               eng => "Menu of build-in resources of ePortal"),
+    &>
+<& SELF:add_catalog, 
+        nickname   => 'ePortal-info',
+        parent_id  => 'ePortal',
+        url        => '/info/',
+        title      => pick_lang(
+               rus => "Информационные ресурсы",
+               eng => "Custom informational resources"),
+        memo       => pick_lang(
+               rus => "Информационные ресурсы, не являющиеся составной частью ePortal",
+               eng => "Build-in menu of ePortal resources"),
+    &>
+<& SELF:add_catalog, 
+        nickname   => 'ePortal-Catalog-Stats',
+        parent_id  => 'ePortal',
+        url        => '/catalog/statistics.htm',
+        all_r      => 1,
+        title      => pick_lang(
+               rus => "Статистика посещений ресурсов каталога",
+               eng => "Catalogue resources statistics"),
+        memo       => pick_lang(
+               rus => "Учитывается кол-во кликов и посетителей в разрезе дней и месяцев",
+               eng => ""),
+    &>
+
+%# --------------------------------------------------------------------
+%# ADMIN
+%# --------------------------------------------------------------------
+<& SELF:add_catalog, 
+        nickname   => 'ePortal-admin',
+        recordtype => 'group',
+        title      => pick_lang(
+               rus => 'Администратор',
+               eng => "Admininstator"),
+        url        => '/admin/index.htm',
+        parent_id  => 'ePortal',
+        all_r      => 0,
+        priority   => 9,
+        memo       => pick_lang(
+               rus => "Меню администратора ePortal",
+               eng => "ePortal admin's menu"),
+    &>
+<& SELF:add_catalog, 
+        nickname   => 'ePortal-admin-clean-statistics',
+        parent_id  => 'ePortal-admin',
+        title      => pick_lang(
+               rus => 'Сброс статистики Каталога',
+               eng => "Clean Catalog statistics"),
+        url        => '/admin/clear_statistics.htm',
+        all_r      => 0,
+    &>
+<& SELF:add_catalog, 
+        nickname   => 'ePortal-manual',
+        parent_id  => 'ePortal-admin',
+        title      => pick_lang(
+               rus => 'Документация программиста ePortal',
+               eng => "ePortal programmer's manual"),
+        url        => '/manual/index.htm',
+        memo       => pick_lang(
+               rus => "Документация программиста, для создания приложений ePortal",
+               eng => "ePortal programmer's manual and technical notes"),
+    &>
+</%method>
+
+
+
+
+
+%#=== @METAGS setup_default_config ====================================================
+<%method setup_default_config>
+<p><b><% pick_lang(rus => "Настройка ePortal по умолчанию", eng => "Config default values") %></b>
+<%perl>
+  $ePortal->config_load;
+  $ePortal->{storage_version}    = $ePortal::Server::STORAGE_VERSION;
+  $ePortal->{language}           = $m->request_args->{language} if ! $ePortal->{language};
+  $ePortal->{debug}              = 'warn' if ! $ePortal->{debug};
+  $ePortal->{log_filename}       = 'apache' if ! $ePortal->{log_filename};
+  $ePortal->{log_charset}        = 'KOI8' if ! $ePortal->{log_charset};
+  $ePortal->{disk_charset}       = 'KOI8' if ! $ePortal->{disk_charset};
+  $ePortal->{days_keep_sessions} = 7 if ! $ePortal->{days_keep_sessions};
+  $ePortal->{refresh_interval}   = 300 if $ePortal->{refresh_interval} < 120;
+  $ePortal->{smtp_server}    = $ENV{SERVER_NAME} if ! $ePortal->{smtp_server};
+  $ePortal->{www_server}     = "http://$ENV{SERVER_NAME}/" if ! $ePortal->{www_server};
+  $ePortal->{mail_domain}    = $ENV{SERVER_NAME} if ! $ePortal->{mail_domain};
+
+  $ePortal->{ldap_uid_attr}       = 'uid' if ! $ePortal->{ldap_uid_attr};
+  $ePortal->{ldap_fullname_attr}  = 'fullName' if ! $ePortal->{ldap_fullname_attr};
+  $ePortal->{ldap_title_attr}     = 'title' if ! $ePortal->{ldap_title_attr};
+  $ePortal->{ldap_ou_attr}        = 'ou' if ! $ePortal->{ldap_ou_attr};
+  $ePortal->{ldap_group_attr}     = 'groupMembership' if ! $ePortal->{ldap_group_attr};
+  $ePortal->{ldap_groupdesc_attr} = 'description' if ! $ePortal->{ldap_groupdesc_attr};
+
+  # comp_root parameter
+  my $cr = $m->interp->comp_root;
+  my $discovered_comp_root;
+  if ( ref($cr) eq 'ARRAY' ) {  # @INC like array
+    foreach (@$cr) {            # Looking for 'ePortal/comp_root'
+      $discovered_comp_root = $_->[1] if ( $_->[1] =~ /ePortal.comp_root/i );
+    }
+    $discovered_comp_root = $cr->[0]->[1]   # if ePortal/comp_root not found then use first
+      if ! $discovered_comp_root;
+  } else {
+    $discovered_comp_root = $cr;
+  }
+  if ( $discovered_comp_root and ($discovered_comp_root ne $ePortal->comp_root) ) {
+      $ePortal->{comp_root} = $discovered_comp_root;
+  }
+
+  $ePortal->config_save;
+  $ePortal->initialize(skip_applications=>1);
+  $ePortal->{_isadmin} = 1;
+</%perl></%method>
+
+
+
+%#=== @METAGS setup_PageView ====================================================
+<%method setup_PageView>
+<p><b><% pick_lang(rus => "Настройка домашней страницы", eng => "Home page setup") %></b>
+
+<%perl>
+  my $pv = new ePortal::PageView;
+  if ( ! $pv->restore('default') ) {
+    $pv->title( pick_lang(rus => "Главная", eng => "Default") );
+    $pv->columnswidth('N:W');
+    $pv->pvtype('default');
+    $pv->xacl_read('everyone');
+    $pv->insert;
+    $m->print("<br>Created default home page ".$pv->title);
+  }
+</%perl>
+<& SELF:add_PageSection, component => 'catalog.mc' &>
+</%method>
+
+
+%#=== @METAGS add_PageSection ====================================================
+<%method add_PageSection><%perl>
+  my $component = $ARGS{component};
+  my $ps = new ePortal::PageSection;
+  $ps->restore_where( component => $component );
+  if ( ! $ps->restore_next ) {
+    my $comp = $m->fetch_comp("/pv/sections/$component");
+    foreach (qw/title width params url memo/) {
+          if ( $comp->attr_exists("def_$_")) {
+              my $v = $comp->attr("def_$_");
+              $v = pick_lang($v) if ref($v) eq 'HASH';
+              $ps->value($_, $v );
+          }
+    }
+    $ps->xacl_read('everyone');
+    $ps->component($component);
+    $ps->insert;
+    $m->print("<br>Created page section ".$ps->title);
+  }
+</%perl></%method>
+
+
+
+
+
+%#=== @METAGS setup_CronJob ====================================================
+<%method setup_CronJob>
+<p><b><% pick_lang(rus => "Настройка периодических заданий", eng => "Periodic jobs setup") %></b>
+<%perl>
+  foreach my $file ( $m->interp->resolver->glob_path('/cmdline/*.mc') ) {
+    next if $file =~ /autohandler.mc/;
+    my $cj = new ePortal::CronJob;
+    next if $cj->restore($file);    # This job exists in database
+
+    # Load CronJob component
+    my $comp = $m->fetch_comp($file);
+
+    # Set up CronJob object and insert it
+    foreach my $attr (qw/Memo Period/) {
+      die "CronJob component $file does not has $attr Attribute"
+        if ! $comp->attr_exists($attr);
+      my $attr_value = $comp->attr($attr);
+      $attr_value = pick_lang($attr_value) if ref($attr_value) eq 'HASH';
+      $cj->value($attr, $attr_value);
+    }
+    $cj->Title($file);
+    $cj->insert;
+    $m->print("<br>Created Periodic job $file");
+  }
+</%perl></%method>
+
+
+%#=== @METAGS setup_Applications ====================================================
+<%method setup_Applications><%perl>
+  foreach ($ePortal->ApplicationsInstalled) {
+    $ePortal->{applications}{$_} = 1;
+  }
+  $ePortal->config_save;
+
+  foreach my $app_name ( $ePortal->ApplicationsInstalled ) {
+    $m->print("<p><b>" . pick_lang(rus => "Приложение: ", eng => "Application: ") . $app_name . "</b>");
+    
+    # Create Application object
+    my $app_object;
+    try {
+      $app_object = $ePortal->Application($app_name, skip_storage_version_check => 1);
+      $app_object->storage_version( 0 );
+      $app_object->dbi_source('ePortal') if $app_object->dbi_source eq '';
+      $app_object->config_save;     # update dbi_source in config
+
+      # Check tables
+      $gdata{app_dbh} = $app_object->dbh;
+      $m->comp($app_name."_database.mc", app => $app_object);
+
+    } catch ePortal::Exception::DBI with {
+      my $E = shift;
+      $m->print("<br>");
+      $m->print(CGI::font({-color=>'red'}, "Cannot connect to Database"));
+      $m->print("<br>$E<p>");
+      $app_object = undef;
+
+    } catch ePortal::Exception::ApplicationNotInstalled with {
+      my $E = shift;
+      $m->print("<br>");
+      $m->print(CGI::font({-color=>'red'}, "Cannot create Application object"));
+      $m->print("<br>$E<p>");
+      $m->print("<br>See logfile for error description<p>");
+      $app_object = undef;
+    } otherwise {
+      my $E = shift;
+      $m->print("<br>");
+      $m->print(CGI::font({-color=>'red'}, "General error"));
+      $m->print("<br>$E<p>");
+      $m->print("<br>See logfile for error description<p>");
+      $app_object = undef;
+    };
+    next if ! $app_object;
+    
+    # Save STORAGE_VERSION info
+    $app_object->storage_version( $ePortal::Server::STORAGE_VERSION );
+    $app_object->config_save;
+
+    $m->flush_buffer;
+  }
+  
+</%perl></%method>
+
+%#=== @METAGS upgrade_Attachment41 ====================================================
+<%method upgrade_Attachment41>
+<p><b><% pick_lang(rus => "Обновление системы хранения присоединенных файлов", eng => "File attachments storage upgrade") %></b>
+<%perl>
+  my $Att = new ePortal::Attachment;
+
+  # Upgrade file attachments
+  $Att->restore_where( storage => 'file' );
+  while($Att->restore_next) {
+    my $filename = $Att->filestore_path . '/' . $Att->id;
+    if ( ! -f $filename ) {
+      $m->print("<br>");
+      $m->print(CGI::font({-color=>'red'}, "Cannot read file $filename"));
+    } else {
+      my $dummy_filename = $Att->filename;
+      $Att->filesize(0);
+      $Att->storage('chunk');
+      $Att->read_from_file($filename);  # this will change filename
+      $Att->filename($dummy_filename);
+      $Att->update;
+
+      $m->print("<br>");
+      $m->print(CGI::font({-color=>'green'}, "File $filename loaded into Database. You may delete it."));
+    }
+  }
+
+  # Upgrade old DB attachments. Old DB attachments are store in Attachment table.
+  $Att->restore_where( storage => 'db' );
+  $m->print("<br>");
+  while($Att->restore_next) {
+    my $att_data = $Att->Data;
+    $Att->add_chunk(\$att_data);
+    $Att->Data(undef);
+    $Att->storage('chunk');
+    $Att->update;
+    $m->print(".\n");
+    $m->flush_buffer;
+  }  
+  $m->print(CGI::font({-color=>'green'}, "Catalog attachments upgraded."));
+</%perl></%method>
+
+%#=== @METAGS table_exists ====================================================
+<%method table_exists><%perl>
+  my $table = $ARGS{table};
+  my $SQL = $ARGS{SQL};
+
+  if ( ! table_exists($gdata{app_dbh}, $table) ) {
+    $gdata{app_dbh}->do($SQL);
+    $m->print("<br>Table created: $table");
+  }
+</%perl></%method>
+
+
+%#=== @metags drop_table ====================================================
+<%method drop_table><%perl>
+  my $table = $ARGS{table};
+
+  if ( table_exists($gdata{app_dbh}, $table) ) {
+    $gdata{app_dbh}->do("DROP TABLE $table");
+    $m->print("<br>Table dropped $table");
+  }
+</%perl></%method>
+
+
+
+
+%#=== @metags drop_column ====================================================
+<%method drop_column><%perl>
+  my $table = $ARGS{table};
+  my $column = $ARGS{column};
+
+  if ( table_exists($gdata{app_dbh}, $table) and column_exists($gdata{app_dbh}, $table, $column) ) {
+    $gdata{app_dbh}->do("ALTER TABLE $table DROP COLUMN $column");
+    $m->print("<br>Column removed $table.$column");
+  }
+</%perl></%method>
+
+
+%#=== @METAGS add_column ====================================================
+<%method add_column><%perl>
+  my $table = $ARGS{table};
+  my $column = $ARGS{column};
+  my $spec = $ARGS{spec};
+  my $SQL = $ARGS{SQL} || []; # arrayref of SQL to execute on success
+
+  if ( table_exists($gdata{app_dbh}, $table) and ! column_exists($gdata{app_dbh}, $table, $column) ) {
+    $gdata{app_dbh}->do("ALTER TABLE $table ADD COLUMN $column $spec");
+    foreach my $sql (@$SQL) {
+      $gdata{app_dbh}->do($sql);
+    }
+    $m->print("<br>Column added $table.$column $spec");
+  }
+</%perl></%method>
+
+
+
+%#=== @METAGS modify_column ====================================================
+<%method modify_column><%perl>
+  my $table = $ARGS{table};
+  my $column = $ARGS{column};
+  my $match = $ARGS{match};
+  my $spec = $ARGS{spec};
+
+  if ( table_exists($gdata{app_dbh}, $table) and column_type($gdata{app_dbh}, $table, $column) !~ /$match/) {
+    $gdata{app_dbh}->do("ALTER TABLE $table MODIFY $column $spec");
+    $m->print("<br>Column modified $table.$column $spec");
+  }
+
+</%perl></%method>
+
+
+%#=== @METAGS index_exists ====================================================
+<%method index_exists><%perl>
+  my $table = $ARGS{table};
+  my $index = $ARGS{index};
+  my $spec = $ARGS{spec};
+
+  if ( table_exists($gdata{app_dbh}, $table) and ! index_exists($gdata{app_dbh}, $table, $index) ) {
+    $gdata{app_dbh}->do("ALTER TABLE $table ADD INDEX $index $spec");
+    $m->print("<br>Index created $table.$index");
+  }
+</%perl></%method>
+
+
+%#=== @METAGS index_drop ====================================================
+<%method index_drop><%perl>
+  my $table = $ARGS{table};
+  my $index = $ARGS{index};
+
+  if ( table_exists($gdata{app_dbh}, $table) and index_exists($gdata{app_dbh}, $table, $index) ) {
+    $gdata{app_dbh}->do("ALTER TABLE $table DROP INDEX $index");
+    $m->print("<br>Index dropped $table.$index");
+  }
+</%perl></%method>
+
+
+
+
+%#=== @METAGS default_data ====================================================
+<%method default_data><%perl>
+  my $table = $ARGS{table};
+  my $where = $ARGS{where};
+  my $SQL_ary = $ARGS{SQL_ary};
+
+  if ( table_exists($gdata{app_dbh}, $table) ) {
+    my $sql = "SELECT count(*) FROM $table";
+    $sql .= " WHERE $where" if $where;
+    my $data_count = $gdata{app_dbh}->selectrow_array($sql);
+
+    if ( $data_count == 0 ) {
+      foreach my $s (@$SQL_ary) {
+        $gdata{app_dbh}->do($s);
+      }
+      $m->print("<br>Data inserted");
+    }
+  }
+
+</%perl></%method>
+
+
+%#=== @METAGS add_catalog ====================================================
+<%method add_catalog><%perl>
+  my $C = new ePortal::Catalog;
+  my $result = $C->AddCatalogItem(%ARGS);
+  my $cat_title = "<b>$ARGS{nickname}</b> => $ARGS{title}";
+
+  if ( ! defined($result) ) {
+    $m->print("<br>Cannot add Catalogue item $cat_title");
+  } elsif ($result) {
+    $m->print("<br>Added Catalogue item $cat_title");
+  } else {
+    #$m->print("<br>Updated Catalogue item $cat_title");
+  }    
+</%perl></%method>
+
+
+%#=== @METAGS flags =========================================================
+<%flags>
+inherit => undef
+</%flags>

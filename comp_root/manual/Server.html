@@ -16,8 +16,7 @@
 	<LI><A HREF="#methods">METHODS</A></LI>
 	<UL>
 
-		<LI><A HREF="#application%28app_name%2C%20%28options%20h">Application(app_name, (options hash))</A></LI>
-		<LI><A HREF="#applicationsconfigured%28%29"><CODE>ApplicationsConfigured()</CODE></A></LI>
+		<LI><A HREF="#application%28%29"><CODE>Application()</CODE></A></LI>
 		<LI><A HREF="#applicationsinstalled%28%29"><CODE>ApplicationsInstalled()</CODE></A></LI>
 		<LI><A HREF="#checkuseraccount%28%24username%2C%24pass"><CODE>CheckUserAccount($username,$password)</CODE></A></LI>
 		<LI><A HREF="#cleanup_request%28%29"><CODE>cleanup_request()</CODE></A></LI>
@@ -58,16 +57,13 @@ database backend.</P>
 <HR>
 <H1><A NAME="methods">METHODS</A></H1>
 <P>
-<H2><A NAME="application%28app_name%2C%20%28options%20h">Application(app_name, (options hash))</A></H2>
+<H2><A NAME="application%28%29"><CODE>Application()</CODE></A></H2>
+<PRE>
+ $app = $ePortal-&gt;Application('appname');</PRE>
 <P>Returns ePortal::Application object or undef if no such object exists.</P>
 <P>Returns $ePortal itself for application called 'ePortal'.</P>
-<P>Returns array of registered applications names if app_name is undef.</P>
-<P>Options:</P>
-<P>throw =&gt; 1 throw Exception::ApplicationNotInstalled if the application is
+<P>throws Exception::ApplicationNotInstalled if the application is
 not installed.</P>
-<P>
-<H2><A NAME="applicationsconfigured%28%29"><CODE>ApplicationsConfigured()</CODE></A></H2>
-<P>Returns array of installed and configured application names.</P>
 <P>
 <H2><A NAME="applicationsinstalled%28%29"><CODE>ApplicationsInstalled()</CODE></A></H2>
 <P>Returns array of installed application names based on modules found in

@@ -3,13 +3,10 @@
 # ePortal - WEB Based daily organizer
 # Author - S.Rusakov <rusakov_sa@users.sourceforge.net>
 #
-# Copyright (c) 2001 Sergey Rusakov.  All rights reserved.
+# Copyright (c) 2000-2003 Sergey Rusakov.  All rights reserved.
 # This program is free software; you can redistribute it
 # and/or modify it under the same terms as Perl itself.
 #
-# $Revision: 3.5 $
-# $Date: 2003/04/24 05:36:52 $
-# $Header: /home/cvsroot/ePortal/lib/ePortal/CommandLine.pm,v 3.5 2003/04/24 05:36:52 ras Exp $
 #
 #----------------------------------------------------------------------------
 
@@ -18,23 +15,23 @@ BEGIN {
     $| = 1;
 
     # to use an command line utility in source tree
-    push @INC, '../lib' if (-d '../lib') and (grep {$_ eq '../lib'} @INC);
+    push @INC, '../lib' if (-d '../lib') and ! grep {$_ eq '../lib'} @INC;
 }
 
 
 
 package ePortal::CommandLine;
-    our $VERSION = sprintf '%d.%03d', q$Revision: 3.5 $ =~ /: (\d+).(\d+)/;
+    our $VERSION = '4.1';
 
     use Getopt::Long qw//;
-    use Pod::Usage;
-    use Params::Validate qw/:types/;
+    use HTML::Mason;
 
     use ePortal::Utils;
     use ePortal::Global;
     use ePortal::ThePersistent::Tools;
     use ePortal::Server;
 
+    use Params::Validate qw/:types/;
     use Error qw/:try/;
     use ePortal::Exception;
 
@@ -145,7 +142,7 @@ sub CreateApplication   {   #12/12/02 9:47
     my $ApplicationName = shift || $self->{application};
 
     my $app = try {
-        $ePortal->Application( $ApplicationName, throw => 1 );
+        $ePortal->Application( $ApplicationName );
     } otherwise {
         logline('emerg',
             "Cannot create application object: $ApplicationName\n",
@@ -184,5 +181,38 @@ sub print   {   #01/08/03 3:22
 
     CORE::print @_, "\n" unless $self->{opt_quiet};
 }##print
+
+
+############################################################################
+# Function: run_template
+# Description: Run Mason template and return HTML result
+#
+############################################################################
+sub run_template    {   #04/29/03 2:52
+############################################################################
+    my ($self, $template_name, %p) = @_;
+
+    throw ePortal::Exception::Fatal(-text => 'comp_root parameter is unknown. Cannot run template')
+        if ! $self->{server}->comp_root;
+
+    # create new HTML::Mason::Interp object
+    $self->{outbuf} = undef;
+    if (! $self->{interp} ) {
+        $self->{interp} = HTML::Mason::Interp->new
+            (comp_root  => $self->{server}->comp_root,
+             autohandler_name => 'autohandler.mc',
+             allow_globals => [qw/$ePortal/],
+             out_method => \$self->{outbuf}
+            );
+    }
+
+my @files = $self->{interp}->resolver->glob_path('/cmdline/*.mc');
+print join "\n", @files;
+exit;
+
+    $self->{interp}->exec("/templates/$template_name", %p);
+
+    return $self->{outbuf};
+}##run_template
 
 1;

@@ -3,13 +3,10 @@
 # ePortal - WEB Based daily organizer
 # Author - S.Rusakov <rusakov_sa@users.sourceforge.net>
 #
-# Copyright (c) 2001 Sergey Rusakov.  All rights reserved.
+# Copyright (c) 2000-2003 Sergey Rusakov.  All rights reserved.
 # This program is free software; you can redistribute it
 # and/or modify it under the same terms as Perl itself.
 #
-# $Revision: 3.5 $
-# $Date: 2003/04/24 05:36:51 $
-# $Header: /home/cvsroot/ePortal/Makefile.PL,v 3.5 2003/04/24 05:36:51 ras Exp $
 #
 #----------------------------------------------------------------------------
 
@@ -18,45 +15,60 @@ $^W = 1;
 
 use ExtUtils::Manifest;
 use ExtUtils::MakeMaker qw( prompt WriteMakefile );
-use Data::Dumper;
+#use Data::Dumper;
+use IO::File;
+use Getopt::Long;
+
+my %opts;
+GetOptions( \%opts, 'no-prompts' );
 
 # ------------------------------------------------------------------------
-#
-our $HOME = '/home/ePortal';
+# Discover the home of ePortal
+our $EPORTAL_HOME = $ENV{EPORTAL_HOME} || '/home/ePortal';
 for my $i(0 .. $#ARGV) {
     if ($ARGV[$i] =~ /HOME=(.*)/) {
-        $HOME = $1;
+        $EPORTAL_HOME = $1;
         delete $ARGV[$i];
     }
 }
-our $target = shift @ARGV;
+unless ( $opts{'no-prompts'} ) {
+    $EPORTAL_HOME = prompt('Where to install ePortal WEB files', $EPORTAL_HOME);
+}
 
+# ------------------------------------------------------------------------
+#
 our %OPTIONS = (
-    NAME        => 'ePortal',    
+    NAME        => 'ePortal',
     AUTHOR      => 'Sergey Rusakov <rusakov_sa@users.sourceforge.net>',
     dist        => { COMPRESS => 'gzip -9f', SUFFIX => 'gz', },
     clean       => { FILES => 'config.cache' },
     DIR => [],
 #   INST_HTMLLIBDIR => 'comp_root/manual',
     PREREQ_PM       => {
+        'Apache::Request'       => 0,
         'CGI'                   => 2.81,
         'Data::Dumper'          => 0,
         'Date::Calc'            => 5.0,
         'DBD::mysql'            => 0,
         'DBI'                   => 1.28,
         'Digest::MD5'           => 2.13,
+        'Error'                 => 0,
         'HTML::Mason'           => 1.16,
         'Image::Size'           => 2.99,
+        'List::Util'            => 0,
         'Mail::Sendmail'        => 0.78,
-        'MD5'                   => 0,
-        'mod_perl'              => 1.26,
+        'MIME::Base64'          => 0,
+        'Net::LDAP'             => 0,
         'Params::Validate'      => 0.24,
         'Storable'              => 0,
         'Text::Wrap'            => 0,
-        'Error'                 => 0,
+        'Unicode::Map8'         => 0,
+        'Unicode::String'       => 0,
         }, # e.g., Module::Name => 0 or 1.1
 );
 
+# ------------------------------------------------------------------------
+# Known targets
 our %KNOWN_TARGETS = (
     ePortal => {
         VERSION_FROM => 'lib/ePortal/Server.pm',
@@ -82,54 +94,28 @@ our %KNOWN_TARGETS = (
         VERSION_FROM => 'lib/ePortal/App/Organizer.pm',
         ABSTRACT => 'ePortal application: Personal Organizer',
     },
+    SquidAcnt => {
+        VERSION_FROM => 'lib/ePortal/App/SquidAcnt.pm',
+        ABSTRACT => 'ePortal application: Squid accounting software',
+    },
 );
 
 
-if (! $target or !exists $KNOWN_TARGETS{$target}) {
-    foreach my $t (keys %KNOWN_TARGETS) {
-        if (-f $KNOWN_TARGETS{$t}{VERSION_FROM}) {
-            $target = $t;
-            last;
-        }
-    }
+our $target;
+if (my $infh = new IO::File "target") {
+    $target = <$infh>;
+    chomp($target);
 }
-unless ($target) {
-    print STDERR "Target not found\n";
-    exit;
+
+if (! $target or !exists $KNOWN_TARGETS{$target}) {
+    die "Unknown target [$target]. Bad distribution...\n";
 }
 
 # ------------------------------------------------------------------------
 # Command line parsing complete
 print "Using target: $target\n";
-print "Using ePortal home dir: $HOME\n";
+print "Using ePortal home dir: $EPORTAL_HOME\n";
 
-# ------------------------------------------------------------------------
-# Are we running make in source tree?
-# There should be all knows targets in the source tree
-my $in_source_tree = 1;
-foreach (keys %KNOWN_TARGETS ) {
-    if (! -f $KNOWN_TARGETS{$_}{VERSION_FROM}) {
-        $in_source_tree = 0;
-    }
-}
-
-# ------------------------------------------------------------------------
-# Prepare filelists
-#
-our $FILES = ExtUtils::Manifest::manifind();
-our @MANIFEST = ();
-load_manifest_files();
-
-our @COMP_ROOT_FILES = ();
-our @BIN_FILES = ();
-our @SAMPLES_FILES = ();
-our @IMAGES_FILES = ();
-foreach (@MANIFEST) {
-    push @COMP_ROOT_FILES, $_ if m|^comp_root/|;
-    push @BIN_FILES, $_ if m|^bin/|;
-    push @SAMPLES_FILES, $_ if m|^samples/|;
-    push @IMAGES_FILES, $_ if m|^images/|;
-}
 
 # ------------------------------------------------------------------------
 # Create Makefile
@@ -141,90 +127,6 @@ foreach (keys %{ $KNOWN_TARGETS{$target} }) {
 WriteMakefile( %OPTIONS);
 
 
-# ------------------------------------------------------------------------
-# If we are in source tree then rebuild MANIFEST.SKIP and MANIFEST
-if ($in_source_tree == 1) { # All possible targets are present
-                            # so we are in source tree
-    print "Rebuilding MINIFEST\n";
-    open(M, ">MANIFEST") or die $!;
-    foreach (@MANIFEST) {
-        print M "$_\n";
-    }
-    close M;
-}
-
-
-
-############################################################################
-sub load_manifest_files {   #05/29/02 2:04
-############################################################################
-    @MANIFEST = ();
-
-    FILE:
-    foreach (sort keys %$FILES) {
-
-        # Skip for all targets
-        next if m|CVS|;
-        next if m|^blib/|;
-        next if m|^bundle|i;
-        next if m|^docs|i;
-        next if m|^web|i;
-        next if m|^pm_to_blib|;
-
-        next if m|config\.cache|;
-        next if m|MANIFEST.SKIP|;
-        next if m|mcheck.*\.pl|;
-        next if m|tar\.gz$|;
-        next if m|test\.|;
-        next if m|\.BAK$|i;
-        next if m|\.OLD$|i;
-        next if m|\.tag$|i;
-        next if m|^faq-rus\.pod|i;
-        next if m|^gen_pods\.pl|i;
-        next if m|^Makefile$|;
-        next if m|^make_dist|;
-        next if m|^README\.pod|i;
-        next if m|^todo|i;
-        next if m|^set_appl_version\.pl|i;
-        next if m|^\.| or m|/\.|;       # names starting with .
-
-        my $file = $_;
-
-        # include files for All targets
-        if (        $file =~ /^manifest$/i or
-                    $file =~ /^makefile\.pl/i or
-                    $file =~ /^readme\.html/i or
-                    $file =~ /^readme$/i ) {
-            push @MANIFEST, $file;
-            next FILE;
-        }
-
-        # For applications: include all files with $target in path
-        foreach my $t (keys %KNOWN_TARGETS) {
-            next if $t eq 'ePortal';    # take it by default
-            if ($file =~ m|[-_\./]$t[-_\./]|) {
-                if ($t eq $target) {
-                    push @MANIFEST, $_;
-                }
-                next FILE;
-            }
-        }
-
-        # MsgForum files
-        # Historicaly they are reside in forum dir
-        if ($file =~ m|comp_root/forum/|) {
-            if ($target eq 'MsgForum') { push @MANIFEST, $_ } else { next FILE }
-        }
-        if ($file =~ m|pv/sections/forum|) {
-            if ($target eq 'MsgForum') { push @MANIFEST, $_ } else { next FILE }
-        }
-
-        # All Application files are included
-        next FILE if $target ne 'ePortal';
-        push @MANIFEST, $_;
-    }
-}##load_manifest_files
-
 
 # ------------------------------------------------------------------------
 # ------------------------------------------------------------------------
@@ -234,25 +136,7 @@ sub constants {
     my $self = shift;
 
     my $result = $self->SUPER::constants(@_);
-
-    $result .= "\nHOME = $HOME\n\n";
-
-    $result .= "COMP_ROOT_FILES = " .
-        join(" \\\n\t", @COMP_ROOT_FILES) .
-        "\n\n";
-
-    $result .= "BIN_FILES = " .
-        join(" \\\n\t", @BIN_FILES) .
-        "\n\n";
-
-    $result .= "SAMPLES_FILES = " .
-        join(" \\\n\t", @SAMPLES_FILES) .
-        "\n\n";
-
-    $result .= "IMAGES_FILES = " .
-        join(" \\\n\t", @IMAGES_FILES) .
-        "\n\n";
-
+    $result .= "\nEPORTAL_HOME = $EPORTAL_HOME\n\n";
     $result;
 }
 
@@ -268,17 +152,6 @@ sub top_targets {
 }
 
 
-sub dist {
-    my $self = shift;
-    my $result = $self->SUPER::dist(@_);
-
-    # remove htmlifypods from ALL: target
-    #$result .= "\n" . 'TO_UNIX = $(CHMOD) 0755 $(BIN_FILES)' . "\n";
-    #$result =~ s/^(TO_UNIX\s*=).*$/$1 \$(CHMOD) 0755 \$(BIN_FILES)/m;
-
-    $result;
-}
-
 sub install {
     my $self = shift;
     my $result = $self->SUPER::install(@_);
@@ -291,27 +164,11 @@ sub install {
     # --------------------------------------------------------------------
     # INSTALL with -MExtUtils::Install
     #
-    $result .= "\t\@\$(MKPATH) \$(HOME)\n";
+    $result .= "\t\@\$(MKPATH) \$(EPORTAL_HOME)\n";
     $result .= "\t" . '$(PERL) "-I$(PERL_LIB)" -MExtUtils::Install \\' . "\n";
-    $result .= "\t" . '-e "install({bin => \'$(HOME)/bin\', comp_root => \'$(HOME)/comp_root\', images => \'$(HOME)/images\', samples => \'$(HOME)/samples\'}, 1)"' . "\n";
-
-    # --------------------------------------------------------------------
-    # INSTALL with $(CP) files
-    #
-#   foreach my $file (@COMP_ROOT_FILES, @BIN_FILES, @SAMPLES_FILES, @IMAGES_FILES) {
-#       my $targetdir = $file;
-#       $targetdir =~ s|^(.*)/[^/]+|$1|;
-#       $result .= "\t\@\$(MKPATH) \$(HOME)/$targetdir\n";
-#       $result .= "\t\$(CP) $file \$(HOME)/$file\n";
-#   }
-#   foreach my $file (@BIN_FILES) {
-#       $result .= "\t\@\$(CHMOD) 0755 \$(HOME)/$file\n";
-#   }
+    $result .= "\t" . '-e "install({bin => \'$(EPORTAL_HOME)/bin\', comp_root => \'$(EPORTAL_HOME)/comp_root\', images => \'$(EPORTAL_HOME)/images\', samples => \'$(EPORTAL_HOME)/samples\'}, 1)"' . "\n";
 
     $result .= "\n";
-
-
-
     $result;
 }
 

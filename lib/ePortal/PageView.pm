@@ -3,13 +3,10 @@
 # ePortal - WEB Based daily organizer
 # Author - S.Rusakov <rusakov_sa@users.sourceforge.net>
 #
-# Copyright (c) 2001 Sergey Rusakov.  All rights reserved.
+# Copyright (c) 2000-2003 Sergey Rusakov.  All rights reserved.
 # This program is free software; you can redistribute it
 # and/or modify it under the same terms as Perl itself.
 #
-# $Revision: 3.6 $
-# $Date: 2003/04/24 05:36:52 $
-# $Header: /home/cvsroot/ePortal/lib/ePortal/PageView.pm,v 3.6 2003/04/24 05:36:52 ras Exp $
 #
 #----------------------------------------------------------------------------
 
@@ -44,7 +41,7 @@ new personal home page.
 =cut
 
 package ePortal::PageView;
-	our $VERSION = sprintf '%d.%03d', q$Revision: 3.6 $ =~ /: (\d+).(\d+)/;
+    our $VERSION = '4.1';
     use base qw/ePortal::ThePersistent::ExtendedACL/;
 
 	use ePortal::Global;
@@ -56,36 +53,33 @@ package ePortal::PageView;
 ############################################################################
 sub initialize	{	#05/31/00 8:50
 ############################################################################
-	my $self = shift;
+    my ($self, %p) = @_;
 
-    $self->SUPER::initialize(Attributes => [
-        id => {     type => 'ID',
-                    order => 1,
-                    dtype => 'Number',
-                    auto_increment => 1,
-        },
-        columnswidth => {
-                    label => {rus => 'Ширина столбцов', eng => 'Columns width'},
-                    fieldtype => 'popup_menu',
-                    values => ['N:W', 'N:W:N'],
-                    labels => {
-                            'N:W' => {rus => 'Узк:Шир', eng => 'Nar:Wid'},
-                            'N:W:N' => {rus => 'Узк:Шир:Узк', eng => 'Nar:Wid:Nar'}},
-                    # N:W:N   Narrow:Wide
-        },
-        title  => { label => { rus => 'Название', eng => 'Name'},
-                    default => pick_lang(rus => "Личная", eng => "Private"),
-            
-        },
-        pvtype => { label => {rus => 'Тип страницы', eng => 'Type of page'},
-                    fieldtype => 'popup_menu',
-                    values => [ qw/ user default template /],
-                    labels => {
-                            user => {rus => 'Личная', eng => 'Personal'},
-                            default => {rus => 'По умолч.', eng => 'Default'},
-                            template => {rus => 'Шаблон', eng => 'Template'}},
-        },
-    ]);
+    $p{Attributes}{id} ||= {};
+    $p{Attributes}{columnswidth} ||= {
+            label => {rus => 'Ширина столбцов', eng => 'Columns width'},
+            fieldtype => 'popup_menu',
+            values => ['N:W', 'N:W:N'],
+            labels => {
+                    'N:W' => {rus => 'Узк:Шир', eng => 'Nar:Wid'},
+                    'N:W:N' => {rus => 'Узк:Шир:Узк', eng => 'Nar:Wid:Nar'}},
+            # N:W:N   Narrow:Wide
+        };
+    $p{Attributes}{title} ||= {
+        label => { rus => 'Название', eng => 'Name'},
+        default => pick_lang(rus => "Личная", eng => "Private"),
+        };
+    $p{Attributes}{pvtype} ||= {
+        label => {rus => 'Тип страницы', eng => 'Type of page'},
+        fieldtype => 'popup_menu',
+        values => [ qw/ user default template /],
+        labels => {
+                user => {rus => 'Личная', eng => 'Personal'},
+                default => {rus => 'По умолч.', eng => 'Default'},
+                template => {rus => 'Шаблон', eng => 'Template'}},
+        };
+
+    $self->SUPER::initialize(%p);
 }##initialize
 
 
@@ -155,11 +149,6 @@ sub restore	{	#10/20/00 12:24
 			return $self->restore('default');
 
 		} else {
-			# Visit default PV once a day
-			my $last_visit_default = $ePortal->UserConfig("LastVisitDefaultPV");
-			if (time() - $last_visit_default > 60*60*24) {
-				return $self->restore('default');
-			}
 
 			# Try to restore preferred PV
 			my $selectedPV = $ePortal->UserConfig("DefaultPageView");
@@ -171,9 +160,6 @@ sub restore	{	#10/20/00 12:24
 		}
 
 	} elsif ($id eq 'default') {
-		if ($ePortal->username) {
-			$ePortal->UserConfig("LastVisitDefaultPV", time());
-		}
 		$self->restore_where(where => "pvtype=?", bind => ['default']);
   		return $self->restore_next();
 
@@ -552,7 +538,7 @@ sub delete	{	#10/15/01 11:32
 ############################################################################
 	my $self = shift;
 
-	my $dbh = $self->_get_dbh();
+    my $dbh = $self->dbh();
 	$dbh->do("DELETE FROM UserSection WHERE pv_id=?", undef, $self->id);
 
 	$self->SUPER::delete();

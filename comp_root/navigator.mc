@@ -2,13 +2,10 @@
 %# ePortal - WEB Based daily organizer
 %# Author - S.Rusakov <rusakov_sa@users.sourceforge.net>
 %#
-%# Copyright (c) 2001 Sergey Rusakov.  All rights reserved.
+%# Copyright (c) 2000-2003 Sergey Rusakov.  All rights reserved.
 %# This program is free software; you can redistribute it
 %# and/or modify it under the same terms as Perl itself.
 %#
-%# $Revision: 3.3 $
-%# $Date: 2003/04/24 05:36:51 $
-%# $Header: /home/cvsroot/ePortal/comp_root/navigator.mc,v 3.3 2003/04/24 05:36:51 ras Exp $
 %#
 %#----------------------------------------------------------------------------
 <%perl>
@@ -243,3 +240,102 @@ function nav_command( cmd, is_menu ) {
 // -->
 </script>
 </%method>
+<%doc>
+
+=head1 NAME
+
+navigator.mc - JavaScript menu navigator
+
+=head1 SYNOPSIS
+
+HTML::Mason component to implement JavaScript three-bar horizontal menu.
+
+=head1 USAGE
+
+ <& /naviagtor.mc, parameters hash, ... &>
+
+ Produces the following:
+
+
+             Description bar
+ nav title:  <menu1>  menu2  menu3
+             submenu1   submenu2  submenu3
+
+
+=head1 Parameters hash
+
+Each node of menu consists of hash of parameters.
+
+ <& /navigator.mc, (navigator parameters),
+      menu1 => { menu1 parameters},
+      menu2 => { menu2 parameters},
+      &>
+
+=over 4
+
+=item * title
+
+The name of the menu or navigator itself.
+
+=item * description
+
+Description text to place on description bar
+
+=item * url
+
+URL for the menu or navigator. To add a parameter to URL use a string like 
+#param# and add C<param> parameter to the hash.
+
+ <& /navigator.mc, ..., url => '/index.htm?object=#param#', ..., param => 15 &>
+ produces 
+ /index.htm?object=15
+
+
+=item * items
+
+Array ref of menu or submenu names. This parameter is not valid for submenu 
+item. 
+
+ <& /navigator.mc, ..., items => ['menu1','menu2'],
+       menu1 => { 
+            title => '...',
+            url => 'somefile.htm?p=#param#',
+            description => 'menu description',
+            depend => ['param'],
+            items => ['submenu1', 'submenu2'],
+         },
+       param => $ARGS{param},
+       menu2 => { parameters of menu2 },
+       submenu1 => { parameters of submenu1 },
+       submenu2 => { parameters of submenu2 },
+       &>
+
+
+=item * disabled
+
+Disable this menu item if true. Menu item 'xxx' is disabled if parameter named
+C<xxx_disabled> is true.
+
+ <& /navigator.mc, ..., items => ['menu1','menu2'],
+      menu2_disabled => 1 &>
+
+=item * depend
+
+Array ref of parameters names. Make this menu disabled if any of listed 
+parameters is not true
+
+ <& /navigator.mc, ..., items => ['menu1','menu2'],
+      menu1 => { ..., depend => [param], ...},
+      param => $ARGS{param},
+  &>
+
+
+=back
+
+=head1 AUTHOR
+
+Sergey Rusakov, E<lt>rusakov_sa@users.sourceforge.netE<gt>
+
+=cut
+
+</%doc>

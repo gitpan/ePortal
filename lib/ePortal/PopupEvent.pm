@@ -3,63 +3,48 @@
 # ePortal - WEB Based daily organizer
 # Author - S.Rusakov <rusakov_sa@users.sourceforge.net>
 #
-# Copyright (c) 2001 Sergey Rusakov.  All rights reserved.
+# Copyright (c) 2000-2003 Sergey Rusakov.  All rights reserved.
 # This program is free software; you can redistribute it
 # and/or modify it under the same terms as Perl itself.
 #
-# $Revision: 3.5 $
-# $Date: 2003/04/24 05:36:52 $
-# $Header: /home/cvsroot/ePortal/lib/ePortal/PopupEvent.pm,v 3.5 2003/04/24 05:36:52 ras Exp $
 #
 #----------------------------------------------------------------------------
 
 
 package ePortal::PopupEvent;
 	use base qw/ePortal::ThePersistent::Support/;
-	our $VERSION = sprintf '%d.%03d', q$Revision: 3.5 $ =~ /: (\d+).(\d+)/;
+    our $VERSION = '4.1';
 
 	use ePortal::Global;
 
-	our $attributes = {
-		id => {		type => 'ID',           # ID, Pe (default)
-					order => 1,
-					dtype => 'Number',      # Data type (Varchar as default)
-                    maxlength => 11,
-                    auto_increment => 1,
-		},
-		event_time => {
-					label => 'Дата/время наступления события (план)',
-					dtype => 'DateTime',
-		},
-		username => {
-					label => 'Автор (хозяин) события (если есть)',
-					maxlength => 64,
-		},
-		originator => {
-					label => 'Объект ePortal, инициатор события',
-					description => 'ePortal::Package:ID',
-					maxlength => 80,
-		},
-		instance => {
-					label => 'Every originator may have a number of instances',
-					maxlength => 64,
-		},
-		memo	=> {	label => 'Содержание события',
-					order => 9,
-					maxlength => 4000,
-					fieldtype => 'textarea',
-					columns => 60,	# for fieldtype
-		},
-	};
 
 
 ############################################################################
 sub initialize	{	#05/31/00 8:50
 ############################################################################
-	my $self = shift;
-	my $attr = shift || $attributes;
+    my ($self, %p) = @_;
 
-    $self->SUPER::initialize(Attributes => $attr, Table => 'PopupEvent');
+    $p{Attributes}{id} ||= {};
+    $p{Attributes}{event_time} ||= {
+            label => 'Дата/время наступления события (план)',
+            dtype => 'DateTime',
+        };
+    $p{Attributes}{username} ||= {
+        label => 'Автор (хозяин) события (если есть)',
+        maxlength => 64,
+        };
+    $p{Attributes}{originator} ||= {
+        label => 'Объект ePortal, инициатор события',
+        description => 'ePortal::Package:ID',
+        maxlength => 80,
+        };
+    $p{Attributes}{instance} ||= {
+        label => 'Every originator may have a number of instances',
+        maxlength => 64,
+        };
+    $p{Attributes}{memo} ||= {};
+
+    $self->SUPER::initialize(%p);
 }##initialize
 
 
@@ -91,7 +76,7 @@ sub restore_where	{	#12/24/01 4:02
 # ------------------------------------------------------------------------
 package ePortal::PopupEvent::CalendarEvent;
 	use base qw/ePortal::PopupEvent/;
-	our $VERSION = sprintf '%d.%03d', q$Revision: 3.5 $ =~ /: (\d+).(\d+)/;
+    our $VERSION = '4.1';
 
 	use ePortal::Global;
 
@@ -106,7 +91,7 @@ sub new	{	#01/22/02 2:32
 	my $calendar = shift;
 
 	# inherited contructor
-	my $self = $class->SUPER::new();
+    my $self = $class->SUPER::new(Table => 'PopupEvent');
 
 	# store reference to calendar object for future use
 	$self->{calendar} = $calendar;

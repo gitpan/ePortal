@@ -3,13 +3,10 @@
 # ePortal - WEB Based daily organizer
 # Author - S.Rusakov <rusakov_sa@users.sourceforge.net>
 #
-# Copyright (c) 2001 Sergey Rusakov.  All rights reserved.
+# Copyright (c) 2000-2003 Sergey Rusakov.  All rights reserved.
 # This program is free software; you can redistribute it
 # and/or modify it under the same terms as Perl itself.
 #
-# $Revision: 3.1 $
-# $Date: 2003/04/24 05:36:52 $
-# $Header: /home/cvsroot/ePortal/lib/ePortal/ThePersistent/DataType/Date.pm,v 3.1 2003/04/24 05:36:52 ras Exp $
 #
 #----------------------------------------------------------------------------
 # Original idea:   David Winters <winters@bigsnow.org>
@@ -20,9 +17,7 @@ package ePortal::ThePersistent::DataType::Date;
 use strict;
 use Carp;
 
-### copy version number from superclass ###
-our $VERSION = $ePortal::ThePersistent::DataType::Base::VERSION;
-our $REVISION = (qw$Revision: 3.1 $)[1];
+    our $VERSION = '4.1';
 
   ### month name to number map ###
   my %month_to_num = (
@@ -43,52 +38,18 @@ our $REVISION = (qw$Revision: 3.1 $)[1];
 sub new {
   my $proto = shift;
   my $class = ref($proto) || $proto;
+  my %p = @_;
 
-  my $self = {};  ### allocate a hash for the object's data ###
+  my $self = {%p};
   bless $self, $class;
-  $self->initialize(@_);  ### call hook for subclass initialization ###
+  $self->value($self->{default}) if $self->{default};
 
   return $self;
-}
-
-############################################################################
-# Function: initialize
-# Description: Constructor -- Create a New Date Object
-#  eval {
-#    $date = new ePortal::ThePersistent::DataType::Date($datestring);
-#    $date = new ePortal::ThePersistent::DataType::Date('now');
-#    $date = new ePortal::ThePersistent::DataType::Date('');
-#    $date = new ePortal::ThePersistent::DataType::Date(undef);
-#    $date = new ePortal::ThePersistent::DataType::Date($year, $month, $day);
-#    $date = new ePortal::ThePersistent::DataType::Date(localtime);
-# Parameters:
-# Returns:
-#
-############################################################################
-sub initialize	{	#09/08/00 10:23
-############################################################################
-  my $self = shift;
-
-  $self->value(@_);
 }
 
 ########################################################################
 # value
 ########################################################################
-
-=head2 value -- Accesses the Value of the Date
-
-  eval {
-    $date_string = $date->value($datestring);
-    $date_string = $date->value('now');
-    $date_string = $date->value('');
-    $date_string = $date->value(undef);
-    $date_string = $date->value($year, $month, $day,
-				$hour, $min, $sec);
-    $date_string = $date->value(localtime);
-  };
-
-=cut
 
 sub value {
   my $self = shift;
@@ -148,16 +109,8 @@ sub value {
   	if (!defined($year) && !defined($month) && !defined($day) ) {
     	undef;
   	} else {
-        sprintf("%02d.%02d.%04d", $day, $month, $year);
+        sprintf("%02d.%02d.%04d", 0+$day, 0+$month, 0+$year);
   	}
-}
-
-########################################################################
-# get_compare_op
-########################################################################
-
-sub get_compare_op {
-  'cmp';  ### string comparison operator ###
 }
 
 ########################################################################
@@ -236,7 +189,7 @@ sub sql_value   {   #09/30/02 3:39
     if (!defined($year) && !defined($month) && !defined($day)){
       undef;
     } else {
-      sprintf("%04d.%02d.%02d", $year, $month, $day);
+      sprintf("%04d.%02d.%02d", 0+$year, 0+$month, 0+$day);
     }
 }##sql_value
 
@@ -252,11 +205,17 @@ sub array   {   #10/02/02 8:48
     if (!defined($year) && !defined($month) && !defined($day)){
       undef;
     } else {
-      ($year, $month, $day);
+      (0+$year, 0+$month, 0+$day);
     }
 }##array
 
-### end of library ###
+############################################################################
+sub clear   {   #06/19/2003 11:38
+############################################################################
+    my $self = shift;
+    $self->value( $self->{default} );
+}##clear
+
 
 1;
 

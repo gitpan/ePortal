@@ -2,37 +2,26 @@
 %# ePortal - WEB Based daily organizer
 %# Author - S.Rusakov <rusakov_sa@users.sourceforge.net>
 %#
-%# Copyright (c) 2001 Sergey Rusakov.  All rights reserved.
+%# Copyright (c) 2000-2003 Sergey Rusakov.  All rights reserved.
 %# This program is free software; you can redistribute it
 %# and/or modify it under the same terms as Perl itself.
 %#
-%# $Revision: 3.1 $
-%# $Date: 2003/04/24 05:36:52 $
-%# $Header: /home/cvsroot/ePortal/comp_root/manual/index.htm,v 3.1 2003/04/24 05:36:52 ras Exp $
 %#
 %#----------------------------------------------------------------------------
 
 <& /dir.mc,
-    include => [qw/^pod_/],
-    exclude => [qw/CVS /],
-    nobackurl => 1,
-    title => 'POD manuals',
-    columns => [qw/icon description name size /],
-    description => sub{ ePortal::Utils::filter_html_title(@_) } &>
-
-<& /dir.mc,
     include => [qw/\.html$/],
-    exclude => [qw/CVS ^pod_ ^thep_ ^html_ ^app_ ^dual_/],
+    exclude => [qw/CVS ^pod_ ^mc_ ^thep_ ^html_ ^app_ ^dual_/],
     nobackurl => 1,
-    title => 'Core ePortal modules',
+    title => 'ePortal modules',
     columns => [qw/icon description name size /],
     description => sub{ ePortal::Utils::filter_html_title(@_) } &>
 
 <& /dir.mc,
-    include => [qw/html_.*/],
+    include => [qw/html_.* mc_.*/],
     exclude => ['CVS'],
     nobackurl => 1,
-    title => 'HTML support modules',
+    title => 'HTML support modules and Mason Components',
     columns => [qw/icon description name size /],
     description => sub{ ePortal::Utils::filter_html_title(@_) } &>
 

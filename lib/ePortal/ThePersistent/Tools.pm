@@ -3,23 +3,21 @@
 # ePortal - WEB Based daily organizer
 # Author - S.Rusakov <rusakov_sa@users.sourceforge.net>
 #
-# Copyright (c) 2001 Sergey Rusakov.  All rights reserved.
+# Copyright (c) 2000-2003 Sergey Rusakov.  All rights reserved.
 # This program is free software; you can redistribute it
 # and/or modify it under the same terms as Perl itself.
 #
-# $Revision: 3.2 $
-# $Date: 2003/04/24 05:36:52 $
-# $Header: /home/cvsroot/ePortal/lib/ePortal/ThePersistent/Tools.pm,v 3.2 2003/04/24 05:36:52 ras Exp $
 #
 #----------------------------------------------------------------------------
 
 
 package ePortal::ThePersistent::Tools;
-    our $VERSION = sprintf '%d.%03d', q$Revision: 3.2 $ =~ /: (\d+).(\d+)/;
+    our $VERSION = '4.1';
 
     # Export section
     our @EXPORT = qw/
             &table_exists &column_exists &index_exists &column_type
+            &table_size
             &DO_SQL
             /;
     require Exporter;
@@ -31,14 +29,15 @@ package ePortal::ThePersistent::Tools;
 sub table_exists    {   #08/03/01 1:54
 ############################################################################
     my $dbh = shift;
-    my $table = lc shift;
+    my $table = shift;
 
     if (!$dbh or !$table) {
         die "Usage: table_exists(dbh,table_name)\n";
     }
 
     my $found;
-    my $sth = $dbh->prepare("show tables");
+    my $sth = $dbh->prepare("show tables like '$table'");
+    $table = lc $table;
     $sth->execute();
     while(my @ary = $sth->fetchrow_array) {
         $found = 1 if lc($ary[0]) eq $table;
@@ -66,6 +65,30 @@ sub table_exists    {   #08/03/01 1:54
 }##table_exists
 
 
+############################################################################
+# Returns current data_length in scalar context
+# Returns (data_length, Max_data_length) in list context
+############################################################################
+sub table_size  {   #10/01/2003 4:56
+############################################################################
+    my $dbh = shift;
+    my $table = shift;
+
+    if (!$dbh or !$table) {
+        die "Usage: table_size(dbh,table_name)\n";
+    }
+
+    my @ary = $dbh->selectrow_array("show table status like '$table'");
+    return wantarray ? ($ary[5], $ary[6]) : $ary[5];
+}##table_size
+
+# show table status like 'tablename'
+#  show table status like 'user';
+#+------+--------+------------+------+----------------+-------------+-----------------+--------------+-----------+----------------+---------------------+---------------------+------------+----------------+-----------------------------+
+#| Name | Type   | Row_format | Rows | Avg_row_length | Data_length | Max_data_length | Index_length | Data_free | Auto_increment | Create_time         | Update_time         | Check_time | Create_options | Comment                     |
+#+------+--------+------------+------+----------------+-------------+-----------------+--------------+-----------+----------------+---------------------+---------------------+------------+----------------+-----------------------------+
+#| user | MyISAM | Dynamic    |    9 |             59 |         532 |      4294967295 |         2048 |         0 |           NULL | 2003-09-11 13:46:19 | 2003-09-11 13:46:19 | NULL       |                | Users and global privileges |
+#+------+--------+------------+------+----------------+-------------+-----------------+--------------+-----------+----------------+---------------------+---------------------+------------+----------------+-----------------------------+
 
 
 #mysql> desc MsgForum;

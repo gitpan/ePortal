@@ -62,4 +62,9 @@ parameter.  If given, this parameter will become the new value of the
 attribute.  This value is then returned from the method.  If no
 parameter is given, then the current value is returned.
 
+
+=head1 AUTHOR
+
+Jonathan Swartz
+
 =cut

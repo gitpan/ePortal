@@ -1,13 +1,12 @@
 # ePortal - WEB Based daily organizer
 # Author - S.Rusakov <rusakov_sa@mail.ru>
 #
-# Copyright (c) 2001 Sergey Rusakov.  All rights reserved.
+# Copyright (c) 2001-2003 Sergey Rusakov.  All rights reserved.
 # This program is free software; you can redistribute it
 # and/or modify it under the same terms as Perl itself.
 #
 #===============================================================
 # This is sample crontab file to use with ePortal.
-# Comment out the lines of applications that is not installed.
 #
 
 #
@@ -32,11 +31,6 @@ EPORTAL_DBI_PASSWORD=******
 #
 # every 5 minutes
 #
-*/5 * * * * root perl /home/ePortal/bin/cron.d/MsgForum-subsription.pl -q
+*/5 * * * * root perl /home/ePortal/bin/ePortal-cron.pl
 
-#
-# every day at night
-#
-1 1 * * * root perl /home/ePortal/bin/cron.daily/ePortal_expire_sessions.pl -q
-2 1 * * * root perl /home/ePortal/bin/cron.daily/MsgForum-expire.pl -q
 

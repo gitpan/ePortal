@@ -3,48 +3,44 @@
 # ePortal - WEB Based daily organizer
 # Author - S.Rusakov <rusakov_sa@users.sourceforge.net>
 #
-# Copyright (c) 2001 Sergey Rusakov.  All rights reserved.
+# Copyright (c) 2000-2003 Sergey Rusakov.  All rights reserved.
 # This program is free software; you can redistribute it
 # and/or modify it under the same terms as Perl itself.
 #
-# $Revision: 3.4 $
-# $Date: 2003/04/24 05:36:52 $
-# $Header: /home/cvsroot/ePortal/lib/ePortal/epGroup.pm,v 3.4 2003/04/24 05:36:52 ras Exp $
 #
 #----------------------------------------------------------------------------
 
 
 package ePortal::epGroup;
-	use ePortal::ThePersistent::Support ();
+    our $VERSION = '4.1';
+    use base qw/ePortal::ThePersistent::Support/;
 	use ePortal::Utils;
     use ePortal::Global;
 
-	our @ISA = qw/ePortal::ThePersistent::Support/;
-	our $VERSION = sprintf '%d.%03d', q$Revision: 3.4 $ =~ /: (\d+).(\d+)/;
 
 ############################################################################
 sub initialize	{	#05/31/00 8:50
 ############################################################################
     my ($self, %p) = @_;
 
-    $p{Attributes} = {
-        id => {     type => 'ID',           # ID, Pe (default)
-                    dtype => 'Number',      # Data type (Varchar as default)
-                    auto_increment => 1,
-        },
-        groupname => {  label => {rus => 'Наименование',eng => 'Name'},
-                    maxlength => 64,
-                    size => 20,             # size of <input type=text>
-        },
-        groupdesc => {
-                    label => {rus => 'Описание группы', eng => 'Description'},
-                    size  => 40,
-        },
-        ext_group => {
-                    dtype => 'YesNo',
-                    label => {rus => 'Внешняя группа', eng => 'External group'},
-        },
-    };
+    $p{Attributes}{id} ||= {};
+    $p{Attributes}{groupname} ||= {
+        label => {rus => 'Наименование',eng => 'Name'},
+        maxlength => 64,
+        size => 20,             # size of <input type=text>
+        };
+    $p{Attributes}{groupdesc} ||= {
+        label => {rus => 'Описание группы', eng => 'Description'},
+        size  => 40,
+        };
+    $p{Attributes}{ext_group} ||= {
+        dtype => 'YesNo',
+        label => {rus => 'Внешняя группа', eng => 'External group'},
+        };
+    $p{Attributes}{hidden} ||= {
+        dtype => 'YesNo',
+        label => {rus => 'Скрытая', eng => 'Hidden'},
+        };
 
     $self->SUPER::initialize(%p);
 }##initialize
@@ -121,7 +117,7 @@ sub delete	{	#06/19/01 2:19
 ############################################################################
 	my $self = shift;
 	my $groupname = $self->groupname;
-    my $dbh = $self->_get_dbh;
+    my $dbh = $self->dbh;
 
     my $result = 0;
     $result += $dbh->do("delete from epUsrGrp where groupname=?", undef, $groupname);
@@ -140,7 +136,7 @@ sub delete	{	#06/19/01 2:19
 sub members	{	#06/26/01 11:58
 ############################################################################
 	my $self = shift;
-	my $dbh = $self->_get_dbh();
+    my $dbh = $self->dbh();
 
 	my $sql = "SELECT username FROM epUsrGrp WHERE groupname=?";
 	my $ary = $dbh->selectcol_arrayref($sql, undef, $self->groupname);
@@ -154,9 +150,9 @@ sub members	{	#06/26/01 11:58
 sub ObjectDescription   {   #04/15/03 10:49
 ############################################################################
     my $self = shift;
-    
+
     return pick_lang(rus => "Группа пользователей: ", eng => "Group of users: ") .
-        $self->groupname;    
+        $self->groupname;
 }##ObjectDescription
 
 1;

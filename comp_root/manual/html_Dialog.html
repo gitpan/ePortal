@@ -55,12 +55,19 @@ context.</P>
     &lt;p&gt;</PRE>
 <PRE>
     &lt;%method onStartRequest&gt;&lt;%perl&gt;
-      $obj = new ePortal::ThePersistent::SupportObject;
-      $dlg = new ePortal::HTML::Dialog( obj =&gt; $obj);</PRE>
+        $obj = new ePortal::ThePersistent::SupportObject;
+        $dlg = new ePortal::HTML::Dialog( obj =&gt; $obj);</PRE>
 <PRE>
-      my $location = $dlg-&gt;handle_request();
-      if ($dlg-&gt;isButtonPressed('ok') { ... }
-      return $location if $location;
+        my $location = try {
+          $dlg-&gt;handle_request( );
+        } catch ePortal::Exception::DataNotValid with {
+          my $E = shift;
+          $session{ErrorMessage} = $E-&gt;text;
+          '';
+        };</PRE>
+<PRE>
+        if ($dlg-&gt;isButtonPressed('ok') { ... }
+        return $location if $location;
     &lt;/%perl&gt;&lt;/%method&gt;</PRE>
 <PRE>
     %#=== @metags once =========================================================
@@ -98,7 +105,7 @@ itself.</P>
 <H2><A NAME="isbuttonpressed%28%24button_name%29"><CODE>isButtonPressed($button_name)</CODE></A></H2>
 <P>Checks is a button was pressed. Use this function only after call to
 handle_request().</P>
-<P><EM>button_name</EM> is one of: qw/q acl max min edit delete copy x ok cancel
+<P><EM>button_name</EM> is one of: qw/q max min edit delete copy x ok cancel
 more/</P>
 <P>
 <H2><A NAME="dialog_start%28%29"><CODE>dialog_start()</CODE></A></H2>
@@ -187,7 +194,7 @@ Item name to focus the cursor. Set automaticaly
 <P></P>
 <LI><STRONG><A NAME="item_xxx_button%252C_xxx_button_ti">xxx_button, xxx_button_title</A></STRONG><BR>
 
-A button at top of dialog. xxx may be (q edit min max x copy acl)
+A button at top of dialog. xxx may be (q edit min max x copy )
 <P>Set xxx_button=1 to make default action or set to any URL</P>
 <P></P>
 <LI><STRONG><A NAME="item_yyy_button%252Cyyy_label">yyy_button,yyy_label</A></STRONG><BR>

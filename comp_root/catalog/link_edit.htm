@@ -2,61 +2,54 @@
 %# ePortal - WEB Based daily organizer
 %# Author - S.Rusakov <rusakov_sa@users.sourceforge.net>
 %#
-%# Copyright (c) 2001 Sergey Rusakov.  All rights reserved.
+%# Copyright (c) 2000-2003 Sergey Rusakov.  All rights reserved.
 %# This program is free software; you can redistribute it
 %# and/or modify it under the same terms as Perl itself.
 %#
-%# $Revision: 3.2 $
-%# $Date: 2003/04/24 05:36:52 $
-%# $Header: /home/cvsroot/ePortal/comp_root/catalog/link_edit.htm,v 3.2 2003/04/24 05:36:52 ras Exp $
 %#
 %#----------------------------------------------------------------------------
 
 &nbsp;
-<% $dlg->dialog_start(
-    title => pick_lang(rus => "—сылка на ресурс", eng => "Link to resource"),
-    width => 550) %>
+<&| /dialog.mc:edit_dialog, title => pick_lang(rus => "—сылка на ресурс", eng => "Link to resource"),
+                width => 550, obj => $obj, focus => 'title' &>
 
-<% $dlg->field( "recordtype") %>
-<% $dlg->row('<hr>') %>
-<% $dlg->field( "parent_id")  %>
-<% $dlg->field( "title" ) %>
-<% $dlg->field( "nickname" ) %>
-<% $dlg->field( "priority" ) %>
-<% $dlg->row('<hr>') %>
+  <& /dialog.mc:read_only, id => 'recordtype' &>
+  <&| /dialog.mc:cell &>
+    <hr>
+  </&>
+  <& /dialog.mc:field, id => 'parent_id' &>
+  <& /dialog.mc:field, id => 'title' &>
+  <& /dialog.mc:field, id => 'nickname' &>
+  <& /dialog.mc:field, id => 'priority' &>
+  <&| /dialog.mc:cell &>
+    <hr>
+  </&>
+  <& /dialog.mc:field, id => 'url' &>
+  <& /dialog.mc:field, id => 'memo' &>
 
-% if ($obj->RecordType eq 'link') {
-  <% $dlg->field( "url" ) %>
-
-% } elsif ($obj->RecordType =~ /^text/) {
-  <% $dlg->field( "text" ) %>
-
-% } elsif ($obj->RecordType eq 'file') {
-  <% $dlg->row(pick_lang(rus => "«агружен файл", eng => "Loaded file"),
-      $obj->htmlValue('filename') . '&nbsp;' .
-      length($obj->Text) . '&nbsp;' .
-      pick_lang(rus => "байт", eng => "bytes")
-      )%>
-  <% $dlg->field( "upload_file" ) %>
-% }
-
-<% $dlg->row('<hr>') %>
-<% $dlg->field( "memo" ) %>
-<% $dlg->field( "ts", RO => 1 ) %>
-<% $dlg->field( "Clicks", RO => 1 ) %>
-<% $dlg->field( "Hits", RO => 1 ) %>
 % if ($obj->xacl_check_admin) {
-  <% $dlg->row( "<hr>" ) %>
-  <% $dlg->field( "xacl_read" ) %>
-  <% $dlg->field( "xacl_write" ) %>
-  <% $dlg->field( "xacl_admin" ) %>
+  <&| /dialog.mc:cell &>
+    <hr>
+  </&>
+  <& /dialog.mc:read_only, id => 'uid' &>
+  <& /dialog.mc:field, id => 'xacl_read' &>
+  <& /dialog.mc:field, id => 'xacl_write' &>
+  <& /dialog.mc:field, id => 'xacl_admin' &>
 % }
-<% $dlg->row('&nbsp;') %>
-<% $dlg->buttons( delete_button => 1 ) %>
-<% $dlg->dialog_end %>
+  
+  <& /dialog.mc:buttons &>
+
+  <&| /dialog.mc:cell &>
+    <hr>
+  </&>
+  <& /dialog.mc:read_only, id => 'ts' &>
+  <& /dialog.mc:read_only, id => 'clicks' &>
+  <& /dialog.mc:read_only, id => 'hits' &>
+
+</&>
+
 <p>
 
-<& link_edit_type.htm:dialog_help &>
 
 %#=== @METAGS attr =========================================================
 <%attr>
@@ -67,14 +60,15 @@ Title => {rus => "—сылка на ресурс", eng => "Link to resource"}
 %#=== @METAGS onStartRequest ====================================================
 <%method onStartRequest><%perl>
   $obj = new ePortal::Catalog;
-  $dlg = new ePortal::HTML::Dialog( obj => $obj, multipart_form => 1);
+  
+  $m->comp('/dialog.mc:handle_request', obj => $obj);
 
-  # file uploads is done internally by ePortal::Calatlog::htmlSave
-	my $location = $dlg->handle_request();
-  return $location if $location;
+  #initialize ACL
+  if ( ! $obj->check_id ) {  # new object
+    my $parent = $obj->parent;
+    $obj->set_acl_from_obj($parent) if $parent;
+  }
 
-  $obj->parent_id( $ARGS{parent_id} ) if defined $ARGS{parent_id};
-  $obj->RecordType( $ARGS{recordtype} ) if defined $ARGS{recordtype};
 </%perl></%method>
 
 
@@ -82,11 +76,11 @@ Title => {rus => "—сылка на ресурс", eng => "Link to resource"}
 
 %#=== @metags once =========================================================
 <%once>
-my ($dlg, $obj);
+my ($dlg, $obj, $att);
 </%once>
 
 %#=== @metags cleanup =========================================================
 <%cleanup>
-($dlg, $obj) = ();
+($dlg, $obj, $att) = ();
 </%cleanup>
 

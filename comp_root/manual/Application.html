@@ -13,18 +13,15 @@
 
 	<LI><A HREF="#name">NAME</A></LI>
 	<LI><A HREF="#synopsis">SYNOPSIS</A></LI>
-	<LI><A HREF="#initialization">INITIALIZATION</A></LI>
-	<LI><A HREF="#database%20access">DATABASE ACCESS</A></LI>
-	<LI><A HREF="#security">SECURITY</A></LI>
 	<LI><A HREF="#methods">METHODS</A></LI>
 	<UL>
 
-		<LI><A HREF="#applicationname">ApplicationName</A></LI>
-		<LI><A HREF="#new%28%24config%29"><CODE>new($config)</CODE></A></LI>
 		<LI><A HREF="#initialize%28%29"><CODE>initialize()</CODE></A></LI>
+		<LI><A HREF="#applicationname">ApplicationName</A></LI>
 		<LI><A HREF="#ondeleteuser%2Condeletegroup">onDeleteUser,onDeleteGroup</A></LI>
 	</UL>
 
+	<LI><A HREF="#author">AUTHOR</A></LI>
 </UL>
 <!-- INDEX END -->
 
@@ -35,58 +32,20 @@
 <P>
 <HR>
 <H1><A NAME="synopsis">SYNOPSIS</A></H1>
-<P>An application is registered with ePortal via parameter</P>
-<PRE>
- application ePortal::App:ApplicationName</PRE>
-<P>To create an application derive it from ePortal::Application and register
-in ePortal.conf.</P>
-<P>
-<HR>
-<H1><A NAME="initialization">INITIALIZATION</A></H1>
-<P>During Apache's startup phase an application object will be created and
-initialized.</P>
-<PRE>
-  new()
-  initialize_config() (overwrite it)
-    read [common:ApplicationName] (by ePortal::Application)
-    read [vhost:ApplicationName] (by ePortal::Application)
-  initialize() (overwrite it)
-    create DBISource if needed (by ePortal::Application)
-    create sysacl if needed
-    create user groups if needed
-  ?????
-  register PageView sections
-  register cron events
-  register database upgrade script</PRE>
-<P>
-<HR>
-<H1><A NAME="database%20access">DATABASE ACCESS</A></H1>
-<P>ePortal::Application registers in <CODE>initialize_config()</CODE> three parameters for
-you: dbi_source, dbi_user, dbi_password. During <CODE>initialize()</CODE> a DBISource
-object will be create with a name of ApplicationName().</P>
-<P>Use this new DBISource as the follows:</P>
-<PRE>
- my $obj = new ePortal::ThePersistent::Support(&quot;SQL&quot;, undef, &quot;ApplicationName&quot;);
- my $obj = new ePortal::ThePersistent::Support($attributes, &quot;table_name&quot;, &quot;ApplicationName&quot;);
- # here ApplicationName is a name of DBISource object.</PRE>
-<P>
-<HR>
-<H1><A NAME="security">SECURITY</A></H1>
+<P>To create an application derive it from ePortal::Application and place base
+module in lib/ePortal/App/YourModule.pm</P>
+<P>This manual is incomplete !!!</P>
 <P>
 <HR>
 <H1><A NAME="methods">METHODS</A></H1>
 <P>
-<H2><A NAME="applicationname">ApplicationName</A></H2>
-<P>You should overwrite this method to supply your own application name. By
-default a last part of application's package name is used.</P>
-<P>
-<H2><A NAME="new%28%24config%29"><CODE>new($config)</CODE></A></H2>
-<P>Application constructor. Should be never overwrited. Use Initialize_xxx
-methods if you need an extra initialization.</P>
-<P>
 <H2><A NAME="initialize%28%29"><CODE>initialize()</CODE></A></H2>
 <P>This is application initializer. By default <CODE>initialize()</CODE> creates new
 DBISource if any of dbi_xxx parameters are meet in config file.</P>
+<P>
+<H2><A NAME="applicationname">ApplicationName</A></H2>
+<P>You should overwrite this method to supply your own application name. By
+default a last part of application's package name is used.</P>
 <P>
 <H2><A NAME="ondeleteuser%2Condeletegroup">onDeleteUser,onDeleteGroup</A></H2>
 <P>This is callback function. Do not call it directly. It is called from
@@ -98,6 +57,10 @@ group specific data.</P>
 
 User or Group name to delete.
 <P></P></UL>
+<P>
+<HR>
+<H1><A NAME="author">AUTHOR</A></H1>
+<P>Sergey Rusakov, &lt;<A HREF="mailto:rusakov_sa@users.sourceforge.net">rusakov_sa@users.sourceforge.net</A>&gt;</P>
 
 </BODY>
 

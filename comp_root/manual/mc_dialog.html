@@ -1,0 +1,461 @@
+<HTML>
+<HEAD>
+<TITLE>dialog.mc - Dialog contruction module.</TITLE>
+<LINK REV="made" HREF="mailto:rusakov_sa@users.sourceforge.net">
+</HEAD>
+
+<BODY>
+
+<A NAME="__index__"></A>
+<!-- INDEX BEGIN -->
+
+<UL>
+
+	<LI><A HREF="#name">NAME</A></LI>
+	<LI><A HREF="#synopsis">SYNOPSIS</A></LI>
+	<UL>
+
+		<LI><A HREF="#usage">Usage</A></LI>
+		<LI><A HREF="#parameters">Parameters</A></LI>
+	</UL>
+
+	<LI><A HREF="#methods">METHODS</A></LI>
+	<UL>
+
+		<LI><A HREF="#edit_dialog">edit_dialog</A></LI>
+		<LI><A HREF="#form">form</A></LI>
+	</UL>
+
+	<LI><A HREF="#dialog%20form%20fields">DIALOG FORM FIELDS</A></LI>
+	<UL>
+
+		<LI><A HREF="#cell">cell</A></LI>
+		<LI><A HREF="#label_value_row">label_value_row</A></LI>
+		<LI><A HREF="#canvas">canvas</A></LI>
+		<LI><A HREF="#field">field</A></LI>
+		<LI><A HREF="#hidden">hidden</A></LI>
+		<LI><A HREF="#popup_menu">popup_menu</A></LI>
+		<LI><A HREF="#radio_group">radio_group</A></LI>
+		<LI><A HREF="#textfield">textfield</A></LI>
+		<LI><A HREF="#password">password</A></LI>
+		<LI><A HREF="#textarea">textarea</A></LI>
+		<LI><A HREF="#xacl_field">xacl_field</A></LI>
+		<LI><A HREF="#upload">upload</A></LI>
+		<LI><A HREF="#yes_no">yes_no</A></LI>
+		<LI><A HREF="#checkbox">checkbox</A></LI>
+		<LI><A HREF="#date">date</A></LI>
+		<LI><A HREF="#read_only">read_only</A></LI>
+		<LI><A HREF="#buttons">buttons</A></LI>
+		<LI><A HREF="#_table3td">_table3td</A></LI>
+	</UL>
+
+	<LI><A HREF="#request%20handling%20methods">REQUEST HANDLING METHODS</A></LI>
+	<UL>
+
+		<LI><A HREF="#handle_request">handle_request</A></LI>
+		<LI><A HREF="#htmlsave">htmlSave</A></LI>
+		<LI><A HREF="#isbuttonpressed">isButtonPressed</A></LI>
+		<LI><A HREF="#back_url">back_url</A></LI>
+	</UL>
+
+	<LI><A HREF="#author">AUTHOR</A></LI>
+</UL>
+<!-- INDEX END -->
+
+<HR>
+<P>
+<H1><A NAME="name">NAME</A></H1>
+<P>dialog.mc - Dialog contruction module.</P>
+<P>
+<HR>
+<H1><A NAME="synopsis">SYNOPSIS</A></H1>
+<P>This Mason component replaces obsoleted ePortal::HTML::Dialog package.</P>
+<P><CODE>dialog.mc</CODE> is used to draw a dialog like windows. Some methods are used
+for easy creation of dialogs to edit <CODE>ThePersistent</CODE> objects.</P>
+<P>
+<H2><A NAME="usage">Usage</A></H2>
+<PRE>
+ &lt;&amp;| /dialog.mc, parameters ... &amp;&gt;
+  content of the dialog
+ &lt;/&amp;&gt;</PRE>
+<P>
+<H2><A NAME="parameters">Parameters</A></H2>
+<UL>
+<LI><STRONG><A NAME="item_width%252Calign">width,align</A></STRONG><BR>
+
+These parameters are passed to &lt;table&gt; tag.
+<P></P>
+<LI><STRONG><A NAME="item_color%252Cbgcolor">color,bgcolor</A></STRONG><BR>
+
+Colors used
+<P></P>
+<LI><STRONG><A NAME="item_title%252C_title_url%252C_title">title, title_url, title_popup, title_class</A></STRONG><BR>
+
+The title of dialog
+<P></P>
+<LI><STRONG><A NAME="item_icons">icons</A></STRONG><BR>
+
+ArrayRef to HASHes with infomation about icons to place on the right side
+of the title. This HASH is passed directly to <CODE>img()</CODE> global function.
+<PRE>
+ icons =&gt; [
+    { src =&gt; '/images/image.gif',
+      href =&gt; 'some.where.htm',
+      title =&gt; 'alt description for icons' }
+ ]</PRE>
+<P></P>
+<LI><STRONG><A NAME="item_xxx_icon">xxx_icon</A></STRONG><BR>
+
+Some of icons are known to dialog.mc. No need for them to pass image source
+url. Icon names are <STRONG>edit q copy min max x</STRONG>
+<P><STRONG>xxx_icon</STRONG> - URL for the icon</P>
+<P><STRONG>xxx_icon_title</STRONG> - popup title for the icon</P>
+<P>where <STRONG>xxx</STRONG> is a name of icon.</P>
+<P></P></UL>
+<P>
+<HR>
+<H1><A NAME="methods">METHODS</A></H1>
+<P>
+<H2><A NAME="edit_dialog">edit_dialog</A></H2>
+<P>This method used to construct ``Edit an object'' dialog with a submit <A HREF="#form">form</A>
+iside.</P>
+<P><STRONG>WARNING</STRONG>! This method generates</P>
+<PRE>
+ &lt;table cols=&quot;2&quot;&gt;
+  Your content here
+ &lt;/table&gt;</PRE>
+<P>Parameters:</P>
+<UL>
+<LI><STRONG><A NAME="item_obj">obj</A></STRONG><BR>
+
+<CODE>ThePersistent</CODE> object to edit.
+<P></P>
+<LI><STRONG>xxx_icon</STRONG><BR>
+
+For predefined icons enough to pass parameter
+<PRE>
+ xxx_icon =&gt; 1</PRE>
+<P>to construct an icons with all needed parameters. Call <CODE>isButtonPressed('xxx')</CODE>
+to check what button or icon was actually clicked.</P>
+<P></P>
+<LI><STRONG><A NAME="item_focus">focus</A></STRONG><BR>
+
+Name of the field to be focused when dialog apeears on screen
+<P></P></UL>
+<P>
+<H2><A NAME="form">form</A></H2>
+<P>Generate HTML form. See <A HREF="#dialog%20form%20fields">field methods</A> for details how
+to generate HTML fields.</P>
+<PRE>
+ &lt;&amp; /dialog.mc:form, parameters, ... &amp;&gt;</PRE>
+<UL>
+<LI><STRONG><A NAME="item_formname">formname</A></STRONG><BR>
+
+Name of the form. Default is 'theForm'
+<P></P>
+<LI><STRONG><A NAME="item_method">method</A></STRONG><BR>
+
+Method of the form. Default is 'POST'
+<P></P>
+<LI><STRONG><A NAME="item_action">action</A></STRONG><BR>
+
+Action of the form. Default is $ENV{SCRIPT_NAME}
+<P></P>
+<LI><STRONG><A NAME="item_multipart%252Cmultipart_form">multipart,multipart_form</A></STRONG><BR>
+
+If true generate multipart form.
+<P></P></UL>
+<P>
+<HR>
+<H1><A NAME="dialog%20form%20fields">DIALOG FORM FIELDS</A></H1>
+<P>Most of dialog field creation method accepts the following parameters:</P>
+<UL>
+<LI><STRONG>obj</STRONG><BR>
+
+Base ThePersistent object to be edited. The <CODE>$obj</CODE> object may contain some
+useful attributes: <CODE>fieldtype</CODE>, <A HREF="#item_value"><CODE>value</CODE></A>, <A HREF="#item_label"><CODE>label</CODE></A>, etc...
+<P></P>
+<LI><STRONG><A NAME="item_label">label</A></STRONG><BR>
+
+What label to attach for the field. Default is <A HREF="#item_label"><CODE>label</CODE></A> attribute of the
+object.
+<P></P>
+<LI><STRONG><A NAME="item_value">value</A></STRONG><BR>
+
+Default value of the field. Default is <A HREF="#item_value"><CODE>value</CODE></A> attribute of the object.
+<P></P>
+<LI><STRONG><A NAME="item_class%252Calign">class,align</A></STRONG><BR>
+
+These parameters are applied to <A HREF="#item_canvas"><CODE>canvas</CODE></A> property.
+<P></P></UL>
+<P>
+<H2><A NAME="cell">cell</A></H2>
+<P>Draw a cell for edit_dialog. That is is &lt;td colspan=``2''&gt;.
+All -xxx like parameters are passed to CGI::td() function.</P>
+<P>
+<H2><A NAME="label_value_row">label_value_row</A></H2>
+<P>Draw a row with two cells: label and value</P>
+<UL>
+<LI><STRONG>label</STRONG><BR>
+
+<LI><STRONG>value</STRONG><BR>
+
+</UL>
+<P>
+<H2><A NAME="canvas">canvas</A></H2>
+<P>Display <CODE>content</CODE> inside a <A HREF="#item_canvas"><CODE>canvas</CODE></A>.</P>
+<PRE>
+ &lt;&amp;| /dialog.mc:canvas, label =&gt; ..., parameters, ... &amp;&gt;
+  dialog value
+ &lt;/&amp;&gt;</PRE>
+<PRE>
+ &lt;canvas&gt;
+  &lt;% optional label %&gt;
+  &lt;% $m-&gt;content %&gt;
+ &lt;/canvas&gt;</PRE>
+<UL>
+<LI><STRONG>label</STRONG><BR>
+
+Optional label for content. Styled with class=``dlglabel''.
+<P></P>
+<LI><STRONG><A NAME="item_canvas">canvas</A></STRONG><BR>
+
+Type of canvas. May be one of the following: tr td div span none
+<P></P>
+<LI><STRONG><A NAME="item_vertical">vertical</A></STRONG><BR>
+
+Align label and content vertically. Not possible for tr canvas.
+<PRE>
+ &lt;canvas&gt;
+  label
+  content
+ &lt;/canvas&gt;</PRE>
+<P></P></UL>
+<P>
+<H2><A NAME="field">field</A></H2>
+<P>Discover field type with a help of <CODE>fieldtype</CODE> attribute of the object and
+call appropriate method of dialog.mc. Default field type is <CODE>textfield</CODE>.</P>
+<P>This is default method to produce a dialog field. This method created a row
+of table</P>
+<PRE>
+ &lt;tr&gt;
+   &lt;td&gt;label:&lt;/td&gt; &lt;td&gt;field&lt;/td&gt;
+ &lt;/tr&gt;</PRE>
+<UL>
+<LI><STRONG>obj</STRONG><BR>
+
+The object to edit.
+<P></P>
+<LI><STRONG><A NAME="item_name%252Cid">name,id</A></STRONG><BR>
+
+Mandatory. The name of the field to generate.
+<P></P></UL>
+<P>
+<H2><A NAME="hidden">hidden</A></H2>
+<P>/dialog.mc:hidden - generate hidden field</P>
+<UL>
+<LI><STRONG><A NAME="item_name">name</A></STRONG><BR>
+
+Name of the field
+<P></P>
+<LI><STRONG>value</STRONG><BR>
+
+Value of the field
+<P></P></UL>
+<P>
+<H2><A NAME="popup_menu">popup_menu</A></H2>
+<P>Generates list box aka popup_menu.</P>
+<UL>
+<LI><STRONG><A NAME="item_values">values</A></STRONG><BR>
+
+Array ref of values
+<P></P>
+<LI><STRONG><A NAME="item_labels">labels</A></STRONG><BR>
+
+Hash ref of labels for values. Every HASH label is decoded with pick_lang().
+<P></P>
+<LI><STRONG><A NAME="item_popup_menu">popup_menu</A></STRONG><BR>
+
+Callback function. Called with the object as argument. Should return array
+<PRE>
+ ($values_array, $labels_hash)</PRE>
+<P></P></UL>
+<P>
+<H2><A NAME="radio_group">radio_group</A></H2>
+<P>Generates radio button group.</P>
+<UL>
+<LI><STRONG>values</STRONG><BR>
+
+Array ref of values
+<P></P>
+<LI><STRONG>labels</STRONG><BR>
+
+Hash ref of labels for values. Every HASH label is decoded with pick_lang().
+<P></P></UL>
+<P>
+<H2><A NAME="textfield">textfield</A></H2>
+<P>Generate text field.</P>
+<UL>
+<LI><STRONG><A NAME="item_size">size</A></STRONG><BR>
+
+Visible size of text field
+<P></P>
+<LI><STRONG><A NAME="item_maxlength">maxlength</A></STRONG><BR>
+
+Maximum length of input string
+<P></P></UL>
+<P>See <A HREF="#dialog%20form%20fields">DIALOG FORM FIELDS</A> for other parameters.</P>
+<P>
+<H2><A NAME="password">password</A></H2>
+<P>Generate password input field.</P>
+<UL>
+<LI><STRONG>size</STRONG><BR>
+
+Visible size of text field
+<P></P>
+<LI><STRONG>maxlength</STRONG><BR>
+
+Maximum length of input string
+<P></P></UL>
+<P>See <A HREF="#dialog%20form%20fields">DIALOG FORM FIELDS</A> for other parameters.</P>
+<P>
+<H2><A NAME="textarea">textarea</A></H2>
+<P>Generate text area field.</P>
+<UL>
+<LI><STRONG><A NAME="item_rows%252Ccols">rows,cols</A></STRONG><BR>
+
+Visible size of text area field
+<P></P>
+<LI><STRONG>maxlength</STRONG><BR>
+
+Maximum length of input string
+<P></P></UL>
+<P>See <A HREF="#dialog%20form%20fields">DIALOG FORM FIELDS</A> for other parameters.</P>
+<P>
+<H2><A NAME="xacl_field">xacl_field</A></H2>
+<P>Generate ACL property field.</P>
+<P>See <A HREF="#dialog%20form%20fields">DIALOG FORM FIELDS</A> for other parameters.</P>
+<P>
+<H2><A NAME="upload">upload</A></H2>
+<P>Generate file upload field.</P>
+<P>See <A HREF="#dialog%20form%20fields">DIALOG FORM FIELDS</A> for other parameters.</P>
+<P>
+<H2><A NAME="yes_no">yes_no</A></H2>
+<P>Generates list box or checkbox to input YES or NO.</P>
+<P>
+<H2><A NAME="checkbox">checkbox</A></H2>
+<P>Generates checkbox tag.</P>
+<P>
+<H2><A NAME="date">date</A></H2>
+<P>Generates date input field.</P>
+<P>
+<H2><A NAME="read_only">read_only</A></H2>
+<P>Generate text read only field.</P>
+<P>See <A HREF="#dialog%20form%20fields">DIALOG FORM FIELDS</A> for other parameters.</P>
+<P>
+<H2><A NAME="buttons">buttons</A></H2>
+<P>Display dialog buttons.</P>
+<PRE>
+ &lt;&amp; /dialog.mc:buttons, parameters, ... &amp;&gt;</PRE>
+<P>Possible button names are: ok, cancel, more, delete, apply.</P>
+<P>To diplay a button pass parameter xxx_button =&gt; 1</P>
+<P>To change predefined label of a button pass parameter xxx_label =&gt; ``...''</P>
+<P><STRONG>ok</STRONG> and <STRONG>cancel</STRONG> buttons are displayed by default.</P>
+<P>
+<H2><A NAME="_table3td">_table3td</A></H2>
+<P>Internal method. Do not use it! Used to produce one row table with three
+cells. This is the correct way to align a table.</P>
+<PRE>
+ td1     td2     td3</PRE>
+<UL>
+<LI><STRONG><A NAME="item_td1">td1</A></STRONG><BR>
+
+Content of cell td1
+<P></P>
+<LI><STRONG><A NAME="item_td2">td2</A></STRONG><BR>
+
+Content of cell td2
+<P></P>
+<LI><STRONG><A NAME="item_td3">td3</A></STRONG><BR>
+
+Content of cell td3
+<P></P>
+<LI><STRONG><A NAME="item_align">align</A></STRONG><BR>
+
+Where to place ``main'' content. Left is td1, center is td2, right is td3.
+<P></P>
+<LI><STRONG><A NAME="item_extra">extra</A></STRONG><BR>
+
+Extra info. Placed in opposite of main content (left or right). Not used if
+main content is aligned at center or none.
+<P></P></UL>
+<P>
+<HR>
+<H1><A NAME="request%20handling%20methods">REQUEST HANDLING METHODS</A></H1>
+<P>
+<H2><A NAME="handle_request">handle_request</A></H2>
+<P>This the engine of dialog. Call it from <CODE>onStartupRequest</CODE> method for
+proper redirect handling.</P>
+<P>This method does the following:</P>
+<OL>
+<LI>
+<A HREF="thep_Support.html">restore_or_throw</A> object to edit
+<P></P>
+<LI>
+<A HREF="#htmlsave">htmlSave</A> parameters from request
+<P></P>
+<LI>
+if ok button is pressed then save the object and redirect to
+<A HREF="#back_url">back_url</A>
+<P></P>
+<LI>
+if cancel button is pressed then just redirect to <A HREF="#back_url">back_url</A>
+<P></P></OL>
+<UL>
+<LI><STRONG>obj</STRONG><BR>
+
+Required. The object to work on it.
+<P></P>
+<LI><STRONG><A NAME="item_objid">objid</A></STRONG><BR>
+
+This parameter usually passed as request parameter. The ID of object to edit.
+<P></P></UL>
+<P>
+<H2><A NAME="htmlsave">htmlSave</A></H2>
+<P>This method is under construction</P>
+<P>Safely get attributes values from request and apply them to the object. This
+method does not updates the object in database. Do it yourself.</P>
+<P>This method does extra processing for special multipart attributes like
+DateTime, xacl_field, etc...</P>
+<P>This method does not updates ID attributes.</P>
+<UL>
+<LI><STRONG>obj</STRONG><BR>
+
+Object to update.
+<P></P></UL>
+<P>
+<H2><A NAME="isbuttonpressed">isButtonPressed</A></H2>
+<P>Check is a button was pressed on dialog.</P>
+<P>Every standard dialog button named as <CODE>dlgb_NAME</CODE>. If no <CODE>dlgb_NAME</CODE>
+parameter exists in request then <CODE>isButtonPressed('ok')</CODE> returns true on
+dialog submit.</P>
+<UL>
+<LI><STRONG><A NAME="item_button">button</A></STRONG><BR>
+
+A button name to check.
+<PRE>
+ icons: q max min edit x
+ buttons: ok cancel copy delete apply more</PRE>
+<P></P></UL>
+<P>
+<H2><A NAME="back_url">back_url</A></H2>
+<P>Calculates URL where to return (redirect) from Dialog when a button will
+pressed.</P>
+<P>
+<HR>
+<H1><A NAME="author">AUTHOR</A></H1>
+<P>Sergey Rusakov, &lt;<A HREF="mailto:rusakov_sa@users.sourceforge.net">rusakov_sa@users.sourceforge.net</A>&gt;</P>
+
+</BODY>
+
+</HTML>

@@ -3,13 +3,10 @@
 # ePortal - WEB Based daily organizer
 # Author - S.Rusakov <rusakov_sa@users.sourceforge.net>
 #
-# Copyright (c) 2001 Sergey Rusakov.  All rights reserved.
+# Copyright (c) 2000-2003 Sergey Rusakov.  All rights reserved.
 # This program is free software; you can redistribute it
 # and/or modify it under the same terms as Perl itself.
 #
-# $Revision: 3.4 $
-# $Date: 2003/04/24 05:36:52 $
-# $Header: /home/cvsroot/ePortal/lib/ePortal/UserSection.pm,v 3.4 2003/04/24 05:36:52 ras Exp $
 #
 #----------------------------------------------------------------------------
 
@@ -26,38 +23,30 @@ page.
 =cut
 
 package ePortal::UserSection;
-	our $VERSION = sprintf '%d.%03d', q$Revision: 3.4 $ =~ /: (\d+).(\d+)/;
+    our $VERSION = '4.1';
 	use base qw/ePortal::ThePersistent::Support/;
 
 	use ePortal::Global;
 	use ePortal::PageSection;
 	use ePortal::Utils;
 
-	my $attributes = {
-        id => { type => 'ID',
-				order => 1,
-				dtype => 'Number',
-                auto_increment => 1,
-		},
-		pv_id => { dtype => 'Number'},
-		ps_id => { dtype => 'Number'},
-		colnum => { dtype => 'Number'},
-		minimized => {dtype => 'YesNo'},
-		setupinfo => {
-				dtype => 'Varchar',
-                maxlength => 8000,
-				order => 9,
-		},
-	};
-
 ############################################################################
 sub initialize	{	#05/31/00 8:50
 ############################################################################
-	my $self = shift;
-	my $attr = shift || $attributes;
+    my ($self, %p) = @_;
+
+    $p{Attributes}{id} ||= {};
+    $p{Attributes}{pv_id} ||= { dtype => 'Number'};
+    $p{Attributes}{ps_id} ||= { dtype => 'Number'};
+    $p{Attributes}{colnum} ||= { dtype => 'Number'},
+    $p{Attributes}{minimized} ||= { dtype => 'YesNo'},
+    $p{Attributes}{setupinfo} ||= {
+                dtype => 'Varchar',
+                maxlength => 8000,
+        };
 
 	$self->{ps} = new ePortal::PageSection;
-    $self->SUPER::initialize(Attributes => $attr);
+    $self->SUPER::initialize(%p);
 }##initialize
 
 

@@ -3,128 +3,61 @@
 # ePortal - WEB Based daily organizer
 # Author - S.Rusakov <rusakov_sa@users.sourceforge.net>
 #
-# Copyright (c) 2001 Sergey Rusakov.  All rights reserved.
+# Copyright (c) 2000-2003 Sergey Rusakov.  All rights reserved.
 # This program is free software; you can redistribute it
 # and/or modify it under the same terms as Perl itself.
 #
-# $Revision: 3.1 $
-# $Date: 2003/04/24 05:36:52 $
-# $Header: /home/cvsroot/ePortal/lib/ePortal/ThePersistent/DataType/Number.pm,v 3.1 2003/04/24 05:36:52 ras Exp $
 #
 #----------------------------------------------------------------------------
 # Original idea:   David Winters <winters@bigsnow.org>
 #----------------------------------------------------------------------------
 
 package ePortal::ThePersistent::DataType::Number;
-require 5.004;
+    use strict;
+    use Carp;
 
-use strict;
-use vars qw($VERSION $REVISION @ISA);
-
-use Carp;
-
-### copy version number from superclass ###
-$VERSION = $ePortal::ThePersistent::DataType::Base::VERSION;
-$REVISION = (qw$Revision: 3.1 $)[1];
-
+    our $VERSION = '4.1';
 
 sub new {
   my $proto = shift;
   my $class = ref($proto) || $proto;
+  my %p = @_;
 
-  my $self = {};  ### allocate a hash for the object's data ###
+  my $self = { Value => undef, %p };
+
   bless $self, $class;
-  $self->initialize(@_);  ### call hook for subclass initialization ###
+  $self->value($self->{default}) if $self->{default};
 
   return $self;
-}
-
-########################################################################
-# initialize
-########################################################################
-
-=head2 Constructor -- Creates the Number Object
-
-  eval {
-    my $number = new ePortal::ThePersistent::DataType::Number($value, $precision, $scale);
-  };
-  croak "Exception caught: $@" if $@;
-
-
-
-=cut
-
-sub initialize {
-	my($self, $precision, $scale, $value) = @_;
-    # ÏÎÌÅÍßÒÜ ÌÅÑÒÀÌÈ^^^^^^^^
-    #
-    # scale - is maxlength in characters
-    # precision is a number of digits after .
-
-	if ($precision+$scale == 0) {
-		$precision = length($value);
-	}
-
-	### set the attributes ###
-	$self->precision($precision);
-	$self->scale($scale);
-	$self->value($value) if ($value);
-	return;
 }
 
 ########################################################################
 # value
 ########################################################################
 
-=head2 value -- Accesses the Value of the Number
-
-  eval {
-    ### set the value ###
-    $number->value($value);
-
-    ### get the value ###
-    $value = $number->value();
-  };
-  croak "Exception caught: $@" if $@;
-
-
-=cut
-
 sub value {
   my $self = shift;
-
-  my $precision = $self->precision();
-  my $scale = $self->scale();
 
   ### set the value ###
   if (@_) {
     my $value = shift;
-    #$value = $value + 0;  ### force numeric context ###
-	# This not work with ID. ID is corrent when field defined but ID cannot be 0
+    $value = undef if defined($value) and $value eq '';
 
-	if (length($value) > $precision) {
-		confess "Length of value [$value] is greater then precision [$precision]";
-	}
+    if ($self->{maxlength} and (length($value) > $self->{maxlength})) {
+        carp "Length of value [$value] is greater then maxlength";
+    }
 
     $self->{Value} = $value;
 
   }
-	return unless defined wantarray;
+  return unless defined wantarray;
 
-  ### return the value ###
-	if ($scale == 0) {
+    ### return the value ###
+    if ($self->{scale} == 0) {
         return $self->{Value};
-	} else {
-        return sprintf '%.'.$scale.'f', $self->{Value};
-	}
-}
-
-########################################################################
-# get_compare_op
-########################################################################
-
-sub get_compare_op {
-  '<=>';  ### number comparison operator ###
+    } else {
+        return sprintf '%.'.$self->{scale}.'f', $self->{Value};
+    }
 }
 
 ############################################################################
@@ -140,50 +73,6 @@ sub sql_value   {   #09/30/02 2:34
     return $self->value();
 }##sql_value
 
-
-########################################################################
-#
-# --------------
-# PUBLIC METHODS
-# --------------
-#
-########################################################################
-
-########################################################################
-# precision  Accesses the Precision of the Number
-########################################################################
-
-sub precision {
-  my $self = shift;
-
-  ### set the precision ###
-  if (@_) {
-    my $precision = shift;
-    $precision = 0 if $precision == 0;
-    $self->{Data}->{Precision} = $precision;
-  }
-
-  ### return the precision ###
-  $self->{Data}->{Precision};
-}
-
-########################################################################
-# scale   Accesses the Scale of the Number
-########################################################################
-
-sub scale {
-  my $self = shift;
-
-  ### set the scale ###
-  if (@_) {
-    my $scale = shift;
-    $scale = 0 if $scale <= 0;
-    $self->{Data}->{Scale} = $scale;
-  }
-
-  ### return the scale ###
-  $self->{Data}->{Scale};
-}
 
 ########################################################################
 # Function:    _parse_number
@@ -211,5 +100,12 @@ sub _parse_number {
   ($before, $after);
 }
 
-### end of library ###
+############################################################################
+sub clear   {   #06/19/2003 11:38
+############################################################################
+    my $self = shift;
+    $self->value( $self->{default} );
+}##clear
+
+
 1;

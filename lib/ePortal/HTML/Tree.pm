@@ -3,25 +3,19 @@
 # ePortal - WEB Based daily organizer
 # Author - S.Rusakov <rusakov_sa@users.sourceforge.net>
 #
-# Copyright (c) 2001 Sergey Rusakov.  All rights reserved.
+# Copyright (c) 2000-2003 Sergey Rusakov.  All rights reserved.
 # This program is free software; you can redistribute it
 # and/or modify it under the same terms as Perl itself.
 #
-# $Revision: 3.2 $
-# $Date: 2003/04/24 05:36:52 $
-# $Header: /home/cvsroot/ePortal/lib/ePortal/HTML/Tree.pm,v 3.2 2003/04/24 05:36:52 ras Exp $
 #
 #----------------------------------------------------------------------------
 
 package ePortal::HTML::Tree;
-	our $VERSION = sprintf '%d.%03d', q$Revision: 3.2 $ =~ /: (\d+).(\d+)/;
+    our $VERSION = '4.1';
 
 	use ePortal::Global;
-	use ePortal::Utils;		# import logline, pick_lang
-	#use CGI qw/-nosticky -no_xhtml -no_debug/;	# CGI used in ePortal::Apache
+    use ePortal::Utils;     # import logline, pick_lang, CGI
 	use Carp;
-
-	my $T;
 
 =head1 NAME
 
@@ -73,23 +67,9 @@ sub new	{	#09/07/01 2:04
 
 
 ############################################################################
-# Internal function
-sub _self_or_default {
-############################################################################
-	my ($self) = $_[0];
-	return @_ if (defined $self &&
-		ref $self &&
-		(ref($self) eq 'ePortal::HTML::Tree') || UNIVERSAL::isa($self,'ePortal::HTML::Tree'));
-	$T = ePortal::HTML::List->new() unless defined $T;
-	unshift (@_, $T);
-    return wantarray ? @_ : $T;
-}
-
-
-############################################################################
 sub initialize	{	#09/07/01 2:07
 ############################################################################
-	my ($self, %p) = _self_or_default(@_);
+    my ($self, %p) = (@_);
 
 	# overwrite known initialization parameters
 	foreach my $key (keys %$self) {
@@ -113,7 +93,7 @@ Returns URL with parameters.
 ############################################################################
 sub self_url	{	#02/14/02 4:52
 ############################################################################
-	my ($self, %opt_args) = _self_or_default(@_);
+    my ($self, %opt_args) = (@_);
 
     my %args = $ePortal->m->request_args;
 	delete $args{$_} foreach (qw/t_c t_e/);
@@ -125,7 +105,7 @@ sub self_url	{	#02/14/02 4:52
 ############################################################################
 sub new_id	{	#03/15/02 2:25
 ############################################################################
-	my ($self) = _self_or_default(@_);
+    my ($self) = (@_);
 
 	while(exists $self->{obj_by_id}{$self->{id}}) {
 		$self->{id} ++;
@@ -143,18 +123,15 @@ sub new_id	{	#03/15/02 2:25
 ############################################################################
 sub handle_request	{	#09/07/01 2:08
 ############################################################################
-	my ($self, %p) = _self_or_default(@_);
+    my ($self, %p) = (@_);
 	$self->initialize(%p);
 
     my %args = $ePortal->m->request_args;           # this is %ARGS
 	my %state = $self->list_state(1);		# these keys we use
 	my $location;							# will return this
-	my $cache_key = $session{_session_id} . $self->{form_name};
 
 	# restore OLD state. Form name used as a key
-	my $old_state = $ePortal->m->cache(action => "retrieve", key => $cache_key);
-	$old_state = {} if not defined $old_state;
-
+    my $old_state = {};
 
 	# somebody pressed a button in the list form
 	if ($args{list_submit}) {
@@ -187,10 +164,6 @@ sub handle_request	{	#09/07/01 2:08
 	}
 
 
-	# save current state
-	%state = $self->list_state(1);
-	$ePortal->m->cache(action => 'store', key => $cache_key, value => \%state);
-
 	if ($location) {
 		$ePortal->m->comp("/redirect.mc", location => $location);
 	}
@@ -208,7 +181,7 @@ Main entrance
 ############################################################################
 sub draw	{	#12/17/01 3:15
 ############################################################################
-	my ($self, @p) = _self_or_default(@_);
+    my ($self, @p) = (@_);
 	my @out;
 
 	$self->initialize(@p);
@@ -342,7 +315,7 @@ Returns $id or new generated id.
 ############################################################################
 sub add_item	{	#03/15/02 2:42
 ############################################################################
-	my ($self, $id, $title, $parent_id, %p) = _self_or_default(@_);
+    my ($self, $id, $title, $parent_id, %p) = (@_);
 
 	$id = $self->new_id if (exists $self->{obj_by_id}{$id});
 
@@ -382,7 +355,7 @@ sub add_item	{	#03/15/02 2:42
 ############################################################################
 sub load_item	{	#03/18/02 11:05
 ############################################################################
-	my ($self, $obj, %p) = _self_or_default(@_);
+    my ($self, $obj, %p) = (@_);
 
 	$p{field_id} = 'id' unless $p{field_id};
 	$p{field_title} = 'title' unless $p{field_title};
@@ -396,18 +369,17 @@ sub load_item	{	#03/18/02 11:05
 
 	my $icon_edit_html = icon_edit($obj)     if $p{button_edit}   || $self->{button_edit};
 	my $icon_delete_html = icon_delete($obj) if $p{button_delete} || $self->{button_delete};
-	my $icon_access_html = icon_access($obj) if $p{button_access} || $self->{button_access};
 
     $self->add_item( $obj->value($p{field_id}),$obj->value($p{field_title}),
 		$parent, %pass_params,
-		html => $p{html} . $icon_edit_html . $icon_delete_html .$icon_access_html );
+        html => $p{html} . $icon_edit_html . $icon_delete_html );
 
 }##load_item
 
 ############################################################################
 sub load_items	{	#03/18/02 11:05
 ############################################################################
-	my ($self, $obj, %p) = _self_or_default(@_);
+    my ($self, $obj, %p) = (@_);
 
 	while($obj->restore_next) {
 		$self->load_item($obj, %p);
@@ -429,7 +401,7 @@ in C<add_item()> to override this defaults.
 ############################################################################
 sub class	{	#03/19/02 10:22
 ############################################################################
-	my ($self, $class, $depth) = _self_or_default(@_);
+    my ($self, $class, $depth) = (@_);
 	$depth *=1;
 	$self->{class}[$depth] = $class;
 }##class
@@ -448,7 +420,7 @@ in C<add_item()> to override this defaults.
 ############################################################################
 sub style	{	#03/19/02 10:22
 ############################################################################
-	my ($self, $style, $depth) = _self_or_default(@_);
+    my ($self, $style, $depth) = (@_);
 	$depth *=1;
 	$self->{style}[$depth] = $style;
 }##style
@@ -466,7 +438,7 @@ in C<add_item()> to override this defaults.
 ############################################################################
 sub url	{	#03/19/02 10:22
 ############################################################################
-	my ($self, $url, $depth) = _self_or_default(@_);
+    my ($self, $url, $depth) = (@_);
 	$depth *=1;
 	$self->{url}[$depth] = $url;
 }##url
@@ -482,7 +454,7 @@ Expand first $level levels. Collapse others.
  ############################################################################
  sub expand_level	{	#04/01/02 1:37
  ############################################################################
-	my ($self, $depth) = _self_or_default(@_);
+    my ($self, $depth) = (@_);
 
  	foreach my $id (keys %{$self->{obj_by_id}}) {
 		my $item = $self->{obj_by_id}{$id};
@@ -501,7 +473,7 @@ Expand tree to make the item visible. Collapse all others.
 ############################################################################
 sub expand_item	{	#04/01/02 1:40
 ############################################################################
-	my ($self, $item, $expand_children) = _self_or_default(@_);
+    my ($self, $item, $expand_children) = (@_);
 
 	my $the_item = $self->{obj_by_id}{$item};
 

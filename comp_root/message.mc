@@ -2,13 +2,10 @@
 %# ePortal - WEB Based daily organizer
 %# Author - S.Rusakov <rusakov_sa@users.sourceforge.net>
 %#
-%# Copyright (c) 2001 Sergey Rusakov.  All rights reserved.
+%# Copyright (c) 2000-2003 Sergey Rusakov.  All rights reserved.
 %# This program is free software; you can redistribute it
 %# and/or modify it under the same terms as Perl itself.
 %#
-%# $Revision: 3.1 $
-%# $Date: 2003/04/24 05:36:51 $
-%# $Header: /home/cvsroot/ePortal/comp_root/message.mc,v 3.1 2003/04/24 05:36:51 ras Exp $
 %#
 %#----------------------------------------------------------------------------
 % if ($ErrorMessage or $GoodMessage) {

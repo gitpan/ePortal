@@ -16,7 +16,6 @@
 	<UL>
 
 		<LI><A HREF="#%24eportal">$ePortal</A></LI>
-		<LI><A HREF="#%25eportal_servers">%ePortal_servers</A></LI>
 		<LI><A HREF="#%24dbh">$dbh</A></LI>
 		<LI><A HREF="#%25session">%session</A></LI>
 		<LI><A HREF="#%25gdata">%gdata</A></LI>
@@ -39,15 +38,11 @@ when you need these variables.</P>
 <H2><A NAME="%24eportal">$ePortal</A></H2>
 <P>Global object blessed to ePortal::Server. This is main engine.</P>
 <P>
-<H2><A NAME="%25eportal_servers">%ePortal_servers</A></H2>
-<P>Cache of created servers. User in Apache environment for hosting more than
-one virtual server.</P>
-<P>
 <H2><A NAME="%24dbh">$dbh</A></H2>
 <P>Global database handle</P>
 <P>
 <H2><A NAME="%25session">%session</A></H2>
-<P>This is tied hash to Apache::Session</P>
+<P>This is hash of Session data storage</P>
 <P>
 <H2><A NAME="%25gdata">%gdata</A></H2>
 <P>This is temporary hash object. It exists only during apache request

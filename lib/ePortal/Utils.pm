@@ -3,7 +3,7 @@
 # ePortal - WEB Based daily organizer
 # Author - S.Rusakov <rusakov_sa@users.sourceforge.net>
 #
-# Copyright (c) 2001 Sergey Rusakov.  All rights reserved.
+# Copyright (c) 2000-2003 Sergey Rusakov.  All rights reserved.
 # This program is free software; you can redistribute it
 # and/or modify it under the same terms as Perl itself.
 #
@@ -11,9 +11,6 @@
 # John Neystadt <john@neystadt.org>
 # I duplicate it here because there is no PPM for it undef WinXX
 #
-# $Revision: 3.3 $
-# $Date: 2003/04/24 05:36:52 $
-# $Header: /home/cvsroot/ePortal/lib/ePortal/Utils.pm,v 3.3 2003/04/24 05:36:52 ras Exp $
 #
 #----------------------------------------------------------------------------
 
@@ -30,32 +27,33 @@ Some functions are very useful anywhere. They are collected here.
 =cut
 
 package ePortal::Utils;
-    our $VERSION = sprintf '%d.%03d', q$Revision: 3.3 $ =~ /: (\d+).(\d+)/;
+    our $VERSION = '4.1';
+
+    use CGI qw/-nosticky -no_xhtml -no_debug/;
+    CGI->compile(':all');
+    #CGI::autoEscape(0);
+
+    use ePortal::Global;
 
     use Carp qw/croak/;
-    use ePortal::Global;
-    #use CGI qw/-nosticky -no_xhtml -no_debug/; # CGI used in ePortal::Apache
-    CGI::autoEscape(0) if $CGI::VERSION;
     use Image::Size;
     use FileHandle();
     use Fcntl(':flock');
-    #use Convert::Cyrillic ();
     use Params::Validate qw/:types/;
     use Error qw/:try/;
     use ePortal::Exception;
 
-    require Exporter;
+    use base qw/Exporter/;
     our @EXPORT = qw/
                     &logline &pick_lang &cstocs
                     &empty_td &empty_tr &empty_table
                     &href &plink &img
-                    &icon_access &icon_edit &icon_delete &icon_export &icon_tool
+                    &icon_edit &icon_delete &icon_export &icon_tool
                     &filter_html
                     &filter_txt &filter_txt_title
                     &filter_auto_title
                     &date_to_sql
                     /;
-    our @ISA = qw/Exporter/;
 
 
 
@@ -560,36 +558,6 @@ sub icon_tool   {   #06/14/02 9:52
 
 
 ############################################################################
-# Function: icon_access
-# Description: make HTML code for icon
-# Parameters:
-#   Object
-# Returns:
-#   HTML code
-#
-############################################################################
-sub icon_access {   #09/11/01 12:55
-############################################################################
-    my $obj = shift;
-    my %p = @_;
-
-    return if not ref $obj;
-    return if ! UNIVERSAL::isa($obj,'ePortal::ThePersistent::ACL'); # ACL not supported
-    return if ! $obj->acl_check('a');       # Admin privilege
-
-    my $objid = $obj->id;
-    my $objtype = ref $obj;
-    $objtype =~ s/::View\d\d$//;        # Remove ::View subclassing
-    return if ($objid == 0 or $objtype eq '');
-
-    #my $href = href("/acl.htm", objid => $objid, objtype => $objtype);
-
-    return img( $p{dialog}? (src => "/images/ePortal/dlg_acl.png") : (src => "/images/ePortal/access.gif"),
-        href => "javascript:open_acl_window('$objid', '$objtype');",
-        title => pick_lang(rus => "Изменить права доступа", eng => "ACL editor"));
-}##icon_access
-
-############################################################################
 # Function: icon_delete
 # Description: make HTML code for icon
 # Parameters:
@@ -628,7 +596,7 @@ sub icon_delete {   #09/11/01 3:34
 #        $p{done} = href($ePortal->r->uri, %args);
 #    }
 
-    my $href = href("/delete.htm", objid => $objid, objtype => $objtype, 
+    my $href = href("/delete.htm", objid => $objid, objtype => $objtype,
         $p{done} ? (done => $p{done}) : ());
 
     my %opt;
@@ -681,7 +649,7 @@ sub icon_edit   {   #09/11/01 3:40
 #        $p{done} = href($ePortal->r->uri, %args);
 #    }
 
-    my $href = href( $p{url}, objid => $objid, 
+    my $href = href( $p{url}, objid => $objid,
             $p{done}? (done => $p{done}) : ());
 
     if ($p{text}) {
@@ -927,7 +895,8 @@ sub HTML::Mason::Request::call_next_filtered    {   #02/21/02 1:46
 sub escape  {   #03/18/02 10:49
 ############################################################################
     my $str = shift;
-    if ($Apache::Util::VERSION) {
+#    if ($Apache::Util::VERSION) {
+    if (ref("Apache::Util::escape_uri")) {
         $str = Apache::Util::escape_uri($str);
     } else {
         $str =~ s/\%/%25/ogs;   # Percent FIRST!

@@ -2,54 +2,106 @@
 %# ePortal - WEB Based daily organizer
 %# Author - S.Rusakov <rusakov_sa@users.sourceforge.net>
 %#
-%# Copyright (c) 2001 Sergey Rusakov.  All rights reserved.
+%# Copyright (c) 2000-2003 Sergey Rusakov.  All rights reserved.
 %# This program is free software; you can redistribute it
 %# and/or modify it under the same terms as Perl itself.
 %#
-%# $Revision: 3.1 $
-%# $Date: 2003/04/24 05:36:51 $
-%# $Header: /home/cvsroot/ePortal/comp_root/admin/groups_list.htm,v 3.1 2003/04/24 05:36:51 ras Exp $
 %#
 %#----------------------------------------------------------------------------
 %#
 %# Description: View list of ePortal groups
 %#----------------------------------------------------------------------------
+<%perl>
+  my $extra_info = img(src=>'/images/icons/memo.gif');
+  $extra_info .= plink({rus => "Добавить группу", eng => "New group"}, href => href('groups_edit.htm', objid=>0));
+  $extra_info .= " &nbsp ";
 
-<% $list->draw_list %>
+  my $show_hidden = $ARGS{show_hidden};
+  delete $ARGS{show_hidden};
+  if ( $show_hidden ) {
+    $extra_info .= plink({rus => 'Скрыть "скрытые" группы', eng => 'Hide "hidden" groups'}, href => href($ENV{SCRIPT_NAME}, %ARGS));
+  } else {
+    $extra_info .= plink({rus => 'Показать "скрытые" группы', eng => 'Show "hidden" groups'}, href => href($ENV{SCRIPT_NAME}, %ARGS, show_hidden=>1));
+  }  
+</%perl>
 
+<& /search_dialog.mc, align=> 'right', extra => $extra_info &>
+<%perl>
+  my (@where, @bind);
+  push @where, 'hidden=0' if ! $show_hidden;
+  if ( $session{_text} ne '' ) {
+    push @where, "g.groupname like ? OR g.groupdesc like ?";
+    push @bind, '%'.$session{_text}.'%', '%'.$session{_text}.'%';
+  }
+</%perl>
+<&| /list.mc, submit => 1, restore_where => {where => \@where, bind => \@bind},
+    obj => new ePortal::epGroup(
+      SQL => "SELECT g.*, count(ug.username) as users_count
+              FROM epGroup g
+              LEFT JOIN epUsrGrp ug on g.groupname=ug.groupname",
+      GroupBy => 'g.groupname',
+      ), &>
 
+  <&| /list.mc:row &>
+  <& /list.mc:column_image &>
+  <& /list.mc:column, id => 'groupname', 
+            order_by => 'groupname',
+            url => href('groups_edit.htm', objid => $_->id) &>
+  <& /list.mc:column, id => 'groupdesc', 
+            order_by => 'groupdesc' &>
+  <& /list.mc:column, id => 'users_count', 
+            order_by => 'users_count',
+            title => pick_lang(rus => "Пользователей", eng => 'Users'), 
+            -align => 'center' &>
+  <& /list.mc:column_checkbox &>
+  <& /list.mc:column_delete &>
+  </&><!-- row -->
+
+% if ($_->hidden or $_->ext_group) {
+  <&| /list.mc:extra_row &>
+    <% $_->ext_group
+      ? CGI::font({-color => 'green'}, pick_lang(rus => " Группа LDAP ", eng => " LDAP group "))
+      : undef
+      %>
+    <% $_->hidden 
+      ? CGI::font({-color => 'red'}, pick_lang(rus => " Скрытая группа ", eng => " Hidden group "))
+      : undef
+      %>
+  </&>
+% }
+
+  <& /list.mc:action_bar, popup_menu => {
+      -values => [qw/ hide unhide delete /],
+      -labels => {
+        hide => pick_lang(rus => "скрыть", eng => "hide"),
+        unhide => pick_lang(rus => "показать", eng => "unhide"),
+        delete => pick_lang(rus => "удалить", eng => "delete"),
+      }
+    } &>
+</&><!-- list -->
 
 %#=== @metags onStartRequest ====================================================
 <%method onStartRequest><%perl>
-  $search_object = new ePortal::Dual::SimpleSearch;
-  $search_object->handle_request( objid => $ENV{SCRIPT_NAME} );
+  my $action = $m->comp('/list.mc:list_action');
+  if ( $action ) {
+    my $G = new ePortal::epGroup;
+    foreach my $id ($m->comp('/list.mc:checkboxes')) {
+      next if ! $G->restore($id);
+      if ($action eq 'hide') {
+        $G->hidden(1);
+        $G->update;
+      }
+      if ($action eq 'unhide') {
+        $G->hidden(0);
+        $G->update;
+      }
+      if ($action eq 'delete') {
+        $G->delete;
+      }
 
-  $obj = new ePortal::epGroup(
-    SQL => "SELECT epGroup.*, count(epUsrGrp.username) as users_count
-            FROM epGroup
-            LEFT JOIN epUsrGrp on epGroup.groupname=epUsrGrp.groupname
-    ",
-    GroupBy => 'epGroup.groupname',
-    );
-
-  $list = new ePortal::HTML::List(obj => $obj, class => "smallfont", edit_url => 'groups_edit.htm', );
-	$list->add_column_image();
-	$list->add_column( id => "groupname", url	=> "groups_edit.htm?objid=#id#");
-	$list->add_column( id	=> "groupdesc");
-  $list->add_column( id => "users_count", title => pick_lang(rus => "Пользователей", eng => 'Users'), align => 'center');
-  $list->add_column_system(
-    delete  => 1, edit=>1);
-
-  my $location = $list->handle_request;
-  return $location if $location;
-
-  my @where;
-  if ( $search_object->Text ne '' ) {
-    my $a = $search_object->Text;
-    push @where, "groupname like '$a%' OR groupdesc like '$a%'";
+    }
+    return $m->comp('/list.mc:self_url');
   }
-
-  $list->{obj}->restore_where($list->restore_parameters, where => \@where);
 </%perl></%method>
 
 
@@ -57,36 +109,3 @@
 <%attr>
 Title => {rus => "Список групп пользователей ePortal", eng => "Users groups of ePortal"}
 </%attr>
-
-%#=== @METAGS flags =========================================================
-<%flags>
-inherit => "autohandler_users.mc"
-</%flags>
-
-
-%#=== @metags once =========================================================
-<%once>
-my ($list, $obj);
-our($search_object);
-</%once>
-
-%#=== @metags cleanup =========================================================
-<%cleanup>
-($list, $obj) = ();
-($search_object)=();
-</%cleanup>
-
-
-
-
-%#=== @metags MenuItems ====================================================
-<%method MenuItems><%perl>
-  return [
-  @{$m->comp("PARENT:MenuItems")},
-  ["---" => "---"],
-  ["" => ""],
-  ["html" => $search_object->draw_dialog() ],
-  ];
-</%perl></%method>
-
-

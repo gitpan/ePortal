@@ -3,13 +3,10 @@
 # ePortal - WEB Based daily organizer
 # Author - S.Rusakov <rusakov_sa@users.sourceforge.net>
 #
-# Copyright (c) 2001 Sergey Rusakov.  All rights reserved.
+# Copyright (c) 2000-2003 Sergey Rusakov.  All rights reserved.
 # This program is free software; you can redistribute it
 # and/or modify it under the same terms as Perl itself.
 #
-# $Revision: 3.2 $
-# $Date: 2003/04/24 05:36:52 $
-# $Header: /home/cvsroot/ePortal/lib/ePortal/ThePersistent/ParentACL.pm,v 3.2 2003/04/24 05:36:52 ras Exp $
 #
 #----------------------------------------------------------------------------
 # ACL (Access Control List) support for ThePersistent classes.
@@ -32,10 +29,10 @@ B<ePortal::ThePersistent::ParentACL> implements Access Control Lists
 
 =item *
 
-Object is inaccessible if parent is not exists. This is VERY IMPORTANT. 
+Object is inaccessible if parent is not exists. This is VERY IMPORTANT.
 Even Admin may not access this object. This is like constraint.
 
-=item * 
+=item *
 
 Object is C<readable> if parent too.
 
@@ -44,47 +41,35 @@ Object is C<readable> if parent too.
 Object if C<modifiable> including ability to delete if parent allows
 C<xacl_check_update()>
 
-=item * 
+=item *
 
-New object is allowed if parent allows C<xacl_check_children()> which check 
+New object is allowed if parent allows C<xacl_check_children()> which check
 by default C<xacl_check_update()>
 
-=item * 
+=item *
 
-Admin privileges is not a sense for C<ParentACL> package but defaults to 
+Admin privileges is not a sense for C<ParentACL> package but defaults to
 C<xacl_check_admin()> of the parent.
 
 =back
 
 =head1 METHODS
 
-See 
-L<ePortal::ThePersistent::ExtendedACL|ePortal::ThePersistent::ExtendedACL> 
+See
+L<ePortal::ThePersistent::ExtendedACL|ePortal::ThePersistent::ExtendedACL>
 for details.
 
 =cut
 
 package ePortal::ThePersistent::ParentACL;
-    use base qw/ePortal::ThePersistent::ExtendedACL/;
-    our $VERSION = sprintf '%d.%03d', q$Revision: 3.2 $ =~ /: (\d+).(\d+)/;
+    use base qw/ePortal::ThePersistent::ACL/;
+    our $VERSION = '4.1';
 
     use ePortal::Global;
     use ePortal::Utils;     # import logline, pick_lang
 
     use Params::Validate qw/:types/;
     use Error qw/:try/;
-
-
-
-
-############################################################################
-sub initialize  {   #04/25/02 10:29
-############################################################################
-    my ($self, %p) = @_;
-
-    # Call SUPER initialization function. No additional parameters!
-    $self->SUPER::initialize(%p, XACL_ON_PARENT => 1);
-}##initialize
 
 
 

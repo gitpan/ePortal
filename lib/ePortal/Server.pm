@@ -3,13 +3,10 @@
 # ePortal - WEB Based daily organizer
 # Author - S.Rusakov <rusakov_sa@users.sourceforge.net>
 #
-# Copyright (c) 2001 Sergey Rusakov.  All rights reserved.
+# Copyright (c) 2000-2003 Sergey Rusakov.  All rights reserved.
 # This program is free software; you can redistribute it
 # and/or modify it under the same terms as Perl itself.
 #
-# $Revision: 3.13 $
-# $Date: 2003/04/24 05:36:52 $
-# $Header: /home/cvsroot/ePortal/lib/ePortal/Server.pm,v 3.13 2003/04/24 05:36:52 ras Exp $
 #
 #----------------------------------------------------------------------------
 #
@@ -24,9 +21,9 @@ ePortal::Server - The core module of ePortal project.
 
 =head1 SYNOPSIS
 
-ePortal is a set of perl packages and HTML::Mason components to easy 
-implement intranet WEB site for a company. ePortal is writen with a help of 
-Apache, mod_perl, HTML::Mason. The current version of ePortal use MySQL as 
+ePortal is a set of perl packages and HTML::Mason components to easy
+implement intranet WEB site for a company. ePortal is writen with a help of
+Apache, mod_perl, HTML::Mason. The current version of ePortal use MySQL as
 database backend.
 
 =head1 METHODS
@@ -35,8 +32,7 @@ database backend.
 
 package ePortal::Server;
 	require 5.6.1;
-    our $REVISION = sprintf '%d.%03d', q$Revision: 3.13 $ =~ /: (\d+).(\d+)/;
-    our $VERSION = '3.2';
+    our $VERSION = '4.1';
 
     use ePortal::Global;
     use ePortal::Utils;
@@ -52,7 +48,9 @@ package ePortal::Server;
     use Mail::Sendmail ();
     use File::Basename ();
     use Data::Dumper;           # Sometimes I use it (print config)
-    use MD5;
+    use Digest::MD5;
+    use List::Util qw//;
+    use URI;
 
     # Exception handling and parameters validating modules
     use Error qw/:try/;
@@ -60,8 +58,10 @@ package ePortal::Server;
     use Params::Validate qw/:types/;
 
     # ePortal's packages
-    use ePortal::ApplicationConfig;
+    use ePortal::Auth::LDAP;
+    use ePortal::Attachment;
     use ePortal::Catalog;
+    use ePortal::CronJob;
     use ePortal::epGroup;
     use ePortal::epUser;
     use ePortal::Exception;
@@ -69,14 +69,17 @@ package ePortal::Server;
     use ePortal::PopupEvent;
 
     # ThePersistent packages
+    use ePortal::ThePersistent::Dual;
+    use ePortal::ThePersistent::Session;
     use ePortal::ThePersistent::ExtendedACL;
     use ePortal::ThePersistent::UserConfig;
     use ePortal::ThePersistent::UserConfig;
     use ePortal::ThePersistent::Utils;
+    use ePortal::ThePersistent::Tools qw/table_exists/; # table exists
 
 
     # Some usefull read only internal variables
-    use ePortal::MethodMaker( read_only => [qw/ user username config_file/]);
+    use ePortal::MethodMaker( read_only => [qw/ user config_file/]);
 
     # Main configuration parameters
     my @MAIN_CONFIG_PARAMETERS = (qw/ dbi_source dbi_username dbi_password admin_mode /);
@@ -84,7 +87,7 @@ package ePortal::Server;
 
     my @GENERAL_CONFIG_PARAMETERS = (qw/
             admin debug log_filename log_charset disk_charset
-            vhost applications
+            vhost comp_root applications storage_version
             days_keep_sessions language refresh_interval date_field_style
             smtp_server www_server mail_domain
             ldap_server ldap_base ldap_binddn ldap_bindpw ldap_charset
@@ -93,12 +96,10 @@ package ePortal::Server;
             /);
     eval 'use ePortal::MethodMaker( read_only => [@GENERAL_CONFIG_PARAMETERS] );';
 
-    # Global hash to store vhost instances of ePortal
-    # This is used for multihome servers
-    our (%ePortal_server);
-
     # True if the module loaded under Apache HTTP server
-    our $RUNNING_UNDER_APACHE = $ENV{MOD_PERL} || $ENV{SERVER_SOFTWARE};
+    our $RUNNING_UNDER_APACHE = $ENV{MOD_PERL};
+    our $MAX_GROUP_NAME_LENGTH = 60;    # maximum length of LDAP DN for group name
+    our $STORAGE_VERSION = 11;
 
 ############################################################################
 # Function: new
@@ -121,6 +122,7 @@ sub new {   #12/26/00 3:34
 
     my $self = {
         config_file => $p{config_file},
+        username => 'internal',
         };
     bless $self, $class;
 
@@ -141,26 +143,21 @@ sub new {   #12/26/00 3:34
 # Description: new() is a general class initializer
 #   initialize() does all initialization with accordance with configs
 # Parameters:
+#   skip_applications=1  do not create application objects
 # Returns:
 #
 ############################################################################
 sub initialize  {   #03/21/03 3:51
 ############################################################################
-    my $self = shift;
+    my ($self, %p) = @_;
 
     $self->DBConnect;
-    $self->config_load;
+    throw ePortal::Exception::DatabaseNotConfigured
+        if ! table_exists($self->DBConnect, 'UserConfig');
 
-    # Load application modules
-    foreach my $app_name ($self->ApplicationsConfigured) {
-        eval "use ePortal::App::$app_name;";
-        if ( $@ ) {
-            throw ePortal::Exception::Fatal(-text => "Cannot load application module $app_name: $@");
-        } else {
-            $self->{_application_object}{$app_name} = "ePortal::App::$app_name"->new();
-            logline('info', "Loaded application module $app_name");
-        }
-    }
+    $self->config_load;
+    throw ePortal::Exception::DatabaseNotConfigured
+        if $self->storage_version != $STORAGE_VERSION;
 
     # Precreate some objects
     $self->{user} = new ePortal::epUser;
@@ -170,10 +167,20 @@ sub initialize  {   #03/21/03 3:51
 sub config_load {   #03/17/03 3:38
 ############################################################################
     my $self = shift;
-    # Load configuration parameters
-    foreach my $par (@GENERAL_CONFIG_PARAMETERS) {
-        $self->{$par} = $self->Config($par);
+
+    # Try load config hash
+    my $c = $self->Config('config');
+    if ( ref($c) eq 'HASH' ) {
+        foreach my $par (@GENERAL_CONFIG_PARAMETERS) {
+            $self->{$par} = $c->{$par};
+        }
+
+    } else {    # Old style 'row per parameter' config
+        foreach my $par (@GENERAL_CONFIG_PARAMETERS) {
+            $self->{$par} = $self->Config($par);
+        }
     }
+
     # Initialize some of the parameters to empty values
     $self->{admin} = [] if ref($self->{admin}) ne 'ARRAY';
     $self->{applications} = {} if ref($self->{applications}) ne 'HASH';
@@ -185,10 +192,13 @@ sub config_save {   #03/17/03 3:38
 ############################################################################
     my $self = shift;
 
+    my $c = {};
+
     # Load configuration parameters
     foreach my $par (@GENERAL_CONFIG_PARAMETERS) {
-        $self->{$par} = $self->Config($par, $self->{$par});
+        $c->{$par} = $self->{$par};
     }
+    $self->Config('config', $c);
 }##config_save
 
 ############################################################################
@@ -211,7 +221,7 @@ sub config_main_parameters  {   #03/13/03 1:41
         );
 
     if ($RUNNING_UNDER_APACHE) {
-        throw ePortal::Exception::Fatal( -text => "Apache::Request object \$r is not available.")
+        throw ePortal::Exception::Fatal( -text => 'Apache::Request object \$r is not available.')
             if ! $self->r;
         $hash{dbi_source}   ||= $self->r->dir_config('ePortal_dbi_source');
         $hash{dbi_username} ||= $self->r->dir_config('ePortal_dbi_username');
@@ -241,17 +251,15 @@ sub config_main_parameters  {   #03/13/03 1:41
 
 
 
-=head2 Application(app_name, (options hash))
+=head2 Application()
+
+ $app = $ePortal->Application('appname');
 
 Returns ePortal::Application object or undef if no such object exists.
 
 Returns $ePortal itself for application called 'ePortal'.
 
-Returns array of registered applications names if app_name is undef.
-
-Options:
-
-throw => 1 throw Exception::ApplicationNotInstalled if the application is
+throws Exception::ApplicationNotInstalled if the application is
 not installed.
 
 =cut
@@ -265,42 +273,29 @@ sub Application {   #04/26/02 12:47
     my %p = @_;
 
     return $self if $app_name eq 'ePortal';
+    return $self->{_application_object}{$app_name} if exists $self->{_application_object}{$app_name};
 
-    if ( exists $self->{_application_object}{$app_name} ) {
-        return $self->{_application_object}{$app_name};
-    }
+    eval "use ePortal::App::$app_name;";
+    if ( $@ ) {
+        logline ('emerg', "Cannot load Application module [$app_name]: $@");
+        throw ePortal::Exception::ApplicationNotInstalled(-app => $app_name); 
+    } 
 
-    if ($p{unconfigured}) {
-        eval "use ePortal::App::$app_name;";
-        throw ePortal::Exception::ApplicationNotInstalled(-text => $app_name)
-            if $@;
-        return $self->{_application_object}{$app_name} = "ePortal::App::$app_name"->new();
-    }
+    my $app = "ePortal::App::$app_name"->new();
+    logline('info', "Created Application object $app_name");
 
-    throw ePortal::Exception::ApplicationNotInstalled(-text => $app_name)
-        if $p{throw};
+    throw ePortal::Exception::DatabaseNotConfigured(-app => $app_name)
+        if $app->storage_version != $ePortal::Server::STORAGE_VERSION and 
+           ! $p{skip_storage_version_check} ;
 
-    return undef;
+    $self->{_application_object}{$app_name} = $app;
+
+    return $app;
 }##Application
 
 
-=head2 ApplicationsConfigured()
 
-Returns array of installed and configured application names.
 
-=cut
-
-############################################################################
-sub ApplicationsConfigured  {   #04/15/03 8:56
-############################################################################
-    my $self = shift;
-    my @app;
-
-    foreach (keys %{ $self->{applications} }) {
-        push @app, $_ if $self->{applications}{$_}; # if configured
-    }    
-    return @app;
-}##ApplicationsConfigured
 
 
 =head2 ApplicationsInstalled()
@@ -341,57 +336,22 @@ sub ApplicationName {   #05/15/02 9:02
     'ePortal';
 }##ApplicationName
 
+
 ############################################################################
-# Function: handle_request
-# Description: Подготовка глобального объекта ePortal к обработке
-# HTTP запроса.
-# Parameters: $r - Apache request
-# Returns: Nothing
-#
-############################################################################
-sub handle_request  {   #12/26/00 3:17
+sub username    {   #06/19/2003 4:46
 ############################################################################
     my $self = shift;
-    my $r = shift;      # Apache::Request
 
-    # --------------------------------------------------------------------
-    # User recognition system
-    #
-    RECOGNIZE_USER: {
+    if (@_ and !$self->admin_mode) {
+        my $newusername = shift;
+        my ($un, $reason) = $self->CheckUserAccount( user => $self->{user},
+                                username => $newusername, quick => 1 );
 
-        my $U = $self->{user};
-
-        if ($self->admin_mode) {
-            $U->restore('admin');
-            $U->UserName('admin');
-            $U->FullName('Administrator');
-            $U->Enabled(1);
-            $U->save;
-        } else { # This is normal mode
-            last RECOGNIZE_USER if ! $r->connection->user;
-            last RECOGNIZE_USER if $self->CheckUserAccount(
-                user => $U,
-                username => $r->connection->user,
-                quick => 1 );
-        }
-        $self->{username} = $U->username;
-
-    } # end_of_RECOGNIZE_USER
-
-
-    # Browser recognition system
-    if ($ENV{HTTP_USER_AGENT} =~ /MSIE ([\d\.]+)/o) {
-        $self->{MSIE} = 1;
-        $self->{JavaScript} = $1;
-    } else {
-        $self->{MSIE} = undef;
-        $self->{JavaScript} = undef;
+        $self->{username} = $un;
     }
 
-    logline('info', "Connected user[$self->{username}], session[$session{_session_id}]");
-    1;
-}##handle_request
-
+    return $self->{username};
+}##username
 
 
 
@@ -442,25 +402,13 @@ sub CheckUserAccount    {   #06/21/01 2:00
     $p{user} ||= new ePortal::epUser;
 
     $self->_CheckUserAccount_username(\%p);
+    $self->_CheckUserAccount_restore(\%p);
 
     if ($p{quick}) {    # quick check
-        $self->_CheckUserAccount_restore(\%p);
         $self->_CheckUserAccount_require_restored(\%p);
         $self->_CheckUserAccount_disabled(\%p);
-        $self->_CheckUserAccount_last_checked_days(\%p);
-        if ( $p{last_checked_days} ) {
-            if (! $p{user}->ext_user) {
-                $self->_CheckUserAccount_restore(\%p);
-                $self->_CheckUserAccount_disabled(\%p);
-            } else {    
-                $self->_CheckUserAccount_ldap_connect(\%p);
-                $self->_CheckUserAccount_ldap_search(\%p);
-                $self->_CheckUserAccount_ldap_refresh_info(\%p);
-            }
-        }
 
-    } else { # Complete check
-        $self->_CheckUserAccount_restore(\%p);
+    } else { # Complete check WITH PASSWORD
         if ($p{user_exists} and !$p{user}->ext_user) {
             $self->_CheckUserAccount_disabled(\%p);
             $self->_CheckUserAccount_password(\%p);
@@ -560,7 +508,7 @@ sub _CheckUserAccount_last_checked_days {   #10/31/02 2:54
     my ($self, $p) = @_;
     return if $p->{reason};
 
-    my @last_checked = $p->{user}->attribute_object('last_checked')->array;
+    my @last_checked = $p->{user}->attribute('last_checked')->array;
     @last_checked = (1970,1,1) if @last_checked != 3;
     if ( ! Date::Calc::check_date(@last_checked) ) {
         logline('error', "CheckUserAccout: [last_checked] date from DB is not valid!: ",@last_checked);
@@ -577,22 +525,13 @@ sub _CheckUserAccount_ldap_connect {   #10/31/02 2:54
     my ($self, $p) = @_;
     return if $p->{reason};
 
-    eval "
-    require Net::LDAP;
-    require Unicode::Map8;
-    require Unicode::String;
-    ";
-    die $@ if $@;    
-
-    if (!$self->ldap_server) {
-        $p->{reason} = 'bad_user';
-        return;
-    }
-
-    $p->{ldap_server} = $self->ldap_connect();
-    if (!$p->{ldap_server}) {
+    try {
+        $p->{auth_ldap} = new ePortal::Auth::LDAP($p->{username});
+    } catch ePortal::Exception::Fatal with {
+        my $E = shift;
+        logline('error', "LDAP error: $E");
         $p->{reason} = 'system_error';
-    }
+    };
 }##_CheckUserAccount_ldap_connect
 
 
@@ -602,13 +541,7 @@ sub _CheckUserAccount_ldap_search {   #10/31/02 2:54
     my ($self, $p) = @_;
     return if $p->{reason};
 
-    $p->{ldap_entry} = $self->ldap_search_entry(
-            $p->{ldap_server},
-            $self->ldap_uid_attr, $p->{username});
-
-    if (!$p->{ldap_entry}) {
-        $p->{reason} = 'bad_user';
-    }
+    $p->{reason} = 'bad_user' if ! $p->{auth_ldap}->check_account;
 }##_CheckUserAccount_ldap_search
 
 
@@ -618,11 +551,7 @@ sub _CheckUserAccount_ldap_password{   #10/31/02 2:54
     my ($self, $p) = @_;
     return if $p->{reason};
 
-    my $test_connect = $self->ldap_connect(
-                            $p->{ldap_entry}->dn, $p->{password});
-    if (!$test_connect) {
-        $p->{reason} = 'bad_password';
-    }
+    $p->{reason} = 'bad_password' if ! $p->{auth_ldap}->check_password($p->{password});
 }##_CheckUserAccount_ldap_password
 
 
@@ -632,128 +561,41 @@ sub _CheckUserAccount_ldap_refresh_info {   #10/31/02 2:54
     my ($self, $p) = @_;
     return if $p->{reason};
 
-    my $ldap_charset = $self->ldap_charset;
+    # General information about the user
     $p->{user}->last_checked('now');
     $p->{user}->UserName(   $p->{username} );
-    $p->{user}->DN(         $p->{ldap_entry}->dn);
-    $p->{user}->FullName(   cstocs($ldap_charset,'WIN', $p->{ldap_entry}->get_value($self->ldap_fullname_attr)));
-    $p->{user}->Title(      cstocs($ldap_charset,'WIN', $p->{ldap_entry}->get_value($self->ldap_title_attr)));
-    $p->{user}->Department( cstocs($ldap_charset,'WIN', $p->{ldap_entry}->get_value($self->ldap_ou_attr)));
+    $p->{user}->DN(         $p->{auth_ldap}->dn);
+    $p->{user}->FullName(   $p->{auth_ldap}->full_name );
+    $p->{user}->Title(      $p->{auth_ldap}->title );
+    $p->{user}->Department( $p->{auth_ldap}->department );
     $p->{user}->ext_user( 1 );
     $p->{user}->Enabled( 1 );
 
-    my $res = $p->{user_exists} ? $p->{user}->update : $p->{user}->insert;
+    my $res;
+    if ( $p->{user_exists} ) {
+        $res = $p->{user}->update;
+    } else {
+        $res = $p->{user}->insert;
+
+        # For new users refresh group membership immediately
+        my $G = new ePortal::epGroup;
+        foreach my $g ($p->{auth_ldap}->membership) {
+            if ($G->restore($g)) {
+                $p->{user}->add_groups($g);
+            }    
+        }    
+    }
+
     $p->{user_exists} = 1;
     if (!$res) {
         $p->{reason} = 'system_error';
     }
+
 }##_CheckUserAccount_ldap_refresh_info
 
 
 
 
-
-
-############################################################################
-# Function: ldap_connect
-# Description: internal function. Used in CheckUserAccount and ValidateUserAccount
-# Parameters: optional username and password to connect
-# Returns: LDAP server object or undef
-#
-############################################################################
-sub ldap_connect    {   #10/30/02 4:08
-############################################################################
-    my ($self, $connect_username, $connect_password) = Params::Validate::validate_with( params => \@_, spec => [
-        { type => OBJECT },
-        { type => UNDEF | SCALAR, optional => 1},
-        { type => UNDEF | SCALAR, optional => 1} ] );
-
-    if (!$self->ldap_server) {
-        logline('emerg', 'ldap_connect: ldap_server parameter is empty in ePortal.conf');
-        return undef;
-    }
-
-    # Connect to LDAP server
-    if ($connect_username eq '') {
-        $connect_username = $self->ldap_binddn;
-        $connect_password = $self->ldap_bindpw;
-    }
-    if ($connect_username ne '' and $connect_password eq '') {
-        logline('error', 'ldap_connect: password is empty. Cannot connect to LDAP');
-        return undef;
-    }
-#    $connect_password = cstocs('WIN', 'DOS', $connect_password);
-#    $connect_password = cstocs('WIN', 'UTF8', $connect_password);
-
-    my $ldap_server = new Net::LDAP( $self->ldap_server, onerror => 'warn', version => 3 );
-    if (!$ldap_server) { return undef; }
-
-    my $mesg;
-    if ($connect_username) {
-        $mesg = $ldap_server->bind( $connect_username,
-                password => $connect_password);
-        logline('error', "ldap_connect: authenticating with $connect_username. Error code:", $mesg->is_error);
-    } else {
-        $mesg = $ldap_server->bind();
-        logline('info', "ldap_connect: binding anonymously. Error code:", $mesg->is_error);
-    }
-
-    return $mesg->is_error? undef : $ldap_server;
-}##ldap_connect
-
-
-
-############################################################################
-# Function: ldap_search_entry
-# Description: internal function.
-#
-############################################################################
-sub ldap_search_entry   {   #10/30/02 4:13
-############################################################################
-    my ($self, $ldap_server, $search_attr, $search_value) =
-        Params::Validate::validate_with( params => \@_, spec => [
-        { type => OBJECT },
-        { type => OBJECT },
-        { type => SCALAR},
-        { type => SCALAR} ] );
-
-    my $source_charset = $self->ldap_charset;
-    $search_value = cstocs('WIN', $source_charset, $search_value);
-
-    my $filter = sprintf q|(&(%s=%s))|, $search_attr, $search_value;
-
-    my $mesg;
-    if ($search_attr eq 'dn') {
-        $mesg = $ldap_server->search(
-            base => $search_value,
-            filter => 'cn=*',
-            deref => 'always',
-            scope => 'base',
-            timelimit => 600,
-            attrs => ['*']);
-    } else {
-        $mesg = $ldap_server->search(
-            base => $self->ldap_base,
-            deref => 'always',
-            filter => $filter,
-            scope => 'sub',
-            timelimit => 600,
-            attrs => ['*']);
-    }
-
-    if ($mesg->is_error) {
-        logline('emerg', "An error occured during LDAP query: ", $mesg->error);
-        return undef;
-    }
-
-    my $entry = $mesg->pop_entry;
-    if (! ref($entry)) {
-        logline('notice', "LDAP entry not found: $search_attr=$search_value");
-        return undef;
-    }
-
-    return $entry;
-}##ldap_search_entry
 
 
 =head2 cleanup_request()
@@ -766,13 +608,11 @@ Cleans all internal variables and caches after request is completed.
 sub cleanup_request {   #12/26/00 3:18
 ############################################################################
     my $self = shift;
-    my $r = shift;
 
-    # --------------------------------------------------------------------
     # Clear ThePersistent cache
     ePortal::ThePersistent::Cached::ClearCache();
-    my ($hits, $total, $ratio) = ePortal::ThePersistent::Cached::Statistics();
-    logline ('info', "Cache hits: $hits, total: $total, ratio: $ratio");
+    #my ($hits, $total, $ratio) = ePortal::ThePersistent::Cached::Statistics();
+    #logline ('info', "Cache hits: $hits, total: $total, ratio: $ratio");
 
     # disconnect from database
     if (ref($self->{dbh} eq 'HASH')) {
@@ -819,30 +659,22 @@ sub isAdmin {   #10/27/00 1:42
 ############################################################################
     my $self = shift;
 
-    # cache results. see cleanup_request()
-    return $self->{_isadmin} if defined $self->{_isadmin};
+    return $self->{_isadmin}
+        if defined $self->{_isadmin};   # cache results.
 
-    # check if running under WEB server or from command line
-    return 1 if not exists $ENV{SERVER_SOFTWARE};
+    return 1 if $self->admin_mode;      # Admin mode on
 
-    # admin_mode
-    return 1 if $self->admin_mode;
-
-    # anonymous cannot be admin
-    my $u = $self->username;
-
+    my $u = $self->username;            # anonymous cannot be admin
     return undef unless $u;
 
-    # iterate list of usernames in admin list
-    foreach (@{ $self->admin }) {
-        if ($u eq $_) {
-            $self->{_isadmin} = 1;
-            return 1;
-        }
-    }
+    return 1 if $u eq 'internal';       # Special internal account
+                                        # Command line utilities
 
-    $self->{_isadmin} = 0;
-    return 0;
+    # iterate list of usernames in admin list
+    $self->{_isadmin} = 1
+        if List::Util::first {$u eq $_} @{ $self->admin };
+
+    return $self->{_isadmin};
 }##isAdmin
 
 
@@ -929,7 +761,7 @@ sub _Config {   #03/24/01 10:28
 
 In general C<DBConnect()> is used to get ePortal's database handle.
 
-This function returns C<$dbh> - database handle or throws 
+This function returns C<$dbh> - database handle or throws
 L<ePortal::Exception::DBI|ePortal::Exception>.
 
 =cut
@@ -975,99 +807,16 @@ sub DBConnect   {   #02/19/01 11:15
         if $dbi_source eq '';
 
     # Do connect. connect returns undef on error
+    eval {
     $self->{dbh}{$nickname} = DBI->connect( $dbi_source, $dbi_username, $dbi_password,
         {ShowErrorStatement => 1, RaiseError => 0, PrintError => 1, AutoCommit => 1});
-    throw ePortal::Exception::DBI(-text => $DBI::errstr)
-        unless $self->{dbh}{$nickname};
+    };
+    throw ePortal::Exception::DBI(-text => $DBI::errstr || $@)
+        if (! $self->{dbh}{$nickname}) or $@;
 
     $self->{dbh}{$nickname}{HandleError} = $ErrorHandler;
     return $self->{dbh}{$nickname};
 }##DBConnect
-
-
-
-############################################################################
-sub statistics  {   #01/25/02 2:16
-############################################################################
-    my $self = shift;
-    my $param = shift;
-    my ($sql, @binds);
-
-    if ($param eq 'users_registered') {
-        $sql = 'SELECT count(*) from epUser';
-
-    } elsif ($param eq 'users_active_today') {
-        $sql = wantarray
-            ? 'SELECT username from epUser WHERE last_login >= current_date ORDER BY username'
-            : 'SELECT count(*) from epUser WHERE last_login >= current_date';
-
-    } elsif ($param eq 'users_active_now') {
-        $sql = wantarray
-            ? 'SELECT username from epUser WHERE last_login >= date_sub(now(), interval 5 minute) ORDER BY username'
-            : 'SELECT count(*) from epUser WHERE last_login >= date_sub(now(), interval 5 minute)';
-
-    } elsif ($param eq 'sessions_count') {
-        $sql = 'SELECT count(*) from sessions';
-
-    } elsif ($param eq 'sessions_active_today') {
-        $sql = 'SELECT count(*) from sessions WHERE ts >= current_date';
-
-    } elsif ($param eq 'sessions_active_now') {
-        $sql = 'SELECT count(*) from sessions WHERE ts >= date_sub(now(), interval 5 minute)';
-
-    } elsif ($param eq 'pageview_count') {
-        $sql = wantarray
-            ? "SELECT distinct uid FROM PageView WHERE pvtype = 'user' ORDER BY uid"
-            : "SELECT count(*) from PageView WHERE pvtype = 'user'";
-
-    } elsif ($param eq 'notepad_users_count') {
-        $sql = wantarray
-            ?  "SELECT uid, count(*) as cnt FROM Notepad GROUP BY uid ORDER BY cnt desc"
-            : "SELECT count(distinct uid) FROM Notepad";
-
-    } elsif ($param eq 'notepad_count') {
-        $sql = "SELECT count(*) FROM Notepad";
-
-    } elsif ($param eq 'contact_users_count') {
-        $sql = wantarray
-            ? "SELECT uid, count(*) as cnt FROM Contact GROUP BY uid ORDER BY cnt DESC"
-            : "SELECT count(distinct uid) FROM Contact";
-
-    } elsif ($param eq 'contact_count') {
-        $sql = "SELECT count(*) from Contact";
-
-    } elsif ($param eq 'calendar_users_count') {
-        $sql = wantarray
-            ? "SELECT uid, count(*) AS cnt FROM Calendar GROUP BY uid ORDER BY cnt DESC"
-            : "SELECT count(DISTINCT uid) FROM Calendar";
-
-    } elsif ($param eq 'calendar_count') {
-        $sql = "SELECT count(*) FROM Calendar";
-
-    } elsif ($param eq 'todo_users_count') {
-        $sql = wantarray
-            ? "SELECT uid, count(*) AS cnt FROM ToDo GROUP BY uid ORDER BY cnt DESC"
-            : "select count(distinct uid) from ToDo";
-
-    } elsif ($param eq 'todo_count') {
-        $sql = "select count(*) from ToDo";
-
-    } elsif ($param eq 'msgitem_users_count') {
-        $sql = wantarray
-            ? "SELECT coalesce(uid, 'anonymous') as uid, count(*) AS cnt FROM MsgItem GROUP BY uid ORDER BY cnt DESC"
-            : "SELECT count(distinct uid) FROM MsgItem";
-
-    } elsif ($param eq 'msgitem_count') {
-        $sql = "select count(*) from MsgItem";
-
-    } else {
-        return undef;
-    }
-
-    return wantarray
-        ? @{$self->DBConnect->selectall_arrayref($sql,,@binds)}
-        : scalar $self->DBConnect->selectrow_array($sql,,@binds)
-}##statistics
 
 
 ############################################################################
@@ -1080,6 +829,7 @@ sub r   {   #02/21/02 1:48
 sub m   {   #02/21/02 1:49
 ############################################################################
     return $HTML::Mason::Commands::m;
+    # HTML::Mason::Request->instance
 }##m
 
 
@@ -1098,16 +848,26 @@ sub send_email  {   #01/12/02 12:28
     my $self = shift;
     my $receipient = shift;
     my $subject = shift;
-    my $text = join('<br>', @_);
+    my $text = join("\n", @_);
 
+    my $boundary = '=ePortal-boundary';
     Mail::Sendmail::sendmail(
         smtp => $self->smtp_server,
         From => '"ePortal server" <eportal@' . $self->mail_domain. '>',
         To => $receipient,
         Subject => $subject,
-        Message => "<HTML><body>\n$text\n</body></html>",
+        Message => "This is MIME letter\n\n\n".
+                    "--$boundary\n".
+                    "Content-Type: text/html; charset=windows-1251\n".
+                    "Content-Transfer-Encoding: 8bit\n\n".
+                    "<HTML><body>\n$text\n</body></html>\n\n".
+                    "--$boundary--\n",
         'X-Mailer' => "ePortal v$ePortal::Server::VERSION",
-        'Content-type' => 'text/html; charset="windows-1251"',
+        #'Content-type' => 'text/html; charset="windows-1251"',
+        'Content-type' => join("\n",
+                    'multipart/related;',
+                    '  boundary="' . $boundary . '";',
+                    '  type=text/html'),
         );
 }##send_email
 
@@ -1135,8 +895,10 @@ sub onDeleteUser    {   #11/19/02 2:14
     my $self = shift;
     my $username = shift;
 
-    foreach my $app_name ($self->ApplicationsConfigured) {
+    foreach my $app_name ($self->ApplicationsInstalled) {
+        try {
         $self->Application($app_name)->onDeleteUser($username);
+        };
     }
 }##onDeleteUser
 
@@ -1164,9 +926,11 @@ sub onDeleteGroup    {   #11/19/02 2:14
     my $self = shift;
     my $groupname = shift;
 
-    foreach ($self->ApplicationsConfigured) {
+    foreach ($self->ApplicationsInstalled) {
+        try {
         my $app = $self->Application($_);
         $app->onDeleteGroup($groupname);
+        };
     }
 }##onDeleteGroup
 
@@ -1208,7 +972,7 @@ validated on every request.
 
 =head2 login.htm
 
-It is main login point. The authentication thicket is created here. The 
+It is main login point. The authentication thicket is created here. The
 ticked is stored in user cookie. Format of the ticked is:
 
  secret:username:remoteip:md5hash
@@ -1220,8 +984,8 @@ Complete user validation procedure is done by C<CheckUserAccount()>
 =head2 Quick validation.
 
 Quick validation of a user is done in
-C<ePortal::AuthCookieHandler::recognize_user()>. The user is checked with a 
-cookie based ticked. The ticked is signed with MD5 checksum. If something 
+C<ePortal::AuthCookieHandler::recognize_user()>. The user is checked with a
+cookie based ticked. The ticked is signed with MD5 checksum. If something
 is wrong then ticket is cancelled.
 
 Quick validation process is done by C<CheckUserAccount(quick=>1)>
@@ -1229,7 +993,7 @@ Quick validation process is done by C<CheckUserAccount(quick=>1)>
 
 =head2 External users
 
-ePortal may authenticate an user in external directory like LDAP. 
+ePortal may authenticate an user in external directory like LDAP.
 Currently only Novell Netware LDAP server is tested.
 
 

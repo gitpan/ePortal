@@ -2,13 +2,10 @@
 %# ePortal - WEB Based daily organizer
 %# Author - S.Rusakov <rusakov_sa@users.sourceforge.net>
 %#
-%# Copyright (c) 2001 Sergey Rusakov.  All rights reserved.
+%# Copyright (c) 2000-2003 Sergey Rusakov.  All rights reserved.
 %# This program is free software; you can redistribute it
 %# and/or modify it under the same terms as Perl itself.
 %#
-%# $Revision: 3.1 $
-%# $Date: 2003/04/24 05:36:51 $
-%# $Header: /home/cvsroot/ePortal/comp_root/admin/groups_edit.htm,v 3.1 2003/04/24 05:36:51 ras Exp $
 %#
 %#----------------------------------------------------------------------------
 %#
@@ -16,104 +13,98 @@
 %#
 %#----------------------------------------------------------------------------
 &nbsp;
-<% $dlg->dialog_start( title => pick_lang(rus => "Группа пользователей", eng => "Users group"), width => "400") %>
+<&| /dialog.mc:edit_dialog, obj => $obj,
+    title => pick_lang(rus => "Группа пользователей", eng => "Users group"), 
+    width => "400" &>
 
-  <% $dlg->field('groupname', $obj->check_id? (RO=>1): () ) %>
-  <% $dlg->field('groupdesc') %>
+% if ($obj->check_id) {
+  <& /dialog.mc:read_only, name => 'groupname' &>
+% } else {
+  <& /dialog.mc:field, name => 'groupname' &>
+% }
 
-<% $dlg->buttons %>
-<% $dlg->dialog_end %>
+  <& /dialog.mc:field, name => 'groupdesc' &>
+  <& /dialog.mc:field, name => 'hidden' &>
+  <& /dialog.mc:read_only, name => 'ext_group' &>
+  <& /dialog.mc:buttons &>
+</&>
+
 &nbsp;
-<& SELF:add_user &>
-<& SELF:show_users &>
-
-%#=== @metags once =========================================================
-<%once>
-my ($dlg, $obj);
-</%once>
-
-%#=== @METAGS cleanup =========================================================
-<%cleanup>
-($dlg, $obj) = ();
-</%cleanup>
-
-%#=== @METAGS attr =========================================================
-<%attr>
-Title => {rus => "Группа пользователей", eng => "Users group"}
-</%attr>
+% if ($obj->check_id) {
+  <& SELF:add_remove_users &>
+  <& SELF:add_user &>
+  <& SELF:show_users &>
+% }
 
 
 %#=== @METAGS onStartRequest ====================================================
 <%method onStartRequest><%perl>
-  # 
-  # Обработка основного диалога
-  #
   $obj = new ePortal::epGroup;
-  $dlg = new ePortal::HTML::Dialog( obj => $obj);
-  my $location = $dlg->handle_request;
-  return $location;
+  $m->comp('/dialog.mc:handle_request', obj => $obj);
 </%perl></%method>
 
 
-
-%#=== @METAGS show_users ====================================================
-<%method show_users><%perl>
-  return if ! $obj->check_id;
+%#=== @METAGS add_remove_users ====================================================
+<%method add_remove_users><%perl>
   my %args = $m->request_args;
-  $args{back_url} = $dlg->{back_url};
-
-  #
-  # Обработка удаления пользователя из группы
-  #
+  
   if ( $args{remove_user} ) {
     my $u = new ePortal::epUser;
     if ($u->restore($args{remove_user})) {
       $u->remove_groups($obj->groupname);
-    }     
+    }
   }
 
-  # Clear TODO parameters
-  delete $args{add_user};
-  delete $args{remove_user};
+  if ( $args{add_user} ) {
+    my $u = new ePortal::epUser;
+    if ($u->find_user($args{add_user})) {
+      $u->add_groups($obj->groupname);
+    } else {
+      $m->comp('/message.mc', ErrorMessage => pick_lang(
+          rus => "Пользователь с таким именем не найден",
+          eng => "No such user"));
+    }
+  }
 
-  # 
-  # Выборка списка членов группы
-  #
-  my $users = new ePortal::epUser(
+  if ( $args{add_group} ) {
+    my $sourceg = new ePortal::epGroup;
+    my $u = new ePortal::epUser;
+    if ( $sourceg->restore($args{add_group}) ) {
+      foreach ($sourceg->members) {
+        if ($u->restore($_)) {
+          $u->add_groups($obj->groupname);
+        }
+      }  
+    }
+  }
+</%perl></%method>
+
+
+%#=== @METAGS show_users ====================================================
+<%method show_users><%perl>
+  my %args = $m->request_args;
+</%perl>
+
+<& /item_caption.mc, title => pick_lang(rus => "Члены группы", eng => "Group members") &>
+<&| /list.mc, 
+    obj => new ePortal::epUser(
     SQL => "SELECT epUser.*, epUsrGrp.groupname
             FROM epUser
             LEFT JOIN epUsrGrp on epUsrGrp.username = epUser.username
             ",
     GroupBy => "epUser.username, epUser.id",
     Where => "epUsrGrp.groupname=?",
-    Bind => [$obj->groupname],
-  );
+    Bind => [$obj->groupname] ) &>
 
-  #
-  # Prepare list object
-  #
-  my $list = new ePortal::HTML::List(obj => $users, class => "smallfont", 
-      state => { objid => $obj->id, back_url => $dlg->{back_url} },
-      width => '70%');
-  $list->add_column_image();
-  $list->add_column( id => "username", sorting => 1);
-  $list->add_column( id => "fullname", sorting => 1);
-  $list->add_column( id => "remove_from_group", 
-      content => sub {
-        my $obj = shift;
-        return plink({rus => "Удалить из группы", eng => "Remove from group"},
-          href => href($ENV{SCRIPT_NAME}, %args, remove_user => $obj->username)
-        );
-      });
-  $list->handle_request;
-  $users->restore_where($list->restore_parameters);
+    <& /list.mc:column_image &>
+    <& /list.mc:column, id => 'username', order_by => 'username' &>
+    <& /list.mc:column, id => 'fullname', order_by => 'fullname' &>
+    <&| /list.mc:column, id => 'remove_from_group' &>
+        <% plink({rus => "Удалить из группы", eng => "Remove from group"},
+          href => href($ENV{SCRIPT_NAME}, %args, remove_user => $_->username)) %>
+    </&>
 
-  #
-  # Display the list
-  #
-  </%perl>
-  <& /item_caption.mc, title => pick_lang(rus => "Члены группы", eng => "Group members") &>
-  <% $list->draw_list %>
+</&>
 </%method>
 
 
@@ -121,46 +112,48 @@ Title => {rus => "Группа пользователей", eng => "Users group"}
 
 %#=== @metags add_user ====================================================
 <%method add_user><%perl>
-  return if ! $obj->check_id;
   my %args = $m->request_args;
-  
-  #
-  # Construct Dialog
-  #
-  my $NUDLG = new ePortal::HTML::Dialog( title => pick_lang(rus => "Добавление пользователя в группу", eng => "Add user to the group"),
-    align => "center", width => "300", formname => undef);
-
-  #
-  # Process Add new to the group
-  #
-  if ( $args{add_user} ) {
-    my $u = new ePortal::epUser;
-    if ($u->find_user($args{add_user})) {
-      $u->add_groups($obj->groupname);
-    } else {
-      $m->comp('/message.mc', ErrorMessage => pick_lang(
-          rus => "Пользователь с таким именем не найден", 
-          eng => "No such user"));
-    }
-  }
+  my $G = new ePortal::epGroup;
+  my ($g_v, $g_l) = $G->restore_all_hash('groupname','groupname');
+  unshift @{$g_v}, '';
 </%perl>
-  <& /item_caption.mc, title => pick_lang(rus => "Добавление пользователей в группу", eng => "Add users to the group") &>
-  &nbsp;
-  <% $NUDLG->dialog_start %>
+
+&nbsp;
+<& /item_caption.mc, title => pick_lang(rus => "Добавление пользователей в группу", eng => "Add users to the group") &>
+<&| /dialog.mc, title => pick_lang(rus => "Добавление пользователя в группу", eng => "Add user to the group"),
+                -align => "center", width => "500" &>
+<table width="100%" cellpadding="0" cellspacing="0" border="0">
   <form method="GET" action="<% $ENV{SCRIPT_NAME} %>">
   <% CGI::hidden(-name => 'objid', -value => $args{objid}) %>
-  <% CGI::hidden(-name => 'back_url', -value => $dlg->{back_url}) %>
-  <tr>
-    <td class="dlglabel">
-      <% pick_lang(rus => "Добавить пользователя:", eng => "Add user:") %>
-    </td>
-    <td class="dlgfield">
-      <% CGI::textfield(-name => 'add_user', -class=>'dlgfield') %>
-      <br>
+  <% CGI::hidden(-name => 'back_url', -value => $m->comp('/dialog.mc:back_url')) %>
+
+  <& /dialog.mc:label_value_row, 
+      label => pick_lang(rus => "Добавить пользователя:", eng => "Add user:"),
+      value => CGI::textfield(-name => 'add_user', -class=>'dlgfield') &>
+
+  <& /dialog.mc:label_value_row, 
+      label => pick_lang(rus => "Добавить всех из группы:", eng => "Add all from group:"),
+      value => CGI::popup_menu(-name => 'add_group', -values => $g_v, -class=>'dlgfield') &>
+
+  <&| /dialog.mc:cell, -align => 'right' &>
     <% CGI::submit(-name => 'add_user_ok', -value => pick_lang(rus => "Добавить", eng => "Add"), -class=>'button') %>
-    </td>
-  </tr>
-  </form>
-  <% $NUDLG->dialog_end %>
-  &nbsp;
+  </&>
+  </form></table>
+</&>
 </%method>
+
+
+%#=== @metags once =========================================================
+<%once>
+my ($obj);
+</%once>
+
+%#=== @METAGS cleanup =========================================================
+<%cleanup>
+($obj) = ();
+</%cleanup>
+
+%#=== @METAGS attr =========================================================
+<%attr>
+Title => {rus => "Группа пользователей", eng => "Users group"}
+</%attr>

@@ -3,20 +3,17 @@
 # ePortal - WEB Based daily organizer
 # Author - S.Rusakov <rusakov_sa@users.sourceforge.net>
 #
-# Copyright (c) 2001 Sergey Rusakov.  All rights reserved.
+# Copyright (c) 2000-2003 Sergey Rusakov.  All rights reserved.
 # This program is free software; you can redistribute it
 # and/or modify it under the same terms as Perl itself.
 #
-# $Revision: 3.6 $
-# $Date: 2003/04/24 05:36:52 $
-# $Header: /home/cvsroot/ePortal/lib/ePortal/epUser.pm,v 3.6 2003/04/24 05:36:52 ras Exp $
 #
 #----------------------------------------------------------------------------
 
 
 package ePortal::epUser;
 	use base qw/ePortal::ThePersistent::Support/;
-	our $VERSION = sprintf '%d.%03d', q$Revision: 3.6 $ =~ /: (\d+).(\d+)/;
+    our $VERSION = '4.1';
 
 	use Carp;
 	use ePortal::Global;
@@ -29,53 +26,50 @@ package ePortal::epUser;
 sub initialize	{	#05/31/00 8:50
 ############################################################################
     my ($self, %p) = @_;
-    
-    $p{Attributes} = [
-        id => {     type => 'ID',
-                    dtype => 'Number',
-                    auto_increment => 1,
-        },
-        username => {   label => {rus => 'Имя входа', eng => 'Login name'},
-                    maxlength => 64,
-                    size => 20,             # size of <input type=text>
-        },
-        dn => {   label => 'LDAP DN',
-                    # LDAP returns DN that is different from username
-                    maxlength => 64,
-        },
-        fullname => {
-                    label => {rus => 'ФИО пользователя', eng => 'User name'},
-                    size  => 40,
-        },
-        password => {
-                    fieldtype => 'password',
-                    label => {rus => 'Пароль', eng => 'Password'},
-        },
-        department => {
-                    label => {rus => 'Подразделение', eng => 'Department'},
-                    size  => 40,
-        },
-        title => {
-                    label => {rus => 'Должность', eng => 'Job'},
-                    size  => 40,
-        },
-        email => {
-                    label => {rus => 'Адрес эл.почты', eng => 'e-mail'},
-        },
-        %ePortal::FieldDomain::enabled,
-        last_checked => {
-                    dtype => 'date',
-                    label => {rus => 'Дата проверки в LDAP', eng => 'Last validated'},
-        },
-        last_login => {
-                    dtype => 'datetime',
-                    label => {rus => 'Дата последней регистрации', eng => 'Last login time'},
-        },
-        ext_user => {
-                    dtype => 'YesNo',
-                    label => {rus => 'Внешний пользователь', eng => 'External user'},
-        },
-    ];
+
+    $p{Attributes}{id} ||= {};
+    $p{Attributes}{username} ||= {
+        label => {rus => 'Имя входа', eng => 'Login name'},
+        maxlength => 64,
+        size => 20,             # size of <input type=text>
+    };
+    $p{Attributes}{dn} ||= {
+        label => 'LDAP DN', # LDAP returns DN that is different from username
+        maxlength => 64,
+    };
+    $p{Attributes}{fullname} ||= {
+        label => {rus => 'ФИО пользователя', eng => 'User name'},
+        size  => 40,
+        };
+    $p{Attributes}{password} ||= {
+        fieldtype => 'password',
+        label => {rus => 'Пароль', eng => 'Password'},
+        };
+    $p{Attributes}{department} ||= {
+        label => {rus => 'Подразделение', eng => 'Department'},
+        size  => 40,
+        };
+    $p{Attributes}{title} ||= {
+        label => {rus => 'Должность', eng => 'Job'},
+        size  => 40,
+        };
+    $p{Attributes}{email} ||= {
+        label => {rus => 'Адрес эл.почты', eng => 'e-mail'},
+        };
+    $p{Attributes}{enabled} ||= {};
+    $p{Attributes}{last_checked} ||= {
+        dtype => 'date',
+        label => {rus => 'Дата проверки в LDAP', eng => 'Last validated'},
+        };
+    $p{Attributes}{last_login} ||= {
+        dtype => 'datetime',
+        label => {rus => 'Дата последней регистрации', eng => 'Last login time'},
+        };
+    $p{Attributes}{ext_user} ||= {
+        dtype => 'YesNo',
+        label => {rus => 'LDAP пользователь', eng => 'LDAP user'},
+        };
+
     $self->SUPER::initialize( %p );
 }##initialize
 
@@ -145,7 +139,7 @@ sub restore	{	#06/09/01 9:34
 =head2 find_user()
 
 The same functionality as C<restore()> but additionaly look for
- 
+
  fullname like 'name%'
 
 If unique fullname found then the user is restored.
@@ -169,10 +163,10 @@ sub find_user   {   #04/23/03 10:53
                 $self->clear;
             } else {                    # Good. Only 1 match. Restore it
                 $result = $self->restore($first_found_id);
-            }    
-        }    
+            }
+        }
     }
-    return $result;    
+    return $result;
 }##find_user
 
 
@@ -186,7 +180,7 @@ sub delete	{	#06/19/01 2:19
 ############################################################################
 	my $self = shift;
 	my $username = $self->username;
-    my $dbh = $self->_get_dbh;
+    my $dbh = $self->dbh;
 
     my $result = 0;
     $result += $dbh->do("delete from epUsrGrp where username=?", undef, $username);
@@ -256,7 +250,7 @@ sub update_group_membership	{	#06/26/01 10:35
 
 	# remove old group membership
 
-	my $dbh = $self->_get_dbh();
+    my $dbh = $self->dbh();
 	my $sql = "DELETE FROM epUsrGrp WHERE username=?";
 	if (! $dbh->do($sql, undef, $self->username)) {
 		logline('error', "DBI error: $DBI::srrstr");
@@ -297,7 +291,7 @@ sub update_group_membership	{	#06/26/01 10:35
 sub member_of	{	#06/26/01 11:58
 ############################################################################
 	my $self = shift;
-	my $dbh = $self->_get_dbh();
+    my $dbh = $self->dbh();
 
 	my $sql = "SELECT groupname FROM epUsrGrp WHERE username=?";
 	my $ary = $dbh->selectcol_arrayref($sql, undef, $self->username);
@@ -321,7 +315,7 @@ sub not_member_of	{	#06/26/01 12:07
 	my $self = shift;
 	my @member_of = $self->member_of;
 	my @not_member_of;
-	my $dbh = $self->_get_dbh();
+    my $dbh = $self->dbh();
 
 	my $sql = "SELECT groupname FROM epGroup ORDER BY groupname";
 	my $ary = $dbh->selectcol_arrayref($sql);
@@ -351,6 +345,7 @@ sub add_groups	{	#06/26/01 1:50
 	my (@groups) = @_;
 
 	my $G = new ePortal::epGroup;
+    my $dbh = $ePortal->DBConnect;
 
 	foreach my $group (@groups) {
 		if ($G->restore($group)) {
@@ -376,6 +371,7 @@ sub remove_groups	{	#06/26/01 1:53
 ############################################################################
 	my $self = shift;
 	my (@groups) = @_;
+    my $dbh = $ePortal->DBConnect;
 
 	foreach my $group (@groups) {
         $dbh->do("DELETE FROM epUsrGrp WHERE username=? AND groupname=?", undef,
@@ -391,7 +387,7 @@ sub remove_groups	{	#06/26/01 1:53
 sub ObjectDescription   {   #04/15/03 10:49
 ############################################################################
     my $self = shift;
-    
+
     return pick_lang(rus => "Пользователь: ", eng => "User: ") .
         $self->username;
 }##ObjectDescription

@@ -3,13 +3,10 @@
 # ePortal - WEB Based daily organizer
 # Author - S.Rusakov <rusakov_sa@users.sourceforge.net>
 #
-# Copyright (c) 2001 Sergey Rusakov.  All rights reserved.
+# Copyright (c) 2000-2003 Sergey Rusakov.  All rights reserved.
 # This program is free software; you can redistribute it
 # and/or modify it under the same terms as Perl itself.
 #
-# $Revision: 3.3 $
-# $Date: 2003/04/24 05:36:52 $
-# $Header: /home/cvsroot/ePortal/lib/ePortal/HTML/Calendar.pm,v 3.3 2003/04/24 05:36:52 ras Exp $
 #
 #----------------------------------------------------------------------------
 
@@ -31,16 +28,13 @@ This module is used to make a dialog with a monthly calendar.
 =cut
 
 package ePortal::HTML::Calendar;
-	our $VERSION = sprintf '%d.%03d', q$Revision: 3.3 $ =~ /: (\d+).(\d+)/;
+    our $VERSION = '4.1';
 
 	use ePortal::Global;
-	use ePortal::Utils;		# import logline, pick_lang
-	#use CGI qw/-nosticky -no_xhtml -no_debug/;	# CGI used in ePortal::Apache
+    use ePortal::Utils;     # import logline, pick_lang, CGI
 	use Carp;
 	use Date::Calc();
 	use ePortal::HTML::Dialog;
-
-	my $C;
 
 
 =head2 new(date)
@@ -109,19 +103,6 @@ sub new	{	#09/07/01 2:04
 
 
 
-############################################################################
-# Internal function
-sub _self_or_default {
-############################################################################
-	my ($self) = $_[0];
-    return @_ if (ref ($self) &&
-        (ref($self) eq 'ePortal::HTML::Calendar') || UNIVERSAL::isa($self,'ePortal::HTML::Calendar'));
-    $C = ePortal::HTML::Calendar->new() unless defined $C;
-	unshift (@_, $C);
-    return wantarray ? @_ : $C;
-}
-
-
 =head2 self_url(cal_param, value)
 
 Constructs self referencing URL removing all myself specific parameters.
@@ -134,7 +115,7 @@ Returns URL with parameters.
 ############################################################################
 sub self_url	{	#02/14/02 4:52
 ############################################################################
-	my ($self, %opt_args) = _self_or_default(@_);
+    my ($self, %opt_args) = (@_);
 
     my %args = $ePortal->m->request_args;
 	delete $args{$_} foreach (qw/cal_pmon cal_nmon cal_day cal_date/);
@@ -155,7 +136,7 @@ B<'self'> than self-refence URL will be contructed without parameters loss.
 ############################################################################
 sub url	{	#01/31/02 1:35
 ############################################################################
-	my ($self, $day, $url) = _self_or_default(@_);
+    my ($self, $day, $url) = (@_);
 
 	return if $day <=0 or $day > 31;
 
@@ -180,7 +161,7 @@ method. See it for details
 ############################################################################
 sub url_all	{	#01/31/02 1:37
 ############################################################################
-	my ($self, $url) = _self_or_default(@_);
+    my ($self, $url) = (@_);
 
 	for (1..31) {
 		$self->url( $_, $url );
@@ -204,7 +185,7 @@ B<url> - adjusted from URL
 ############################################################################
 sub date_source	{	#02/01/02 9:42
 ############################################################################
-	my ($self, @p) = _self_or_default(@_);
+    my ($self, @p) = (@_);
 	return $self->{date_source};
 }##date_source
 
@@ -219,7 +200,7 @@ $m in scalar context.
 ############################################################################
 sub draw	{	#12/17/01 3:15
 ############################################################################
-	my ($self, @p) = _self_or_default(@_);
+    my ($self, @p) = (@_);
 
 	my @out;
 	my @date = @{ $self->{date} };
@@ -316,7 +297,7 @@ and nicely formatted date 'DD.MM.YYYY' in scalar context.
 ############################################################################
 sub date	{	#01/30/02 4:24
 ############################################################################
-	my ($self, @p) = _self_or_default(@_);
+    my ($self, @p) = (@_);
 
 	return wantarray
 		? @{$self->{date}}
@@ -343,7 +324,7 @@ B<'DD.MM.YYYY'> - date as string
 ############################################################################
 sub set_date	{	#01/30/02 4:27
 ############################################################################
-	my ($self, @p) = _self_or_default(@_);
+    my ($self, @p) = (@_);
 
 	if ($p[0] eq 'now' or $p[0] eq 'today') {
 		$self->{date} = [Date::Calc::Today()];

@@ -19,17 +19,8 @@ class for persistent objects.</TITLE>
 
 		<LI><A HREF="#initialize%28%29"><CODE>initialize()</CODE></A></LI>
 		<LI><A HREF="#xacl_where%28%29"><CODE>xacl_where()</CODE></A></LI>
-		<LI><A HREF="#xacl_check%28%29"><CODE>xacl_check()</CODE></A></LI>
 		<LI><A HREF="#xacl_check_read%28%29"><CODE>xacl_check_read()</CODE></A></LI>
-		<LI><A HREF="#xacl_check_delete%28%29"><CODE>xacl_check_delete()</CODE></A></LI>
-		<LI><A HREF="#xacl_check_update%28%29"><CODE>xacl_check_update()</CODE></A></LI>
-		<LI><A HREF="#xacl_check_admin%28%29"><CODE>xacl_check_admin()</CODE></A></LI>
-		<LI><A HREF="#xacl_check_insert%28%29"><CODE>xacl_check_insert()</CODE></A></LI>
-		<LI><A HREF="#xacl_check_children%28%29"><CODE>xacl_check_children()</CODE></A></LI>
 		<LI><A HREF="#restore_where%28%29"><CODE>restore_where()</CODE></A></LI>
-		<LI><A HREF="#set_acl_default%28%29"><CODE>set_acl_default()</CODE></A></LI>
-		<LI><A HREF="#set_acl_from_obj%28%29"><CODE>set_acl_from_obj()</CODE></A></LI>
-		<LI><A HREF="#xacl_set_r%28%29"><CODE>xacl_set_r()</CODE></A></LI>
 	</UL>
 
 	<LI><A HREF="#author">AUTHOR</A></LI>
@@ -44,8 +35,12 @@ class for persistent objects.</P>
 <P>
 <HR>
 <H1><A NAME="synopsis">SYNOPSIS</A></H1>
-<P><STRONG>ePortal::ThePersistent::ExtendedACL</STRONG> implements Access Control Lists
-(ACL functions) for ThePersistent classes.</P>
+<P><STRONG>ePortal::ThePersistent::ExtendedACL</STRONG> implements extended processing of ACL
+based on SQL queries.</P>
+<P>Two attributes are mandatory for <CODE>ePortal::ThePersistent::ExtendedACL</CODE>:</P>
+<PRE>
+ uid - user name of object owner
+ xacl_read - read access to the object</PRE>
 <P>
 <HR>
 <H1><A NAME="methods">METHODS</A></H1>
@@ -55,16 +50,6 @@ class for persistent objects.</P>
 the object.</P>
 <P>Additional parameters:</P>
 <UL>
-<LI><STRONG><A NAME="item_XACL_Attributes">XACL_Attributes</A></STRONG><BR>
-
-Additional XACL attributes. Attribute data type is selected automatically.
-<PRE>
- xacl_attribute =&gt; description</PRE>
-<P></P>
-<LI><STRONG><A NAME="item_XACL_ON_PARENT">XACL_ON_PARENT</A></STRONG><BR>
-
-Do not add special attributes <CODE>uid</CODE> and <CODE>xacl_read</CODE>.
-<P></P>
 <LI><STRONG><A NAME="item_xacl_uid_field">xacl_uid_field</A></STRONG><BR>
 
 Redefine standard <CODE>uid</CODE> attribute name to something another.
@@ -72,69 +57,17 @@ Redefine standard <CODE>uid</CODE> attribute name to something another.
 <LI><STRONG><A NAME="item_xacl_read_field">xacl_read_field</A></STRONG><BR>
 
 Redefine standard <CODE>xacl_read</CODE> attribute name to something another.
-<P></P>
-<LI><STRONG><A NAME="item_drop_admin_priv">drop_admin_priv</A></STRONG><BR>
-
-By default Admin may SELECT everything from database. If this is not
-desired then pass this parameter.
-<PRE>
-  drop_admin_priv =&gt; 1</PRE>
 <P></P></UL>
 <P>
 <H2><A NAME="xacl_where%28%29"><CODE>xacl_where()</CODE></A></H2>
 <P>Construct SQL WHERE clause based on <CODE>uid</CODE> and <CODE>xacl_read</CODE> fields.</P>
 <P>
-<H2><A NAME="xacl_check%28%29"><CODE>xacl_check()</CODE></A></H2>
-<P>Base XACL checking function. Omit using it in end packages, use
-<CODE>xacl_check_xxx()</CODE> for specific XACL processing.</P>
-<P>
 <H2><A NAME="xacl_check_read%28%29"><CODE>xacl_check_read()</CODE></A></H2>
-<P><CODE>read</CODE> access. This method is not used inside of <CODE>ExtendedACL</CODE> but may be
-used in overloaded packages.</P>
-<P>Inside of <CODE>ExtendedACL</CODE> read access is restricted with SQL WHERE clause.</P>
-<P>
-<H2><A NAME="xacl_check_delete%28%29"><CODE>xacl_check_delete()</CODE></A></H2>
-<P><CODE>delete</CODE> current object right.</P>
-<P>Check <CODE>xacl_delete</CODE> attribute if exists or <CODE>xacl_check_update()</CODE>.</P>
-<P>Owner of the object always may delete the object. This is addition to
-<CODE>xacl_check()</CODE></P>
-<P>
-<H2><A NAME="xacl_check_update%28%29"><CODE>xacl_check_update()</CODE></A></H2>
-<P><CODE>update</CODE> or <CODE>modify</CODE> current object right.</P>
-<P>Check <CODE>xacl_write</CODE> attribute.</P>
-<P>Owner of the object always may modify the object. This is addition to
-<CODE>xacl_check()</CODE></P>
-<P>
-<H2><A NAME="xacl_check_admin%28%29"><CODE>xacl_check_admin()</CODE></A></H2>
-<P><CODE>change ACL</CODE> on current object right.</P>
-<P>Check <CODE>xacl_admin</CODE> attribute if exists or <CODE>xacl_check_update()</CODE>.</P>
-<P>Owner of the object always may change ACL if xacl field eq 'owner'. Author
-of the object does not get xacl_admin rights automatically.</P>
-<P>
-<H2><A NAME="xacl_check_insert%28%29"><CODE>xacl_check_insert()</CODE></A></H2>
-<P>Actually checks parent with <CODE>xacl_check_children()</CODE>.</P>
-<P>The object is obligatory to have a parent or overwrite this method.</P>
-<P>
-<H2><A NAME="xacl_check_children%28%29"><CODE>xacl_check_children()</CODE></A></H2>
-<P>ACL check for inserting children objects. Default to xacl_check_update().</P>
-<P>This method is called from <CODE>xacl_check_insert()</CODE> of a children object.</P>
+<P>Dummy function. Returns True. Read access is restricted in SQL WHERE
+clause.</P>
 <P>
 <H2><A NAME="restore_where%28%29"><CODE>restore_where()</CODE></A></H2>
 <P>Adds some WHERE conditions to comply with ACL.</P>
-<P>
-<H2><A NAME="set_acl_default%28%29"><CODE>set_acl_default()</CODE></A></H2>
-<P>Installs default ACL values for the object during insert(). The default
-behavior is to take most of ACL attributes from parent object. Other ACL
-attributes initialized to 'owner'</P>
-<P>This method updates <CODE>uid</CODE> if not defined.</P>
-<P>This method does not updates the object. <CODE>insert()</CODE> does it.</P>
-<P>
-<H2><A NAME="set_acl_from_obj%28%29"><CODE>set_acl_from_obj()</CODE></A></H2>
-<P>Copy all ACL attributes from <CODE>$source</CODE> object.</P>
-<P>This method does not updates the object. Call <CODE>update()</CODE> manually!</P>
-<P>
-<H2><A NAME="xacl_set_r%28%29"><CODE>xacl_set_r()</CODE></A></H2>
-<P>Recursively copy ExtendedACL attributes from this object to all childrens</P>
 <P>
 <HR>
 <H1><A NAME="author">AUTHOR</A></H1>

@@ -3,26 +3,20 @@
 # ePortal - WEB Based daily organizer
 # Author - S.Rusakov <rusakov_sa@users.sourceforge.net>
 #
-# Copyright (c) 2001 Sergey Rusakov.  All rights reserved.
+# Copyright (c) 2000-2003 Sergey Rusakov.  All rights reserved.
 # This program is free software; you can redistribute it
 # and/or modify it under the same terms as Perl itself.
 #
-# $Revision: 3.1 $
-# $Date: 2003/04/24 05:36:52 $
-# $Header: /home/cvsroot/ePortal/lib/ePortal/ThePersistent/DataType/DateTime.pm,v 3.1 2003/04/24 05:36:52 ras Exp $
 #
 #----------------------------------------------------------------------------
 # Original idea:   David Winters <winters@bigsnow.org>
 #----------------------------------------------------------------------------
 
 package ePortal::ThePersistent::DataType::DateTime;
+    use strict;
+    use Carp;
 
-use strict;
-use Carp;
-
-### copy version number from superclass ###
-our $VERSION = $ePortal::ThePersistent::DataType::Base::VERSION;
-our $REVISION = (qw$Revision: 3.1 $)[1];
+    our $VERSION = '4.1';
 
   ### month name to number map ###
   my %month_to_num = (
@@ -43,22 +37,13 @@ our $REVISION = (qw$Revision: 3.1 $)[1];
 sub new {
   my $proto = shift;
   my $class = ref($proto) || $proto;
+  my %p = @_;
 
-  my $self = {};  ### allocate a hash for the object's data ###
+  my $self = {%p};
   bless $self, $class;
-  $self->initialize(@_);  ### call hook for subclass initialization ###
+  $self->value($self->{default}) if $self->{default};
 
   return $self;
-}
-
-########################################################################
-# initialize
-########################################################################
-
-sub initialize {
-  my $self = shift;
-
-  $self->value(@_);
 }
 
 ########################################################################
@@ -149,28 +134,18 @@ sub value {
     undef;
   } else {
     sprintf("%02d.%02d.%04d %02d:%02d:%02d",
-        $day, $month, $year,
-	    $hours, $minutes, $seconds || '');
+        0+$day, 0+$month, 0+$year,
+        0+$hours, 0+$minutes, 0+$seconds);
   }
-}
-
-########################################################################
-# get_compare_op
-########################################################################
-
-sub get_compare_op {
-  'cmp';  ### string comparison operator ###
 }
 
 ########################################################################
 # year
 ########################################################################
 
-
 sub year {
   my $self = shift;
 
-  ### set it ###
   if (@_) {
     my $year = shift;
     $year = undef if $year == 0;
@@ -192,7 +167,6 @@ sub year {
 sub month {
   my $self = shift;
 
-  ### set it ###
   if (@_) {
     my $month = shift;
     $month = undef if $month == 0;
@@ -213,7 +187,6 @@ sub month {
 sub day {
   my $self = shift;
 
-  ### set it ###
   if (@_) {
     my $day = shift;
     $day = undef if $day == 0;
@@ -324,8 +297,8 @@ sub sql_value   {   #09/30/02 3:39
       undef;
     } else {
       sprintf("%04d.%02d.%02d %02d:%02d:%02d",
-          $year, $month, $day,
-          $hours, $minutes, $seconds);
+          0+$year, 0+$month, 0+$day,
+          0+$hours, 0+$minutes, 0+$seconds);
     }
 }##sql_value
 
@@ -344,11 +317,17 @@ sub array   {   #10/02/02 8:48
         !defined($hours) && !defined($minutes) && !defined($seconds)) {
       undef;
     } else {
-      ($year, $month, $day, $hours, $minutes, $seconds);
+      (0+$year, 0+$month, 0+$day, 0+$hours, 0+$minutes, 0+$seconds);
     }
 }##array
 
 
-### end of library ###
+############################################################################
+sub clear   {   #06/19/2003 11:38
+############################################################################
+    my $self = shift;
+    $self->value( $self->{default} );
+}##clear
+
 1;
 

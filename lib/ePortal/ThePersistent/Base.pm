@@ -3,13 +3,10 @@
 # ePortal - WEB Based daily organizer
 # Author - S.Rusakov <rusakov_sa@users.sourceforge.net>
 #
-# Copyright (c) 2001 Sergey Rusakov.  All rights reserved.
+# Copyright (c) 2000-2003 Sergey Rusakov.  All rights reserved.
 # This program is free software; you can redistribute it
 # and/or modify it under the same terms as Perl itself.
 #
-# $Revision: 3.3 $
-# $Date: 2003/04/24 05:36:52 $
-# $Header: /home/cvsroot/ePortal/lib/ePortal/ThePersistent/Base.pm,v 3.3 2003/04/24 05:36:52 ras Exp $
 #
 #----------------------------------------------------------------------------
 # Original idea:   David Winters <winters@bigsnow.org>
@@ -31,23 +28,21 @@ INSERT, DELETE.
 
 
 package ePortal::ThePersistent::Base;
+    our $VERSION = '4.1';
 
-use strict;
-use Carp;
-use DBI;
-use Params::Validate qw/:types/;
+    use strict;
+    use Carp;
+    use DBI;
+    use Params::Validate qw/:types/;
 
-    use ePortal::ThePersistent::DataType::VarChar;
-    #use ePortal::ThePersistent::DataType::Char;
-    #use ePortal::ThePersistent::DataType::String;
-    use ePortal::ThePersistent::DataType::Number;
-    use ePortal::ThePersistent::DataType::DateTime;
-    use ePortal::ThePersistent::DataType::Date;
-    use ePortal::ThePersistent::DataType::YesNo;
     use ePortal::ThePersistent::DataType::Array;
+    use ePortal::ThePersistent::DataType::Date;
+    use ePortal::ThePersistent::DataType::DateTime;
+    use ePortal::ThePersistent::DataType::Number;
+    use ePortal::ThePersistent::DataType::VarChar;
+    use ePortal::ThePersistent::DataType::YesNo;
 
-our $VERSION = sprintf '%d.%03d', q$Revision: 3.3 $ =~ /: (\d+).(\d+)/;
-use vars qw/$AUTOLOAD/;
+    our $AUTOLOAD;
 
 
 =head2 new()
@@ -79,7 +74,7 @@ my $ThePersistentParameters = {
         Table => { type => SCALAR, optional => 1 },
         DBH => {type => OBJECT, optional => 1},
         dbi_source => {type => SCALAR, optional => 1},
-        dbi_user => {type => SCALAR, optional => 1},
+        dbi_username => {type => SCALAR, optional => 1},
         dbi_password => {type => SCALAR, optional => 1},
         AutoCommit => {type => BOOLEAN, optional => 1},
         SQL => {type => SCALAR, optional => 1},
@@ -112,7 +107,7 @@ sub new {   #09/25/02 9:27
         DEBUG_SQL => $p{DEBUG_SQL},
 
         dbi_source => undef,
-        dbi_user => undef,
+        dbi_username => undef,
         dbi_password => undef,
     };
 
@@ -154,15 +149,14 @@ sub initialize {
 
     # add attributes if defined
     my $attributes = $p{Attributes};
-    if (ref($attributes) eq 'ARRAY') {
-        for(my $i=0; $i < @{$attributes}; $i += 2) {
-            $self->add_attribute( $attributes->[$i], $attributes->[$i+1] );
-        }
-
-    } elsif (ref($attributes) eq 'HASH') {
-        foreach my $attr (sort {$attributes->{$a}{order} <=> $attributes->{$b}{order}} keys %{$attributes}) {
+    if (ref($attributes) eq 'HASH') {
+        foreach my $attr (keys %{$attributes}) {
             $self->add_attribute( $attr, $attributes->{$attr} );
         }
+
+    } elsif (ref($attributes) eq 'ARRAY') {
+        throw ePortal::Exception::Fatal(
+        -text => sprintf "Package %s passed Attributes parameter as ARRAY. Deprecated!.", ref($self));
 
     } elsif (defined $attributes) {
         croak "Not supported Attributes parameter";
@@ -175,6 +169,28 @@ sub initialize {
 }##initialize
 
 
+
+############################################################################
+sub initialize_attribute    {   #05/27/2003 2:30
+############################################################################
+    my ($self, $att_name, $attr) = @_;
+
+    $attr->{dtype} ||= 'VarChar';
+    $attr->{type}  ||= 'Persistent';
+
+    if ( $attr->{dtype} =~ /^v/io) {           # VarChar defaults
+        $attr->{maxlength} ||= 255;
+
+    } elsif ( $attr->{dtype} =~ /^n/io) {           # Number defaults
+        $attr->{maxlength} ||= 11;
+    }
+
+    #$attr->{fieldtype} ||= 'textfield';
+    $attr->{label}     ||= $att_name;
+    $attr->{header}    ||= $att_name;
+
+    return $attr;
+}##initialize_attribute
 
 =head2 datastore()
 
@@ -208,15 +224,15 @@ sub datastore   {   #09/07/00 1:49
     } else {
         # Need to establish new connection
         $self->{dbi_source} = $p{dbi_source};
-        $self->{dbi_user} = $p{dbi_user};
+        $self->{dbi_username} = $p{dbi_username};
         $self->{dbi_password} = $p{dbi_password};
 
-        my $dbh = DBI->connect($p{dbi_source}, $p{dbi_user}, $p{dbi_password},
+        my $dbh = DBI->connect($p{dbi_source}, $p{dbi_username}, $p{dbi_password},
                 {AutoCommit => $self->{AutoCommit},
                  PrintError => 0,
                  RaiseError => 0});
         $self->{CreatedDBH} = 1;
-        $self->_check_dbi_error("Can't connect to database: $p{dbi_user}\@$p{dbi_source}");
+        $self->_check_dbi_error("Can't connect to database: $p{dbi_username}\@$p{dbi_source}");
         $self->{DBH} = $dbh;
     }
 
@@ -227,7 +243,7 @@ sub datastore   {   #09/07/00 1:49
     if ( ! $self->{SQL} and ! $self->{Table} ) {
         # Perform auto-discovery mechanics
         my $table = ref $self;
-        $table =~ s/.*://;      # last word in object's class name
+        $table =~ s/.*://o;      # last word in object's class name
         $self->{Table} = $table;
     }
 
@@ -258,6 +274,19 @@ sub DESTROY {
     return;
 }
 
+############################################################################
+# Returns number of rows in SELECT statement
+############################################################################
+sub rows    {   #08/26/2003 4:48
+############################################################################
+    my $self = shift;
+    if (ref($self->{STH})) {
+        return $self->{STH}->rows;
+    } else {
+        return undef;
+    }
+}##rows
+
 ########################################################################
 # Function:    AUTOLOAD
 # Description: Gets/sets the attributes of the object.
@@ -269,41 +298,9 @@ sub AUTOLOAD {
     my($self, @data) = @_;
 
     my $name = $AUTOLOAD;   ### get name of attribute ###
-    $name =~ s/.*://;       ### strip fully-qualified portion ###
+    $name =~ s/.*://o;       ### strip fully-qualified portion ###
     $self->value($name, @data);
 }
-
-
-=head2 attribute_object()
-
-Returns named attribute object.
-
-=over 4
-
-=item * attribute name
-
-Name of attribute to return.
-
-=back
-
-=cut
-
-############################################################################
-sub attribute_object    {   #09/26/02 10:35
-############################################################################
-    my ($self, $attribute) = Params::Validate::validate_with(params => \@_,
-        spec => [
-            { type => OBJECT },
-            { type => SCALAR }
-        ]);
-    $attribute = lc($attribute);
-
-    if (defined $self->{MetaData}->{$attribute}) {
-        $self->{MetaData}->{$attribute};
-    } else {
-        croak "'$attribute' is not an attribute of this object";
-    }
-}##attribute_object
 
 
 
@@ -337,8 +334,8 @@ sub attribute    {   #09/26/02 10:35
         ]);
     $attribute = lc($attribute);
 
-    if (defined $self->{Parameters}->{$attribute}) {
-        $self->{Parameters}->{$attribute};
+    if (defined $self->{MetaData}->{$attribute}) {
+        $self->{MetaData}->{$attribute};
     } else {
         return undef;
     }
@@ -365,96 +362,18 @@ sub attributes  {   #09/26/02 10:41
              @{ $self->{TempAttributes}} );
 }##attributes
 
-
-
-=head2 attributes_id()
-
-Returns names of TD attributes of the object as array.
-
-=cut
-
-############################################################################
-sub attributes_id  {   #09/26/02 10:41
-############################################################################
-    my ($self) = Params::Validate::validate_with(params => \@_,
-        spec => [
-            { type => OBJECT },
-        ]);
-
-    return @{ $self->{IdAttributes}};
-}##attributes_id
-
-
-
-
-
-=head2 attributes_notid()
-
-Returns names of TD attributes of the object as array.
-
-=cut
-
-############################################################################
-sub attributes_notid  {   #09/26/02 10:41
-############################################################################
-    my ($self) = Params::Validate::validate_with(params => \@_,
-        spec => [
-            { type => OBJECT },
-        ]);
-
-    return @{ $self->{Attributes}};
-}##attributes_notid
-
-
-
-=head2 attributes_storable()
-
-Returns names of attributes of the object as array except Temporary or
-Transient attributes.
-
-=cut
-
-############################################################################
-sub attributes_storable  {   #09/26/02 10:41
-############################################################################
-    my ($self) = Params::Validate::validate_with(params => \@_,
-        spec => [
-            { type => OBJECT },
-        ]);
-
-    return ( @{ $self->{IdAttributes}},
-             @{ $self->{Attributes}} );
-}##attributes_storable
-
+sub attributes_i  {my $self = shift; ( @{ $self->{IdAttributes}   } )  }
+sub attributes_a  {my $self = shift; ( @{ $self->{Attributes}     } )  }
+sub attributes_t  {my $self = shift; ( @{ $self->{TempAttributes} } )  }
+sub attributes_ia {my $self = shift; ( @{ $self->{IdAttributes}   }, @{ $self->{Attributes}     } )  }
+sub attributes_at {my $self = shift; ( @{ $self->{Attributes}     }, @{ $self->{TempAttributes} } )  }
+sub attributes_it {my $self = shift; ( @{ $self->{IdAttributes}   }, @{ $self->{TempAttributes} } )  }
 
 
 =head2 add_attribute()
 
 Add an attribute to the object. Attribute information is used when SQL
 statement is constructed or when attribute datatype is needed to know.
-
-There is two modes of parameters passing:
-
-=over 4
-
-=item * name
-
-=item * type
-
-Valid values are C<ID>, C<Persistent>, C<Temporary> or C<Transient>.
-Attribute type is determined by first character ignoring case.
-
-=item * datatype
-
-Data type of attribute. See L<Supported Data Types|SUPPORTED DATA TYPES> for details.
-
-=item * arguments
-
-Optional. Arguments to be passed to the data type constructor
-
-=back
-
-The second mode is more powerful:
 
 =over 4
 
@@ -475,68 +394,44 @@ Returns none.
 ########################################################################
 sub add_attribute {
 ########################################################################
-    my($self, $name, $type, $data_type, @args) = Params::Validate::validate_with(params => \@_,
+    my($self, $name, $parameters) = Params::Validate::validate_with(params => \@_,
         spec => [
             { type => OBJECT },                         # self
             { type => SCALAR },                         # name
-            { type => SCALAR | HASHREF },               # type [id,pers,temp]
-            { type => SCALAR, optional => 1},           # data_type
-        ], allow_extra => 1);
+            { type => HASHREF | OBJECT},               # type [id,pers,temp]
+        ]);
     $name = lc($name);
 
-    # Initialize attribute parameters hash
-    my $parameters = {};
-    if (ref($type) eq 'HASH') {
-        # attribute parameters passed as hash ref
-        $parameters = $type;
-    } else {
-        # attribute parmeters passed as array
-        $parameters->{type} = $type;
-        $parameters->{dtype} = $data_type;
-    }
+    $self->initialize_attribute( $name, $parameters );
 
-    # initiallize some defaults
-    $parameters->{dtype} ||= 'VarChar';
-    $parameters->{type}  ||= 'Persistent';
-
-    # Create an object for datatype and save it
+    # Create an object for datatype and initialize it to default value
     my $object;
-    $data_type = $parameters->{dtype};
+    my $data_type = $parameters->{dtype};
     if ($data_type =~ /^v/i) {
-        $parameters->{maxlength} ||= $args[0];
-        $parameters->{maxlength} ||= 255;
-        $object = new ePortal::ThePersistent::DataType::VarChar( $parameters->{maxlength}, $parameters->{default} );
+        $object = new ePortal::ThePersistent::DataType::VarChar( %$parameters );
 
     } elsif ($data_type =~ /^n/i) {
-        $parameters->{maxlength} ||= $args[0];
-        $parameters->{maxlength} ||= 11;
-        $parameters->{scale}     ||= $args[0];
-        $object = new ePortal::ThePersistent::DataType::Number($parameters->{maxlength}, $parameters->{scale}, undef, $parameters->{default});
+        $object = new ePortal::ThePersistent::DataType::Number( %$parameters );
 
     } elsif ($data_type =~ /^datet/i) {
-        $object = new ePortal::ThePersistent::DataType::DateTime();
+        $object = new ePortal::ThePersistent::DataType::DateTime( %$parameters );
 
     } elsif ($data_type =~ /^d/i) {
-        $object = new ePortal::ThePersistent::DataType::Date();
+        $object = new ePortal::ThePersistent::DataType::Date( %$parameters );
 
     } elsif ($data_type =~ /^y/i) {
-        $object = new ePortal::ThePersistent::DataType::YesNo();
+        $object = new ePortal::ThePersistent::DataType::YesNo( %$parameters );
 
     } elsif ($data_type =~ /^a/i) {
-        $object = new ePortal::ThePersistent::DataType::Array();
+        $object = new ePortal::ThePersistent::DataType::Array( %$parameters );
 
     } else {
         croak "data type ($data_type) of attribute ($name) is invalid";
     }
     $self->{MetaData}->{$name} = $object;
 
-    # Initialize the attribute to default value
-    if (exists $parameters->{default}) {
-        $object->value($parameters->{default});
-    }
-
     # Save attribute name
-    $type = $parameters->{type};
+    my $type = $parameters->{type};
     if ($type =~ /^i/oi) {       ### ID fields ###
         push(@{$self->{IdAttributes}}, $name);
 
@@ -549,13 +444,6 @@ sub add_attribute {
     } else {
         croak "field type ($type) is invalid";
     }
-
-    # Adjust other parameters
-    $parameters->{fieldtype} ||= 'textfield';
-    $parameters->{label}     ||= $name;
-    $parameters->{header}    ||= $name;
-
-    $self->{Parameters}{$name} = $parameters;
 
     return;
 }
@@ -594,9 +482,8 @@ sub value {
     $attribute = lc($attribute);  ### attributes are case insensitive ###
 
     ### check for existence of the attribute ###
-    if ($self->attribute($attribute)) {
-        #$self->attribute_object($attribute)->value(@data);
-        $self->{MetaData}->{$attribute}->value(@data);
+    if (my $a = $self->attribute($attribute)) {
+        $a->value(@data);
     } else {
         croak "'$attribute' is not an attribute of this object:",
             join(',', keys %{$self->{MetaData}});
@@ -621,8 +508,7 @@ sub clear {
     my $self = shift;
 
     foreach ( $self->attributes ) {
-        $self->attribute_object($_)->value( $self->attribute($_)->{default} );
-        #$self->attribute_object($_)->value(undef);
+        $self->attribute($_)->clear();
     }
 }
 
@@ -653,22 +539,22 @@ sub update  {   #09/07/00 9:17
         # I don't know TABLE name. Extract it from SELECT
     }
 
-    my $dbh = $self->_get_dbh();  ### database handle ###
+    my $dbh = $self->dbh();  ### database handle ###
 
     ### build the SET clause of SQL ###
     my $sql = "UPDATE $self->{Table} SET \n";
     my (@values, @binds) = ();
-    foreach my $field ( $self->attributes_notid) {
+    foreach my $field ( $self->attributes_a) {
         push @values, "$field=?";
-        push @binds, $self->attribute_object($field)->sql_value;
+        push @binds, $self->attribute($field)->sql_value;
     }
     $sql   .= join(",\n", @values);
 
     ### build the WHERE clause of SQL ###
     @values = ();
-    foreach my $field ( $self->attributes_id ) {
+    foreach my $field ( $self->attributes_i ) {
         push @values, "$field=?";
-        push @binds, $self->attribute_object($field)->sql_value;
+        push @binds, $self->attribute($field)->sql_value;
     }
     $sql .= " WHERE " . join(" AND ", @values) . "\n";
 
@@ -756,7 +642,7 @@ sub restore {
 
     ### build SQL-like WHERE clause with ID ###
     my (@exprs, @bind_values) = ();
-    foreach my $idfield ( $self->attributes_id ) {
+    foreach my $idfield ( $self->attributes_i ) {
       push @exprs, "$idfield=?";
       push @bind_values, shift @id;
     }
@@ -766,12 +652,22 @@ sub restore {
     $self->restore_where( where => $expr, bind => \@bind_values);
     my $rc = $self->restore_next();
 
+    # Extra check 
+    # SELECT * WHERE id='2001-10' will select ID=2001 !!!
+    # Double check for the same id
+    if ($rc) {  # only if something found
+        foreach my $idfield ( $self->attributes_i ) {
+            my $id_value = shift @bind_values;
+            $rc = undef if lc($self->value($idfield)) ne  lc($id_value);
+        }
+    }    
+
     if (ref ($self->{STH})) {
       $self->{STH}->finish;
       $self->{STH} = undef;
     }
 
-  return $rc;
+    return $rc;
 }
 
 
@@ -834,7 +730,7 @@ sub restore_next {
     $self->{records_fetched} ++;
     my @field_names = @{$self->{STH}->{NAME_lc}};
     for my $i (0 .. $self->{STH}->{NUM_OF_FIELDS}-1) {
-        $self->attribute_object($field_names[$i])->value(shift @ary);
+        $self->attribute($field_names[$i])->value(shift @ary);
     }
 
     1;
@@ -903,17 +799,17 @@ sub insert {
         croak "This object is read-only\n";
     }
 
-    my $dbh = $self->_get_dbh();  ### database handle ###
+    my $dbh = $self->dbh();  ### database handle ###
 
     ### build the SQL ###
     my $sql = "INSERT INTO $self->{Table} (\n";
-    $sql   .= join(",", $self->attributes_storable);
+    $sql   .= join(",", $self->attributes_ia);
     $sql   .= ")\n";
     $sql   .= "VALUES (\n";
     my (@values, @binds) = ();
-    foreach my $field ( $self->attributes_storable ) {
+    foreach my $field ( $self->attributes_ia ) {
         push @values, '?';
-        push @binds, $self->attribute_object($field)->sql_value;
+        push @binds, $self->attribute($field)->sql_value;
     }
     $sql .= join(",\n", @values);
     $sql .= ")\n";
@@ -966,14 +862,14 @@ sub delete {
         return undef;
     }
 
-    my $dbh = $self->_get_dbh();  ### database handle ###
+    my $dbh = $self->dbh();  ### database handle ###
 
     ### build the SQL ###
     my $sql = "DELETE FROM $self->{Table}\n";
     my (@values, @binds) = ();
-    foreach my $field ( $self->attributes_id ) {
+    foreach my $field ( $self->attributes_i ) {
         push @values, "$field=?";
-        push @binds, $self->attribute_object($field)->sql_value;
+        push @binds, $self->attribute($field)->sql_value;
     }
 
     $sql .= " WHERE " . join(" AND ", @values) . "\n";
@@ -1053,7 +949,7 @@ sub delete_where    {   #07/04/00 1:04
     #warn "SQL = $sql\n" if $sql =~ 'debug';
 
     ### execute the SQL ###
-    my $dbh = $self->_get_dbh();  ### database handle ###
+    my $dbh = $self->dbh();  ### database handle ###
     my $result = undef;
 #    eval {
         $dbh->do($sql, undef, @binds);
@@ -1170,8 +1066,8 @@ sub restore_where {
 
     } else {
         $sql = "SELECT \n";
-        my @fields = $self->attributes_id;
-        FIELD: foreach my $field ($self->attributes_notid) {
+        my @fields = $self->attributes_i;
+        FIELD: foreach my $field ($self->attributes_a) {
 
             if (defined $p{only_attributes}) {
                 foreach my $f ( @{$p{only_attributes}} ) {
@@ -1279,7 +1175,7 @@ sub restore_where {
         if $self->{DEBUG_SQL};
 
     ### execute the SQL ###
-    my $dbh = $self->_get_dbh();  ### database handle ###
+    my $dbh = $self->dbh();  ### database handle ###
     $self->{STH} = $dbh->prepare($sql);
     $self->_check_dbi_error("Can't prepare SQL statement:\n$sql");
 
@@ -1309,7 +1205,7 @@ sub restore_where {
                 # ID or persistent
                 my $type = 'Persistent';
                 $type = 'ID' if $field_names[$i] eq 'id';
-                $self->add_attribute($field_names[$i], $type, 'VarChar', '255');
+                $self->add_attribute($field_names[$i], { type => $type, dtype => 'VarChar' });
             }
         }
     }
@@ -1445,7 +1341,7 @@ sub _check_dbi_error {
 }
 
 
-=head2 _get_dbh()
+=head2 dbh()
 
 Returns the handle of the database.
 
@@ -1458,7 +1354,7 @@ Returns the handle of the database.
 =cut
 
 ########################################################################
-sub _get_dbh {
+sub dbh {
 ########################################################################
     my $self = shift;
 
@@ -1480,12 +1376,12 @@ sub _id {
 
     if (@id) {  ### set the ID ###
         my @new_id = @id;
-        foreach my $idfield ( $self->attributes_id ) {
+        foreach my $idfield ( $self->attributes_i ) {
             # avoid inheritance
             value($self, $idfield, shift @new_id);
         }
     } else {    ### get the ID ###
-        foreach my $idfield ($self->attributes_id) {
+        foreach my $idfield ($self->attributes_i) {
             push(@id, $self->value($idfield));
         }
     }
@@ -1508,7 +1404,7 @@ sub check_id    {   #09/25/02 9:54
     my ($self, @id) = @_;
 
     @id = $self->_id() if !@id;
-    foreach ($self->attributes_id) {
+    foreach ($self->attributes_i) {
         my $i = shift @id;
         return 0 if !defined($i);
     }
@@ -1558,7 +1454,7 @@ statements.
 
 =item * $self->{dbi_xxx}
 
-{dbi_source}, {dbi_user}, {dbi_password} - three parameters to create new
+{dbi_source}, {dbi_username}, {dbi_password} - three parameters to create new
 DBH. This is opposite to {DBH} parameter.
 
 =item * $self->{CreatedDBH}
@@ -1609,10 +1505,6 @@ GROUP BY clause added to every SELECT statement with restore_where()
 
 Attribute object. Every attribute object is persent here. Attributes names
 are in lower case.
-
-=item * $self->{Parameters}{attr}
-
-Attribute parameters.
 
 =item * $self->{IdAttributes}->[]
 
@@ -1670,11 +1562,6 @@ Default is I<Persistent>.
 
 Data type. Must correlate with any of L<supported datatypes|SUPPORTED DATA
 TYPES>. Default is I<Varchar>.
-
-=item * order
-
-[1..9]. All fields are sorted by this key before table creation process. Default is
-I<5>. Deprecated. Use arrays for list of attributes.
 
 =item * label
 
