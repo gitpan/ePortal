@@ -2,9 +2,8 @@
 %# ePortal - WEB Based daily organizer
 %# Author - S.Rusakov <rusakov_sa@users.sourceforge.net>
 %#
-%# Copyright (c) 2000-2003 Sergey Rusakov.  All rights reserved.
-%# This program is free software; you can redistribute it
-%# and/or modify it under the same terms as Perl itself.
+%# Copyright (c) 2000-2004 Sergey Rusakov.  All rights reserved.
+%# This program is open source software
 %#
 %#
 %#----------------------------------------------------------------------------
@@ -16,6 +15,8 @@
 <% $dlg->row('<b>Database connection information</b>') %>
 <% $dlg->row('<hr width="50%">') %>
   <% $dlg->field('dbi_source', RO=>1) %>
+  <% $dlg->field('dbi_host', RO=>1) %>
+  <% $dlg->field('dbi_database', RO=>1) %>
   <% $dlg->field('dbi_username', RO=>1) %>
   <% $dlg->field('dbi_password', RO=>1) %>
 
@@ -89,6 +90,8 @@ Layout => 'Dialog'
       Attributes => {
         # main_parameters
         dbi_source   => { default => $ePortal->dbi_source },
+        dbi_host     => { default => $ePortal->dbi_host },
+        dbi_database => { default => $ePortal->dbi_database },
         dbi_username => { default => $ePortal->dbi_username },
         dbi_password => {
             default => $ePortal->dbi_password,

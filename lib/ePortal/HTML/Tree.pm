@@ -3,15 +3,14 @@
 # ePortal - WEB Based daily organizer
 # Author - S.Rusakov <rusakov_sa@users.sourceforge.net>
 #
-# Copyright (c) 2000-2003 Sergey Rusakov.  All rights reserved.
-# This program is free software; you can redistribute it
-# and/or modify it under the same terms as Perl itself.
+# Copyright (c) 2000-2004 Sergey Rusakov.  All rights reserved.
+# This program is open source software
 #
 #
 #----------------------------------------------------------------------------
 
 package ePortal::HTML::Tree;
-    our $VERSION = '4.2';
+    our $VERSION = '4.5';
 
 	use ePortal::Global;
     use ePortal::Utils;     # import logline, pick_lang, CGI

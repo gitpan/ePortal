@@ -3,9 +3,8 @@
 # ePortal - WEB Based daily organizer
 # Author - S.Rusakov <rusakov_sa@users.sourceforge.net>
 #
-# Copyright (c) 2000-2003 Sergey Rusakov.  All rights reserved.
-# This program is free software; you can redistribute it
-# and/or modify it under the same terms as Perl itself.
+# Copyright (c) 2000-2004 Sergey Rusakov.  All rights reserved.
+# This program is open source software
 #
 #----------------------------------------------------------------------------
 
@@ -43,7 +42,7 @@ C<mod_mime> Apache module and C<mime>.C<types> file for details.
 =cut
 
 package ePortal::Attachment;
-    our $VERSION = '4.2';
+    our $VERSION = '4.5';
     use base qw/ePortal::ThePersistent::Support/;
 
     use ePortal::Utils;
@@ -157,25 +156,6 @@ sub delete  {   #06/16/2003 4:58
     $self->SUPER::delete;
 }##delete
 
-
-
-=head2 download_href()
-
-Returns HREF to download the attachment.
-
-Optionsl parameters are passed to download.htm. Some useful
-
- download => 1 force 'downloading' the file instead of open it in browser
-
-=cut
-
-############################################################################
-sub download_href    {   #06/16/2003 1:58
-############################################################################
-    my ($self, %p) = @_;
-
-    return href('/attachment/download.htm', id => $self->id, %p);
-}##href
 
 
 =head2 upload()
@@ -346,12 +326,6 @@ sub read_from_file  {   #10/01/2003 5:17
 
 
 ############################################################################
-# Function: save_to_file
-# Description:
-# Parameters:
-# Returns:
-#
-############################################################################
 sub save_to_file    {   #10/06/2003 11:46
 ############################################################################
     my $self = shift;
@@ -367,6 +341,21 @@ sub save_to_file    {   #10/06/2003 11:46
     }
     $fh->close;
 }##save_to_file
+
+
+############################################################################
+sub save_to_string {   #10/06/2003 11:46
+############################################################################
+    my $self = shift;
+    my $buffer = undef;
+
+    $self->get_first_chunk;
+    while(my $buf = $self->get_next_chunk) {
+        $buffer .= $buf;
+    }
+
+    return $buffer;
+}##save_to_string
 
 
 ############################################################################
@@ -469,7 +458,7 @@ sub create_chunk_table  {   #10/01/2003 5:12
                 PRIMARY KEY  (`id`),
                 UNIQUE KEY `att_id` (`att_id`,`id`)
                 )
-    ");
+    ") if ! table_exists($dbh, $table_name);
     logline('warn', "Created new chunk table for Attachments: $table_name");
 }##create_chunk_table
 
@@ -560,6 +549,7 @@ sub LastModified    {   #10/17/2003 3:42
         "SELECT unix_timestamp(ts) from Attachment WHERE id=?",
         undef, $self->id);
 }##LastModified
+
 
 1;
 

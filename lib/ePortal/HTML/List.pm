@@ -3,9 +3,8 @@
 # ePortal - WEB Based daily organizer
 # Author - S.Rusakov <rusakov_sa@users.sourceforge.net>
 #
-# Copyright (c) 2000-2003 Sergey Rusakov.  All rights reserved.
-# This program is free software; you can redistribute it
-# and/or modify it under the same terms as Perl itself.
+# Copyright (c) 2000-2004 Sergey Rusakov.  All rights reserved.
+# This program is open source software
 #
 #
 #----------------------------------------------------------------------------
@@ -48,7 +47,7 @@ This module is used to make a list of objects. Example:
 =cut
 
 package ePortal::HTML::List;
-    our $VERSION = '4.2';
+    our $VERSION = '4.5';
 
 	use ePortal::Global;
     use ePortal::Utils;     # import logline, pick_lang, CGI
@@ -676,7 +675,7 @@ sub draw_list	{	#12/17/01 3:15
 	$ePortal->m->comp("/message.mc");
 
 	push @out, $self->actionbar_top;
-	push @out, empty_table( height => 6 );
+    push @out, $ePortal->m->scomp("/empty_table.mc", height => 6 );
 
     push @out, CGI::start_table( {-width => $self->{width}, -border=>0,
             -cellpadding=>0, -cellspacing=>0,
@@ -686,7 +685,7 @@ sub draw_list	{	#12/17/01 3:15
 	push @out, $self->table_rows;
 	push @out, '</table>';
 
-	push @out, empty_table( height => 6 );
+    push @out, $ePortal->m->scomp("/empty_table.mc", height => 6 );
 	push @out, $self->actionbar_bottom;
 
 	# Return resulting HTML or output it directly to client
@@ -810,7 +809,7 @@ sub table_header	{	#12/17/01 3:37
 
         # Empty cell between every column
 		if ($columncounter++ > 0) {
-        	push @out, empty_td( width => 3 );
+            push @out, $ePortal->m->scomp('/empty_td.mc', width => 3 );
 		}
 		push @out, qq|<td class="list_header" align="center"$W>|;
 		if ($column->{id} eq 'system_column' and $column->{checkbox}) {
@@ -848,7 +847,7 @@ sub table_rows	{	#12/17/01 3:41
 
 		if ($self->{before_row}) {
 			push @out, CGI::Tr( {-bgcolor => $self->{bgcolor} },
-				empty_td(),
+                $ePortal->m->scomp('/empty_td.mc' ),
                 CGI::td({-colspan => $self->{total_columns}},
                     $ePortal->m->request_comp->scall_method($self->{before_row}, list => $self)));
 		}
@@ -857,7 +856,7 @@ sub table_rows	{	#12/17/01 3:41
  		my $columncounter = 0;
 		foreach my $column ( $self->columns ) {
 			if ($columncounter++ > 0) {
-				push @out, empty_td();
+                push @out, $ePortal->m->scomp('/empty_td.mc');
 			}
 
 			#my $td_data = $ePortal->m->base_comp->scall_method($column->{method}, list => $self, column => $column);
@@ -870,16 +869,14 @@ sub table_rows	{	#12/17/01 3:41
 
 		if ($self->{after_row}) {
 			push @out, CGI::Tr({-bgcolor => $self->{bgcolor}},
-				empty_td() .
-				empty_td() .
-#               empty_td() .
-#               empty_td() .
+                $ePortal->m->scomp('/empty_td.mc') .
+                $ePortal->m->scomp('/empty_td.mc') .
                 CGI::td({-colspan => $self->{total_columns}-2},
                     $ePortal->m->request_comp->scall_method($self->{after_row}, list => $self)))
 		}
 
 		if ($self->{rowspan}) {
-			push @out, empty_tr( colspan => $self->{total_columns}, height => $self->{rowspan});
+            push @out, $ePortal->m->scomp("/empty_tr.mc", colspan => $self->{total_columns}, height => $self->{rowspan});
 		}
 
   } # end of while restore_next

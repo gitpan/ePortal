@@ -2,21 +2,23 @@
 %# ePortal - WEB Based daily organizer
 %# Author - S.Rusakov <rusakov_sa@users.sourceforge.net>
 %#
-%# Copyright (c) 2000-2003 Sergey Rusakov.  All rights reserved.
-%# This program is free software; you can redistribute it
-%# and/or modify it under the same terms as Perl itself.
+%# Copyright (c) 2000-2004 Sergey Rusakov.  All rights reserved.
+%# This program is open source software
 %#
 %#
 %#----------------------------------------------------------------------------
-<%perl>
+<%init>
   my $setup_url = '<b>&middot;</b>';
   if ( $ePortal->isAdmin ) {
     $setup_url = img(src => '/images/ePortal/setup.gif', href => '/admin/topmenu.htm',
       title => pick_lang(rus => "Настройка верхней строки меню", eng => "Setup top menu bar") );
   }
-</%perl>
+</%init>
+% if ($ePortal::DEBUG) {
+  <!-- start of pv/topmenubar.mc ------------------------------------------ -->
+% }
 <table width="100%" cellpadding=0 cellspacing=0 border=0 bgcolor="#6C7198">
-	<tr><td class="topmenu">
+  <tr><td class="topmenu" valign="top">
     &nbsp;<% $setup_url %>&nbsp;
 			<a class="topmenu" target="_top" href="/index.htm"><% pick_lang( rus=>"В начало", eng=>"Home") %></a>
 		&nbsp;<b>&middot;</b>&nbsp;
@@ -32,7 +34,7 @@
 		&nbsp;<b>&middot;</b>&nbsp;
 	</td>
 
-	<td align="right" class="topmenu">
+  <td align="right" class="topmenu" valign="top">
 		&nbsp;<b>&middot;</b>&nbsp;
 %		if ( $ePortal->username ) {
 			<a target="_top" href="/logout.htm" class="topmenu"><% pick_lang(rus=>"Разрегистрироваться", eng => "Logout") %></a>
@@ -43,3 +45,12 @@
 	</td>
 	</tr>
 </table>
+%if ($ePortal::DEBUG) {
+  <!-- username: <% $ePortal->username ? $ePortal->username : 'guest' %> -->
+  <!-- isAdmin: <% $ePortal->isAdmin ? 'true' : 'false' %> -->
+  <!-- end of pv/topmenubar.mc ------------------------------------------- -->
+%}
+
+<%filter>
+s/^\s+//gmo;
+</%filter>

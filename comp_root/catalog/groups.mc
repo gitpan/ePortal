@@ -2,22 +2,27 @@
 %# ePortal - WEB Based daily organizer
 %# Author - S.Rusakov <rusakov_sa@users.sourceforge.net>
 %#
-%# Copyright (c) 2000-2003 Sergey Rusakov.  All rights reserved.
-%# This program is free software; you can redistribute it
-%# and/or modify it under the same terms as Perl itself.
+%# Copyright (c) 2000-2004 Sergey Rusakov.  All rights reserved.
+%# This program is open source software
 %#
 %#
 %#----------------------------------------------------------------------------
-  <table border=0 cellspacing=0 cellpadding=2 width="99%" align="center">
+<& /inset.mc, page => '/catalog/groups1', number => $ARGS{group} &>
+<table border=0 cellspacing=0 cellpadding=2 width="99%" align="center">
 <%perl>
   my $group = $ARGS{group};
   my $COLUMNS = 3;                # Number of columns per page
 
   # Prefetch all groups
-	my $catalog = new ePortal::Catalog;
-  $catalog->restore_where(parent_id => $group, recordtype => "group", skip_attributes => [qw/text/]);
+  my $catalog = new ePortal::Catalog;
+  my @where = ();
+  push @where, 'hidden=0' if ! $ePortal->isAdmin;
+  $catalog->restore_where(
+    where => [ "recordtype='group'", @where],
+    parent_id => $group,
+    skip_attributes => [qw/ text setup_hash /]);
 
-  # Generate HTML code for each group 
+  # Generate HTML code for each group
   my $restore_next;
   my $row;
   while($catalog->rows) {
@@ -35,6 +40,7 @@
   }
 </%perl>
 </table>
+<& /inset.mc, page => '/catalog/groups2', number => $ARGS{group} &>
 <p>
 
 %#=== @metags group_item ====================================================
@@ -48,13 +54,15 @@
   }
 
 </%perl>
-% if ($G->xacl_read ne 'everyone') {
+% if ($G->hidden) {
+    <% img(src=> '/images/icons/key.gif') %>
+% } elsif ($G->xacl_read ne 'everyone') {
     <% img(src=> '/images/ePortal/private.gif') %>
-% }  
+% }
 
-<b><a class="s9" 
-      href="/catalog/<% $G->id %>/" 
-      title="<% $G->memo |h%>"><% $G->title |h%></a></b>
+<b><a class="s9"
+      href="/catalog/<% $G->id %>/"
+      title="<% $G->memo || $G->Title |h%>"><% truncate_string($G->title, 25) |h%></a></b>
 
 
 % my $records = $G->Records;
@@ -62,9 +70,9 @@
   <span class="memo">(<% $records %>)</span>
 % }
 
-% if ($G->xacl_check_update) {
-  <% icon_tool("GroupMenu", $G->id) %>
-% }
+%#% if ($G->xacl_check_update) {
+%#  <% icon_tool("GroupMenu", $G->id) %>
+%#% }
 
 <br>
   <%perl>
@@ -74,8 +82,9 @@
   foreach (1..3) {
     last if ! $subgroups->restore_next;
     $subgroups_found ++;
-    </%perl>
-    <a class="s8" href="/catalog/<% $subgroups->id %>/"><% $subgroups->Title |h%></a>,
-% }
-% if ($subgroups_found) { $m->print('...') }
-</%method>
+</%perl>
+<a class="s8" href="/catalog/<% $subgroups->id %>/" title="<% $subgroups->Memo || $subgroups->Title |h %>"><%
+  truncate_string($subgroups->Title, 20) |h%></a>&nbsp;|&nbsp;<%perl>
+  }
+  if ($subgroups_found) { $m->print('...') }
+</%perl></%method>

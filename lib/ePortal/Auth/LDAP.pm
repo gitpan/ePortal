@@ -3,14 +3,13 @@
 # ePortal - WEB Based daily organizer
 # Author - S.Rusakov <rusakov_sa@users.sourceforge.net>
 #
-# Copyright (c) 2000-2003 Sergey Rusakov.  All rights reserved.
-# This program is free software; you can redistribute it
-# and/or modify it under the same terms as Perl itself.
+# Copyright (c) 2000-2004 Sergey Rusakov.  All rights reserved.
+# This program is open source software
 #
 #----------------------------------------------------------------------------
 
 package ePortal::Auth::LDAP;
-    our $VERSION = '4.2';
+    our $VERSION = '4.5';
     use base qw/ePortal::Auth::Base/;
 
     use ePortal::Exception;
@@ -84,10 +83,10 @@ sub ldap_connect    {   #10/30/02 4:08
     if ($connect_username) {
         $mesg = $ldap_server->bind( $connect_username,
                 password => $connect_password);
-        logline('info', "ldap_connect: authenticating with $connect_username. Error code:", $mesg->is_error);
+        logline('debug', "ldap_connect: authenticating with $connect_username. Error code:", $mesg->is_error);
     } else {
         $mesg = $ldap_server->bind();
-        logline('info', "ldap_connect: binding anonymously. Error code:", $mesg->is_error);
+        logline('debug', "ldap_connect: binding anonymously. Error code:", $mesg->is_error);
     }
 
     return $mesg->is_error? undef : $ldap_server;

@@ -2,10 +2,8 @@
 %# ePortal - WEB Based daily organizer
 %# Author - S.Rusakov <rusakov_sa@users.sourceforge.net>
 %#
-%# Copyright (c) 2000-2003 Sergey Rusakov.  All rights reserved.
-%# This program is free software; you can redistribute it
-%# and/or modify it under the same terms as Perl itself.
-%#
+%# Copyright (c) 2000-2004 Sergey Rusakov.  All rights reserved.
+%# This program is open source software
 %#
 %#----------------------------------------------------------------------------
 %# Do not put any spacing here!!!
@@ -48,9 +46,9 @@
 <table width="120" border=0 cellspacing=0 cellpadding=0>
 %  foreach my $menu  (@VisibleMenu) {
 %				if ($menu->[0] =~ /^---/) {
-					<% empty_tr( bgcolor => "black", height => 1, black => 1 ) %>
+          <& /empty_tr.mc, height => 1, black => 1 &>
 %				} elsif ($menu->[0] eq '') {
-					<% empty_tr( height => $menu->[1] || 10 ) %>
+          <& /empty_tr.mc, $menu->[1] || 10 &>
 %				} elsif ($menu->[0] eq 'img') {
 					<tr>
 						<td><% img( src => $menu->[1] ) %></td>
@@ -68,6 +66,6 @@
 
 %     } # end of foreach @$MenuItems
 
-			<% empty_tr( height=> 5 ) %>
+      <& /empty_tr.mc, height => 5 &>
 		</table>
 

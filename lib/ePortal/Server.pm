@@ -3,9 +3,8 @@
 # ePortal - WEB Based daily organizer
 # Author - S.Rusakov <rusakov_sa@users.sourceforge.net>
 #
-# Copyright (c) 2000-2003 Sergey Rusakov.  All rights reserved.
-# This program is free software; you can redistribute it
-# and/or modify it under the same terms as Perl itself.
+# Copyright (c) 2000-2004 Sergey Rusakov.  All rights reserved.
+# This program is open source software
 #
 #
 #----------------------------------------------------------------------------
@@ -23,8 +22,15 @@ ePortal::Server - The core module of ePortal project.
 
 ePortal is a set of perl packages and HTML::Mason components to easy
 implement intranet WEB site for a company. ePortal is writen with a help of
-Apache, mod_perl, HTML::Mason. The current version of ePortal use MySQL as
+Apache, mod_perl, HTML::Mason. The current version of ePortal uses MySQL as
 database backend.
+
+The ePortal project is open source software.
+
+=head1 DOCUMENTATION
+
+Look at L<http://eportal.sourceforge.net/eng_index.html> for complete 
+documentation (Russian and English) and screen shots.
 
 =head1 METHODS
 
@@ -32,7 +38,7 @@ database backend.
 
 package ePortal::Server;
 	require 5.6.1;
-    our $VERSION = '4.2';
+    our $VERSION = '4.5';
 
     use ePortal::Global;
     use ePortal::Utils;
@@ -51,6 +57,7 @@ package ePortal::Server;
     use Digest::MD5;
     use List::Util qw//;
     use URI;
+    use Text::Wrap qw //;
 
     # Exception handling and parameters validating modules
     use Error qw/:try/;
@@ -61,6 +68,8 @@ package ePortal::Server;
     use ePortal::Auth::LDAP;
     use ePortal::Attachment;
     use ePortal::Catalog;
+    use ePortal::CtlgCategory;
+    use ePortal::CtlgItem;
     use ePortal::CronJob;
     use ePortal::epGroup;
     use ePortal::epUser;
@@ -82,7 +91,10 @@ package ePortal::Server;
     use ePortal::MethodMaker( read_only => [qw/ user config_file/]);
 
     # Main configuration parameters
-    my @MAIN_CONFIG_PARAMETERS = (qw/ dbi_source dbi_username dbi_password admin_mode /);
+    my @MAIN_CONFIG_PARAMETERS = (qw/ 
+            dbi_source dbi_host dbi_database 
+            dbi_username dbi_password 
+            admin_mode /);
     eval 'use ePortal::MethodMaker( read_only => [@MAIN_CONFIG_PARAMETERS] );';
 
     my @GENERAL_CONFIG_PARAMETERS = (qw/
@@ -96,10 +108,20 @@ package ePortal::Server;
             /);
     eval 'use ePortal::MethodMaker( read_only => [@GENERAL_CONFIG_PARAMETERS] );';
 
-    # True if the module loaded under Apache HTTP server
-    our $RUNNING_UNDER_APACHE = $ENV{MOD_PERL};
-    our $MAX_GROUP_NAME_LENGTH = 60;    # maximum length of LDAP DN for group name
-    our $STORAGE_VERSION = 11;
+    
+    our $RUNNING_UNDER_APACHE = $ENV{MOD_PERL};    # True if the module loaded under Apache HTTP server
+    our $MAX_GROUP_NAME_LENGTH = 60;               # maximum length of LDAP DN for group name
+    our $STORAGE_VERSION = 450;                    # Increment this on change comp_root/admin/ePortal_database.htm
+                                                   # ePortal version 4.4 has db store version 16
+                                                   # from v4.5 db store numbers as 450
+    # --------------------------------------------------------------------
+    # ePortal package for global variables
+    {
+      package ePortal;
+      our $VERSION = '4.5';
+      our $DEBUG = 0;                              # See Params::Validate
+      $DEBUG = 1 if $ENV{PERL_NO_VALIDATION} or $ENV{EPORTAL_DEBUG};
+    }
 
 ############################################################################
 # Function: new
@@ -116,13 +138,25 @@ sub new {   #12/26/00 3:34
 ############################################################################
     my $proto = shift;
     my $class = ref($proto) || $proto;
-    my %p = Params::Validate::validate_with( params => \@_, spec => {
-        config_file => { type => UNDEF | SCALAR, optional => 1},
-        });
+    my %p = Params::Validate::validate( @_, {
+        dbi_host      => {type => SCALAR|UNDEF, optional => 1},
+        dbi_username  => {type => SCALAR|UNDEF, optional => 1},
+        dbi_password  => {type => SCALAR|UNDEF, optional => 1},
+        dbi_database  => {type => SCALAR|UNDEF, optional => 1},
+        m             => {type => OBJECT, isa => 'HTML::Mason::Request', optional => 1},
+        
+        # too early. database connection is available after ePortal->Initialize
+        #username      => {type => SCALAR|UNDEF, optional => 1},
+      });
 
     my $self = {
-        config_file => $p{config_file},
-        username => 'internal',
+        dbi_source    => undef,         # available only under Apache for backward compatibility
+        dbi_host      => $p{dbi_host},
+        dbi_database  => $p{dbi_database},
+        dbi_username  => $p{dbi_username},
+        dbi_password  => $p{dbi_password},
+        username      => 'internal',    # default user name. Admin privilegies
+        admin_mode    => 0,
         };
     bless $self, $class;
 
@@ -130,10 +164,20 @@ sub new {   #12/26/00 3:34
     $ePortal = $self;
 
     # Discover main parameters needed for database connection
-    my %main_parameters = $self->config_main_parameters( $p{config_file} );
-    foreach (keys %main_parameters) {
-        $self->{$_} = $main_parameters{$_};
-    }
+    if ( $p{m} ) {
+      $self->{dbi_source}   ||= $p{m}->apache_req->dir_config('ePortal_dbi_source');
+      $self->{dbi_host}     ||= $p{m}->apache_req->dir_config('ePortal_dbi_host');
+      $self->{dbi_database} ||= $p{m}->apache_req->dir_config('ePortal_dbi_database');
+      $self->{dbi_username} ||= $p{m}->apache_req->dir_config('ePortal_dbi_username');
+      $self->{dbi_password} ||= $p{m}->apache_req->dir_config('ePortal_dbi_password');
+      $self->{admin_mode}   ||= $p{m}->apache_req->dir_config('ePortal_admin_mode');
+    }  
+    $self->{dbi_source}   ||= $ENV{EPORTAL_DBI_SOURCE};
+    $self->{dbi_host}     ||= $ENV{EPORTAL_DBI_HOST};
+    $self->{dbi_database} ||= $ENV{EPORTAL_DBI_DATABASE};
+    $self->{dbi_username} ||= $ENV{EPORTAL_DBI_USERNAME};
+    $self->{dbi_password} ||= $ENV{EPORTAL_DBI_PASSWORD};
+    $self->{admin_mode}   ||= $ENV{EPORTAL_ADMIN_MODE};
 
     return $self;
 }##new
@@ -151,9 +195,9 @@ sub initialize  {   #03/21/03 3:51
 ############################################################################
     my ($self, %p) = @_;
 
-    $self->DBConnect;
+    $self->dbh;
     throw ePortal::Exception::DatabaseNotConfigured
-        if ! table_exists($self->DBConnect, 'UserConfig');
+        if ! table_exists($self->dbh, 'UserConfig');
 
     $self->config_load;
     throw ePortal::Exception::DatabaseNotConfigured
@@ -201,55 +245,6 @@ sub config_save {   #03/17/03 3:38
     $self->Config('config', $c);
 }##config_save
 
-############################################################################
-# Function: config_main_parameters
-# Description:
-# Parameters:
-# Returns:
-#
-############################################################################
-sub config_main_parameters  {   #03/13/03 1:41
-############################################################################
-    my $self = shift;
-    my $filename = shift;
-
-    my %hash = (
-        dbi_source => undef,
-        dbi_username => undef,
-        dbi_password => undef,
-        admin_mode => undef,
-        );
-
-    if ($RUNNING_UNDER_APACHE) {
-        throw ePortal::Exception::Fatal( -text => 'Apache::Request object \$r is not available.')
-            if ! $self->r;
-        $hash{dbi_source}   ||= $self->r->dir_config('ePortal_dbi_source');
-        $hash{dbi_username} ||= $self->r->dir_config('ePortal_dbi_username');
-        $hash{dbi_password} ||= $self->r->dir_config('ePortal_dbi_password');
-        $hash{admin_mode}   ||= $self->r->dir_config('ePortal_admin_mode');
-    }
-
-    $hash{dbi_source}   ||= $ENV{EPORTAL_DBI_SOURCE};
-    $hash{dbi_username} ||= $ENV{EPORTAL_DBI_USERNAME};
-    $hash{dbi_password} ||= $ENV{EPORTAL_DBI_PASSWORD};
-    $hash{admin_mode}   ||= $ENV{EPORTAL_ADMIN_MODE};
-
-    if ( $filename and -r $filename ) {
-        open(F, $filename);
-        while(my $line = <F>) {
-            $line =~ tr/\r\n//d;
-            next if $line =~ /^\s*#/;
-            if ( $line =~ /^\s*(\S+)\s*=\s*(\S+)\s*$/ ) {
-                $hash{$1} ||= $2 if exists $hash{$1};
-            }
-        }
-        close F;
-    }
-
-    return wantarray ? %hash : \%hash;
-}##config_main_parameters
-
-
 
 =head2 Application()
 
@@ -284,10 +279,6 @@ sub Application {   #04/26/02 12:47
     my $app = "ePortal::App::$app_name"->new();
     logline('info', "Created Application object $app_name");
 
-    throw ePortal::Exception::DatabaseNotConfigured(-app => $app_name)
-        if $app->storage_version != $ePortal::Server::STORAGE_VERSION and 
-           ! $p{skip_storage_version_check} ;
-
     $self->{_application_object}{$app_name} = $app;
 
     return $app;
@@ -319,6 +310,7 @@ sub ApplicationsInstalled   {   #03/17/03 11:14
     throw ePortal::Exception::Fatal(-text => "Cannot open dir $path for reading")
         if ! opendir(DIR, "$path/App");
     while(my $file = readdir(DIR)) {
+        next if $file =~ /dummy\.pm/oi;
         if ($file =~ /^(.+)\.pm$/oi) {
             push @ApplicationsInstalled, $1;
         }
@@ -344,13 +336,20 @@ sub username    {   #06/19/2003 4:46
 
     if (@_ and !$self->admin_mode) {
         my $newusername = shift;
-        if ($newusername) {
-            my ($un, $reason) = $self->CheckUserAccount( user => $self->{user},
-                                    username => $newusername, quick => 1 );
+        $self->{user}->clear;
 
-            $self->{username} = $un;
+        if ($newusername) {
+          throw ePortal::Exception::BadUser(-reason => 'bad_user')
+            if ! $self->{user}->restore($newusername);
+
+          throw ePortal::Exception::BadUser(-reason => 'bad_user')
+              if ($self->{user}->Username ne $newusername) and 
+                 ($self->{user}->DN ne $newusername);
+
+          $self->{username} = $self->{user}->Username;
+
         } else {
-            $self->{username} = undef;
+          $self->{username} = undef;
         }
     }
 
@@ -394,210 +393,81 @@ In case of successful login C<username> returned
 ############################################################################
 sub CheckUserAccount    {   #06/21/01 2:00
 ############################################################################
-    my $self = shift;
-    my %p = Params::Validate::validate_with( params => \@_, spec => {
-        user => { type => OBJECT, optional => 1},
-        username => { type => UNDEF | SCALAR},
-        password => { type => UNDEF | SCALAR, optional => 1},
-        quick => {type => BOOLEAN, optional => 1}
-        });
+  my $self = shift;
+  my %p = Params::Validate::validate( @_, {
+      username => { type => UNDEF | SCALAR},
+      password => { type => UNDEF | SCALAR},
+      });
 
-    $p{reason} = undef;
-    $p{user} ||= new ePortal::epUser;
+  my $U = new ePortal::epUser;
 
-    $self->_CheckUserAccount_username(\%p);
-    $self->_CheckUserAccount_restore(\%p);
+  throw ePortal::Exception::BadUser(-reason => 'bad_user')
+    if $p{username} eq '';
 
-    if ($p{quick}) {    # quick check
-        $self->_CheckUserAccount_require_restored(\%p);
-        $self->_CheckUserAccount_disabled(\%p);
+  my $user_exists = 0;
+  if ($U->restore($p{username})) {
+    $user_exists = 1 
+      if $U->Username eq $p{username} or 
+         $U->DN eq $p{username};
+  }  
 
-    } else { # Complete check WITH PASSWORD
-        if ($p{user_exists} and !$p{user}->ext_user) {
-            $self->_CheckUserAccount_disabled(\%p);
-            $self->_CheckUserAccount_password(\%p);
-        } else {
-            $self->_CheckUserAccount_ldap_connect(\%p);
-            $self->_CheckUserAccount_ldap_search(\%p);
-            $self->_CheckUserAccount_ldap_password(\%p);
-            $self->_CheckUserAccount_ldap_refresh_info(\%p);
-        }
-    }
+  # Check local user
+  if ($user_exists and $U->ext_user == 0) {
+    throw ePortal::Exception::BadUser(-reason => 'disabled')
+      if ! $U->Enabled;
+    
+    throw ePortal::Exception::BadUser(-reason => 'bad_password')
+      if ($p{password} eq '') or 
+         ($U->Password ne $p{password});
 
-    if ($p{reason}) {
-        logline('warn', "CheckUserAccount: failed for reason: $p{reason}, username: $p{username}");
-        $p{user}->clear;
-        return (undef, $p{reason});
-    } else {
-        $p{user}->last_login('now');
-        $p{user}->update;
-
-        logline($p{quick} ? 'info' : 'notice',
-            "CheckUserAccount: User $p{username} checked successfully");
-        return ($p{user}->Username, undef);
-    }
-}##CheckUserAccount
-
-
-############################################################################
-sub _CheckUserAccount_username {   #10/31/02 2:54
-############################################################################
-    my ($self, $p) = @_;
-    return if $p->{reason};
-
-    if ($p->{username} eq '') {
-        $p->{reason} = 'no_user';
-    }
-}##_CheckUserAccount_username
-
-
-############################################################################
-sub _CheckUserAccount_restore {   #10/31/02 2:54
-############################################################################
-    my ($self, $p) = @_;
-    return if $p->{reason};
-
-    $p->{user_exists} = $p->{user}->restore($p->{username});
-    if ( ($p->{user}->Username ne $p->{username}) and
-         ($p->{user}->DN ne $p->{username})) {
-        $p->{user_exists} = undef;
-    }
-}##_CheckUserAccount_restore
-
-############################################################################
-sub _CheckUserAccount_require_restored {   #10/31/02 2:54
-############################################################################
-    my ($self, $p) = @_;
-    return if $p->{reason};
-
-    if ( !$p->{user_exists} ) {
-        $p->{reason} = 'bad_user';
-    }
-}##_CheckUserAccount_require_restored
-
-
-############################################################################
-sub _CheckUserAccount_password {   #10/31/02 2:54
-############################################################################
-    my ($self, $p) = @_;
-    return if $p->{reason};
-
-    if  (
-        ($p->{password} eq '') or
-        ($p->{user}->Password ne $p->{password})
-        ) {
-        $p->{reason} = 'bad_password';
-        return;
-    }
-}##_CheckUserAccount_password
-
-
-############################################################################
-sub _CheckUserAccount_disabled {   #10/31/02 2:54
-############################################################################
-    my $self = shift;
-    my $p = shift;
-
-    return if $p->{reason};
-
-    if ( ! $p->{user}->Enabled ) {
-        $p->{reason} = 'disabled';
-    }
-}##_CheckUserAccount_disabled
-
-
-############################################################################
-sub _CheckUserAccount_last_checked_days {   #10/31/02 2:54
-############################################################################
-    my ($self, $p) = @_;
-    return if $p->{reason};
-
-    my @last_checked = $p->{user}->attribute('last_checked')->array;
-    @last_checked = (1970,1,1) if @last_checked != 3;
-    if ( ! Date::Calc::check_date(@last_checked) ) {
-        logline('error', "CheckUserAccout: [last_checked] date from DB is not valid!: ",@last_checked);
-        @last_checked = (1970,1,1); # force revalidation
-    }
-
-    $p->{last_checked_days} = Date::Calc::Delta_Days(Date::Calc::Today(), @last_checked);
-}##_CheckUserAccount_last_checked_days
-
-
-############################################################################
-sub _CheckUserAccount_ldap_connect {   #10/31/02 2:54
-############################################################################
-    my ($self, $p) = @_;
-    return if $p->{reason};
-
+  # Check LDAP external module
+  } elsif ($self->ldap_server) {
     try {
-        $p->{auth_ldap} = new ePortal::Auth::LDAP($p->{username});
-    } catch ePortal::Exception::Fatal with {
-        my $E = shift;
-        logline('error', "LDAP error: $E");
-        $p->{reason} = 'system_error';
-    };
-}##_CheckUserAccount_ldap_connect
+      my $auth_ldap = new ePortal::Auth::LDAP( $p{username} );
 
+      throw ePortal::Exception::BadUser(-reason => 'bad_user')
+        if ! $auth_ldap->check_account;
 
-############################################################################
-sub _CheckUserAccount_ldap_search {   #10/31/02 2:54
-############################################################################
-    my ($self, $p) = @_;
-    return if $p->{reason};
+      throw ePortal::Exception::BadUser(-reason => 'bad_password')
+        if ! $auth_ldap->check_password( $p{password} );
 
-    $p->{reason} = 'bad_user' if ! $p->{auth_ldap}->check_account;
-}##_CheckUserAccount_ldap_search
+      # Refresh user info from LDAP
+      $U->last_checked('now');
+      $U->UserName(   $p{username} );
+      $U->DN(         $auth_ldap->dn);
+      $U->FullName(   $auth_ldap->full_name );
+      $U->Title(      $auth_ldap->title );
+      $U->Department( $auth_ldap->department );
+      $U->ext_user( 1 );
+      $U->Enabled( 1 );
 
+      my $res = $user_exists ? $U->update : $U->insert;
+      throw ePortal::Exception::BadUser(-reason => 'system_error')
+        if ! $res;
 
-############################################################################
-sub _CheckUserAccount_ldap_password{   #10/31/02 2:54
-############################################################################
-    my ($self, $p) = @_;
-    return if $p->{reason};
-
-    $p->{reason} = 'bad_password' if ! $p->{auth_ldap}->check_password($p->{password});
-}##_CheckUserAccount_ldap_password
-
-
-############################################################################
-sub _CheckUserAccount_ldap_refresh_info {   #10/31/02 2:54
-############################################################################
-    my ($self, $p) = @_;
-    return if $p->{reason};
-
-    # General information about the user
-    $p->{user}->last_checked('now');
-    $p->{user}->UserName(   $p->{username} );
-    $p->{user}->DN(         $p->{auth_ldap}->dn);
-    $p->{user}->FullName(   $p->{auth_ldap}->full_name );
-    $p->{user}->Title(      $p->{auth_ldap}->title );
-    $p->{user}->Department( $p->{auth_ldap}->department );
-    $p->{user}->ext_user( 1 );
-    $p->{user}->Enabled( 1 );
-
-    my $res;
-    if ( $p->{user_exists} ) {
-        $res = $p->{user}->update;
-    } else {
-        $res = $p->{user}->insert;
-
-        # For new users refresh group membership immediately
-        my $G = new ePortal::epGroup;
-        foreach my $g ($p->{auth_ldap}->membership) {
-            if ($G->restore($g)) {
-                $p->{user}->add_groups($g);
-            }    
+      # Refresh group membership
+      my $G = new ePortal::epGroup;
+      foreach my $g ($auth_ldap->membership) {
+        if ($G->restore($g)) {
+          $U->add_groups($g);
         }    
-    }
+      }    
 
-    $p->{user_exists} = 1;
-    if (!$res) {
-        $p->{reason} = 'system_error';
-    }
+    } catch ePortal::Exception::Fatal with {
+      my $E = shift;
+      logline('error', "LDAP error: $E");
+      throw ePortal::Exception::BadUser(-reason => 'system_error')
+    };  
+  
+  # Nothing more to check
+  } else {
+    throw ePortal::Exception::BadUser(-reason => 'bad_user');
+  }
+      
 
-}##_CheckUserAccount_ldap_refresh_info
-
-
+  $self->dbh->do("UPDATE epUser SET last_login=now() WHERE id=?", undef, $U->id);
+  logline('notice', "CheckUserAccount: User $p{username} checked successfully");
+}##CheckUserAccount
 
 
 
@@ -611,20 +481,20 @@ Cleans all internal variables and caches after request is completed.
 ############################################################################
 sub cleanup_request {   #12/26/00 3:18
 ############################################################################
-    my $self = shift;
+  my $self = shift;
 
-    # Clear ThePersistent cache
-    ePortal::ThePersistent::Cached::ClearCache();
-    #my ($hits, $total, $ratio) = ePortal::ThePersistent::Cached::Statistics();
-    #logline ('info', "Cache hits: $hits, total: $total, ratio: $ratio");
+  # Clear ThePersistent cache
+  ePortal::ThePersistent::Cached::ClearCache();
 
-    # disconnect from database
-    if (ref($self->{dbh} eq 'HASH')) {
-        foreach (keys %{$self->{dbh}}) {
-            $self->{dbh}{$_}->disconnect;
-            delete $self->{dbh}{$_};
-        }
-    }
+  # disconnect from database
+  if ( ref($self->{dbh_cache}) ) {
+    $self->{dbh_cache}->disconnect;
+  }
+  delete $self->{dbh_cache};
+  delete $self->{user};
+
+  # destroy Application object cache
+  delete $self->{_application_object};
 }##cleanup_request
 
 ############################################################################
@@ -704,7 +574,7 @@ sub UserConfig  {   #01/09/01 1:27
 }##UserConfig
 
 
-=head2 Config
+=head2 Config()
 
 The same as C<UserConfig> but stores server specific parameters.
 
@@ -732,7 +602,7 @@ sub _Config {   #03/24/01 10:28
     my $value;
 
     # restore existing value from database
-    my $dbh = $self->DBConnect;
+    my $dbh = $self->dbh;
     my ($dummy_keyname, $dummy_value) =
         $dbh->selectrow_array("SELECT userkey,val FROM UserConfig WHERE username=? and userkey=?",
             undef, $username, $keyname);
@@ -746,9 +616,14 @@ sub _Config {   #03/24/01 10:28
         $freezed = '_REF_' . freeze($dummy_value)
             if (ref $dummy_value);
 
-        if ($dummy_keyname) {   # the key exists
+        if ($dummy_value eq '') {   # clear value
+            $dbh->do("DELETE FROM UserConfig WHERE username=? and userkey=?",
+                undef, $username, $keyname);
+            
+        } elsif ($dummy_keyname) {   # the key exists
             $dbh->do("UPDATE UserConfig SET val=? WHERE username=? and userkey=?",
                 undef, $freezed, $username, $keyname);
+
         } else {    # the key not exists
             $dbh->do("INSERT into UserConfig(username,userkey,val) VALUES(?,?,?)",
                 undef, $username, $keyname, $freezed);
@@ -761,66 +636,59 @@ sub _Config {   #03/24/01 10:28
 
 
 
-=head2 DBConnect()
+=head2 dbh()
 
-In general C<DBConnect()> is used to get ePortal's database handle.
+In general C<dbh()> is used to get ePortal's database handle.
 
 This function returns C<$dbh> - database handle or throws
 L<ePortal::Exception::DBI|ePortal::Exception>.
 
 =cut
+  
+  my $ErrorHandler = sub {
+      local $Error::Debug = 1;
+      local $Error::Depth = $Error::Depth + 1;
+      throw ePortal::Exception::DBI(-text => $_[0], -object => $_[1]);
+      1;
+  };
 
 ############################################################################
-sub DBConnect   {   #02/19/01 11:15
+sub dbh   {   #02/19/01 11:15
 ############################################################################
     my $self = shift;
-    my $nickname = shift || 'ePortal';
-
-    my $dbi_source = $self->dbi_source;
-    my $dbi_username = $self->dbi_username;
-    my $dbi_password = $self->dbi_password;
-
-    if ($nickname ne 'ePortal') {
-        $dbi_source = $self->_Config("!$nickname!", 'dbi_source');
-        if ( $dbi_source eq '' ) {
-            throw ePortal::Exception::DBI(-text => "dbi_source [$nickname] not configured")
-        } elsif ($dbi_source eq 'ePortal') {
-            $dbi_source = $self->dbi_source;
-            $nickname = 'ePortal';
-        } else {
-            $dbi_username = $self->_Config("!$nickname!", 'dbi_username');
-            $dbi_password = $self->_Config("!$nickname!", 'dbi_password');
-        }
-    }
-
-    my $ErrorHandler = sub {
-        local $Error::Debug = 1;
-        local $Error::Depth = $Error::Depth + 1;
-        throw ePortal::Exception::DBI(-text => $_[0], -object => $_[1]);
-        1;
-    };
-
 
     # Cache connection
-    if (defined $self->{dbh}{$nickname}) {
-        return $self->{dbh}{$nickname} if $self->{dbh}{$nickname}->ping;
+    if ( defined $self->{dbh_cache} ) {
+        return $self->{dbh_cache} if $self->{dbh_cache}->ping;
     }
 
-    # Extra check connect data before connecting
-    throw ePortal::Exception::DBI(-text => "DBI source for $nickname is not defined. Cannot connect to database.")
-        if $dbi_source eq '';
-
     # Do connect. connect returns undef on error
+    my $DBH;
     eval {
-    $self->{dbh}{$nickname} = DBI->connect( $dbi_source, $dbi_username, $dbi_password,
-        {ShowErrorStatement => 1, RaiseError => 0, PrintError => 1, AutoCommit => 1});
+      my $dbi_source = undef;
+      if ( $self->dbi_host or $self->dbi_database) {
+        $dbi_source = 'dbi:mysql:';
+        $dbi_source .= sprintf('host=%s;', $self->dbi_host) if $self->dbi_host;
+        $dbi_source .= sprintf('database=%s;', $self->dbi_database) if $self->dbi_database;
+      } else {
+        $dbi_source = $self->dbi_source;
+      }  
+
+      $DBH = DBI->connect( $dbi_source, $self->dbi_username, $self->dbi_password,
+                                  { ShowErrorStatement => 1, 
+                                    RaiseError => 0, 
+                                    PrintError => 1, 
+                                    AutoCommit => 1
+                                   });
     };
     throw ePortal::Exception::DBI(-text => $DBI::errstr || $@)
-        if (! $self->{dbh}{$nickname}) or $@;
+        if (! $DBH ) or $@;
 
-    $self->{dbh}{$nickname}{HandleError} = $ErrorHandler;
-    return $self->{dbh}{$nickname};
-}##DBConnect
+    #$self->{dbh_cache}->{HandleError} = $ErrorHandler;
+    $DBH->{HandleError} = $ErrorHandler;
+    $self->{dbh_cache} = $DBH;
+    return $DBH;
+}##dbh
 
 
 ############################################################################
@@ -876,7 +744,7 @@ sub send_email  {   #01/12/02 12:28
 }##send_email
 
 
-=head2 onDeleteUser
+=head2 onDeleteUser()
 
 This is callback function. Do not call it directly. It calls once
 onDeleteUser(username) for every application installed.
@@ -907,7 +775,7 @@ sub onDeleteUser    {   #11/19/02 2:14
 }##onDeleteUser
 
 
-=head2 onDeleteGroup
+=head2 onDeleteGroup()
 
 This is callback function. Do not call it directly. It calls once
 onDeleteGroup(groupname) for every application installed.
@@ -939,7 +807,7 @@ sub onDeleteGroup    {   #11/19/02 2:14
 }##onDeleteGroup
 
 
-=head2 max_allowed_packet
+=head2 max_allowed_packet()
 
 Maximum allowed packet size for database. By default MySQL server has
 limit to 1M packet size but this limit may be changed.
@@ -950,8 +818,7 @@ limit to 1M packet size but this limit may be changed.
 sub max_allowed_packet  {   #11/27/02 2:51
 ############################################################################
     my $self = shift;
-    my $dbh = $self->DBConnect;
-    my $sth = $dbh->prepare("show variables like 'max_allowed_packet'");
+    my $sth = $self->dbh->prepare("show variables like 'max_allowed_packet'");
     $sth->execute;
     my $result = ($sth->fetchrow_array())[1];
     $sth->finish;
@@ -973,25 +840,6 @@ __END__
 User authorization and authentication is ticket based. The ticked is
 created during login process and saved in user's cookie. The ticked is
 validated on every request.
-
-=head2 login.htm
-
-It is main login point. The authentication thicket is created here. The
-ticked is stored in user cookie. Format of the ticked is:
-
- secret:username:remoteip:md5hash
-
-Complete user validation procedure is done by C<CheckUserAccount()>
-
-
-
-=head2 Quick validation.
-
-The user is checked with a cookie based ticked. The ticked is signed with 
-MD5 checksum. If something is wrong then ticket is cancelled.
-
-Quick validation process is done by C<CheckUserAccount(quick=>1)>
-
 
 =head2 External users
 

@@ -2,14 +2,14 @@
 %# ePortal - WEB Based daily organizer
 %# Author - S.Rusakov <rusakov_sa@users.sourceforge.net>
 %#
-%# Copyright (c) 2000-2003 Sergey Rusakov.  All rights reserved.
-%# This program is free software; you can redistribute it
-%# and/or modify it under the same terms as Perl itself.
+%# Copyright (c) 2000-2004 Sergey Rusakov.  All rights reserved.
+%# This program is open source software
 %#
 %#
 %#----------------------------------------------------------------------------
-
-%#--- @METAGS Logo ----------
+%if ($ePortal::DEBUG) {
+  <!-- start of pv/toappbar.mc ------------------------------------------- -->
+%}
 <table width="100%" cellpadding=0 cellspacing=0 border=0>
 	<tr  bgcolor="#EEEEEE">
 		<td width=150>
@@ -34,10 +34,11 @@
 			</table>
 		</td>
 	</tr>
-
-	<% empty_tr( bgcolor => "#6C7198", colspan => 3, height => 3 ) %>
-
+  <& /empty_tr.mc, height => 3, bgcolor => "#6C7198", colspan => 3 &>
 </table>
+%if ($ePortal::DEBUG) {
+  <!-- end of pv/toappbar.mc --------------------------------------------- -->
+%}
 
 
 %#=== @METAGS usernamebar =========================================================
@@ -59,3 +60,7 @@
 	<a target="_top" href="<% $login_url %>" title="<% $login_title %>"><% $ePortal->ShortUserName %></a>
 </%def>
 
+
+<%filter>
+s/^\s+//gmo;
+</%filter>

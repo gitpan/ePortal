@@ -1,11 +1,19 @@
-body,div,br,p,td,th,caption,blockquote,ul,ol,{
- font-family:"MS Sans Serif",sans-serif;
+<%flags>
+inherit => undef
+</%flags>
+<%init>
+   my $ff_sans = '"MS Sans Serif",sans-serif';
+   my $ff_verdana = 'Verdana, Arial, Helvetica, sans-serif';
+</%init>
+body,div,br,p,td,th,caption,blockquote,ul,ol{
+ font-family:<% $ff_sans %>;
  font-size:9pt;}
+
 form,select,option,input{
  font-family:"MS Sans Serif",sans-serif;
  font-size:8pt;}
 textarea{
- font-family:"MS Sans Serif",sans-serif;
+ font-family:<% $ff_verdana %>;
  font-size:9pt;}
 tr{vertical-align:top;}
 td{vertical-align:top;}
@@ -19,7 +27,7 @@ A:hover  {color : #FF5555;}
 	font-weight:bold; font-size:8pt; }
 
 h1, h2, h3, h4 {font-family : Arial, geneva, helvetica; font-weight:bold;}
-h1  { font-size : large; }
+h1  {font-size : large; }
 h2  {font-size : medium; margin-top : 0px; margin-bottom : 0px;}
 h3  {font-size : medium;}
 
@@ -27,6 +35,9 @@ ul { margin: 5px 5px 5px 20px }
 p  {margin-left : 2pt;}
 
 .copyright  {font-family:Sans Serif; font-size:8pt; text-align:left; color:#889999}
+
+.pvlist {font-size : 9pt;font-weight : bold;
+   margin-top:0pt; margin-bottom:0pt; margin-left:2pt; margin-right:5pt;}
 
 .sidemenu  {font-size : 9pt;font-weight : bold;
    margin-top:0pt; margin-bottom:0pt; margin-left:2pt; margin-right:5pt;}
@@ -43,9 +54,9 @@ p  {margin-left : 2pt;}
    color : white; text-align : center;}
 
 .errormessage {color:red;
-	font-family:Arial, Geneva, Helvetica; foint-size:10pt;font-weight:bold;text-align:center;}
+   font-family:Arial, Geneva, Helvetica; font-size:10pt;font-weight:bold;text-align:center;}
 .goodmessage {color:blue;
-	font-family:Arial, Geneva, Helvetica; foint-size:10pt;font-weight:bold;text-align:center;}
+   font-family:Arial, Geneva, Helvetica; font-size:10pt;font-weight:bold;text-align:center;}
 
 .title {font-size: 12pt; font-weight : bold; font-family: Arial; 
    color : #005500; text-align : center; }

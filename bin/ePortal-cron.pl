@@ -3,9 +3,8 @@
 # ePortal - WEB Based daily organizer
 # Author - S.Rusakov <rusakov_sa@users.sourceforge.net>
 #
-# Copyright (c) 2000-2003 Sergey Rusakov.  All rights reserved.
-# This program is free software; you can redistribute it
-# and/or modify it under the same terms as Perl itself.
+# Copyright (c) 2000-2004 Sergey Rusakov.  All rights reserved.
+# This program is open source software
 #
 #
 #----------------------------------------------------------------------------
@@ -24,7 +23,7 @@ BEGIN {
 # ------------------------------------------------------------------------
 # Modules and global variables
 #
-    our $VERSION = '4.1';
+    our $VERSION = '4.3';
 use ePortal::Global;
 use ePortal::Utils;
 use ePortal::Server;
@@ -41,32 +40,38 @@ use Error qw/:try/;
 my $opt_help;
 my $opt_verbose;
 my $opt_force;
-my ($opt_mysql_server, $opt_mysql_database, $opt_mysql_user, $opt_mysql_password, $opt_jobserver);
+my ($opt_mysql_host, $opt_mysql_database, $opt_mysql_user, $opt_mysql_password, 
+    $opt_jobserver);
 
 Getopt::Long::GetOptions(
-    'help|h!' => \$opt_help,
-    'force|f=s' => \$opt_force,
-    'verbose|v!' => \$opt_verbose,
     'database|D=s' => \$opt_mysql_database,
-    'server|s=s' => \$opt_mysql_server,
-    'user|u=s' => \$opt_mysql_user,
+    'force|f=s' => \$opt_force,
+    'help|?!' => \$opt_help,
     'jobserver|j=s' => \$opt_jobserver,
-    'password|p=s' => $opt_mysql_password);
+    'password|p=s' => $opt_mysql_password,
+    'host|h=s' => \$opt_mysql_host,
+    'user|u=s' => \$opt_mysql_user,
+    'verbose|v!' => \$opt_verbose,
+    );
 
 if ($opt_help or $opt_verbose) {
     print
         "\nePortal cron command line utility v.$VERSION\n",
-        "Copyright (c) 2001-2003 Sergey Rusakov <rusakov_sa\@users.sourceforge.net>\n\n";
+        "Copyright (c) 2001-2004 Sergey Rusakov <rusakov_sa\@users.sourceforge.net>\n\n";
 }
 
 if ($opt_help) {
     print $0, " [options]\n\n",
-        "\tOptions:\n",
-        "\t -h, --help             This help screen\n",
-        "\t -v, --verbose          Be verbose\n",
-        "\t -f, --force=[daily|hourly|all]\n",
-        "\t -j, --jobserver=name   Name the server running this job\n",
-        "\t                        Force this type of job to run\n",
+        "Options:\n",
+        " -?, --help             This help screen\n",
+        " -v, --verbose          Be verbose\n",
+        " -f, --force=[daily|hourly|all]\n",
+        "                        Force this type of job to run\n",
+        " -j, --jobserver=name   Name the server running this job\n",
+        " -h, --host=name        MySQL host name\n",
+        " -D, --database=name    MySQL database name\n",
+        " -u, --user=name        MySQL user name\n",
+        " -p, --password=xxx     MySQL user password\n",
         "\n";
     exit 1;
 }
@@ -75,7 +80,9 @@ if ($opt_help) {
 # ------------------------------------------------------------------------
 # Create Server and Interp objects
 #
-new ePortal::Server;
+$ePortal = new ePortal::Server( 
+                dbi_host => $opt_mysql_host, dbi_username => $opt_mysql_user,
+                dbi_password => $opt_mysql_password, dbi_database => $opt_mysql_database);
 $ePortal->initialize();
 
 our $outbuf;
@@ -114,10 +121,12 @@ foreach my $admin_name ( @{ $ePortal->admin }) {
 # Discover a time when I run last time
 #
 my $last_run_sql = $ePortal->Config("last_run_$0");
-my $this_run_sql = $ePortal->DBConnect->selectrow_array('select now()');
+my $this_run_sql = $ePortal->dbh->selectrow_array('select now()');
 $ePortal->Config("last_run_$0", $this_run_sql);
 print "This utility was last executed at: $last_run_sql\n"
     if $opt_verbose;
+print "Will run only jobs for jobserver=$opt_jobserver\n"
+    if $opt_verbose and $opt_jobserver;
 
 my @last_run = split('\D+', $last_run_sql);
 @last_run = (1970,1,1, 0,0,0) if ! Date::Calc::check_date(@last_run[0..2]);
@@ -141,14 +150,14 @@ print "Happy new hour! Will execute hourly jobs\n" if $opt_verbose and $need_for
 # Running jobs
 #
 print "\n" if $opt_verbose;
-printf "%-40s %-20s Status\n", "Job", "Last start" if $opt_verbose;
+printf "%-40s %-19s Status\n", "Job", "Last start" if $opt_verbose;
 my $cj = new ePortal::CronJob;
 $cj->restore_all;
 while($cj->restore_next) {
     # Calculate time passed...
     my @last_run = $cj->attribute('LastRun')->array;
     @last_run = (1970,1,1, 0,0,0) if ! Date::Calc::check_date(@last_run[0..2]);
-    my @this_run = split('\D+', $ePortal->DBConnect->selectrow_array('select now()'));
+    my @this_run = split('\D+', $ePortal->dbh->selectrow_array('select now()'));
 
     # Calculate amount of time passed from last job run
     my @delta = Date::Calc::Delta_DHMS(@last_run, @this_run);           # time passed from last run
@@ -165,7 +174,7 @@ while($cj->restore_next) {
     }
 
     # Check JobServer
-    if ($cj->JobServer and ($opt_jobserver ne $cj->JobServer)) {
+    if ($opt_jobserver ne $cj->JobServer) {
         printf ("js=%s\n", $cj->JobServer) if $opt_verbose;
         next;
     }

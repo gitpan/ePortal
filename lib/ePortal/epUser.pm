@@ -3,9 +3,8 @@
 # ePortal - WEB Based daily organizer
 # Author - S.Rusakov <rusakov_sa@users.sourceforge.net>
 #
-# Copyright (c) 2000-2003 Sergey Rusakov.  All rights reserved.
-# This program is free software; you can redistribute it
-# and/or modify it under the same terms as Perl itself.
+# Copyright (c) 2000-2004 Sergey Rusakov.  All rights reserved.
+# This program is open source software
 #
 #
 #----------------------------------------------------------------------------
@@ -13,7 +12,7 @@
 
 package ePortal::epUser;
 	use base qw/ePortal::ThePersistent::Support/;
-    our $VERSION = '4.2';
+    our $VERSION = '4.5';
 
 	use Carp;
 	use ePortal::Global;
@@ -90,6 +89,16 @@ sub validate	{	#07/06/00 2:35
 			eng => 'No login name');
 	}
 
+    # Check for duplicate
+    my $cnt = $self->dbh->selectrow_array(
+        "SELECT count(*) from epUser WHERE username=? AND id!=?", undef,
+        $self->username, $self->id+0);
+    if ($cnt) {
+        return pick_lang(
+            rus => "Такое имя уже используется",
+            eng => 'Duplicate user name');
+    }    
+
 	undef;
 }##validate
 
@@ -130,6 +139,11 @@ sub restore	{	#06/09/01 9:34
     if (!$result) {
         $self->restore_where(where => 'dn=?', bind => [$id]);
         $result = $self->restore_next();
+    }
+
+    if (ref ($self->{STH})) {
+      $self->{STH}->finish;
+      $self->{STH} = undef;
     }
 
     return $result;
@@ -345,7 +359,7 @@ sub add_groups	{	#06/26/01 1:50
 	my (@groups) = @_;
 
 	my $G = new ePortal::epGroup;
-    my $dbh = $ePortal->DBConnect;
+    my $dbh = $ePortal->dbh;
 
 	foreach my $group (@groups) {
 		if ($G->restore($group)) {
@@ -371,7 +385,7 @@ sub remove_groups	{	#06/26/01 1:53
 ############################################################################
 	my $self = shift;
 	my (@groups) = @_;
-    my $dbh = $ePortal->DBConnect;
+    my $dbh = $ePortal->dbh;
 
 	foreach my $group (@groups) {
         $dbh->do("DELETE FROM epUsrGrp WHERE username=? AND groupname=?", undef,

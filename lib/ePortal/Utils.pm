@@ -3,9 +3,8 @@
 # ePortal - WEB Based daily organizer
 # Author - S.Rusakov <rusakov_sa@users.sourceforge.net>
 #
-# Copyright (c) 2000-2003 Sergey Rusakov.  All rights reserved.
-# This program is free software; you can redistribute it
-# and/or modify it under the same terms as Perl itself.
+# Copyright (c) 2000-2004 Sergey Rusakov.  All rights reserved.
+# This program is open source software
 #
 # cstocs() code is from Convert::Cyrillic package of
 # John Neystadt <john@neystadt.org>
@@ -27,7 +26,7 @@ Some functions are very useful anywhere. They are collected here.
 =cut
 
 package ePortal::Utils;
-    our $VERSION = '4.2';
+    our $VERSION = '4.5';
 
     use CGI qw/-nosticky -no_xhtml -no_debug/;
     CGI->compile(':all');
@@ -41,18 +40,17 @@ package ePortal::Utils;
     use Fcntl(':flock');
     use Params::Validate qw/:types/;
     use Error qw/:try/;
-    use ePortal::Exception;
+    use Apache::Util qw/escape_html escape_uri/;
 
     use base qw/Exporter/;
     our @EXPORT = qw/
                     &logline &pick_lang &cstocs
-                    &empty_td &empty_tr &empty_table
-                    &href &plink &img
+                    &empty_td
+                    &href &plink &img &truncate_string
                     &icon_edit &icon_delete &icon_export &icon_tool
                     &filter_html
                     &filter_txt &filter_txt_title
                     &filter_auto_title
-                    &date_to_sql
                     /;
 
 
@@ -222,11 +220,11 @@ sub href    {   #06/29/01 11:22
         if (ref ($value) eq 'ARRAY') {
             foreach my $v (@$value) {
                 $href .= '&' if $href;
-                $href .= "$key=" . ePortal::Utils::escape($v);
+                $href .= "$key=" . escape($v);
             }
         } else {
             $href .= '&' if $href;
-            $href .= "$key=" . ePortal::Utils::escape($value);
+            $href .= "$key=" . escape($value);
         }
     }
 
@@ -276,164 +274,6 @@ sub plink   {   #07/27/01 12:56
     }
 }##plink
 
-=head2 empty_table( param =E<gt> value )
-
-Constructs HTML code to create empty table 100% width. A background of the
-table is filled with 1 pixel in size transparent picture. Parameters passed
-as hash are:
-
-I<height> table height in pixels
-
-I<bgcolor> HTML compatible color value
-
-I<black> adjust background picture and color values to make the table
-completly black
-
-Returns HTML string in scalar of array context. If used in void contxet
-then $m-E<gt>out() is used to output the string immediately .
-
-=cut
-
-############################################################################
-sub empty_table {   #07/27/01 3:49
-############################################################################
-    my %p = @_;
-
-    my $image = $p{black} ?
-        "/images/ePortal/1px-black.gif" :
-        "/images/ePortal/1px-trans.gif";
-
-    $p{bgcolor} ||= $p{black}? "#000000" : undef;
-
-    my %table_params = (
-        -border => 0,
-        -width => "100%",
-        -cellspacing => 0,
-        -cellpadding => 0);
-    $table_params{-bgcolor} = $p{bgcolor} if $p{bgcolor};
-    $table_params{-class} = $p{class} if $p{class};
-
-    my $html = CGI::table(\%table_params,
-        CGI::Tr({},
-            CGI::td({}, img( src => $image, height => $p{height} ))
-        )
-    );
-
-    if (defined wantarray) {
-        return $html;
-    } else {
-        $ePortal->m->print( $html );
-    }
-}##empty_table
-
-
-=head2 empty_tr( param =E<gt> value )
-
-Contructs HTML code for empty row of table. Parameters passed as hash are:
-
-I<height> height in pixels
-
-I<colspan> make a cell as colspan. Used in multicolumn tables
-
-I<bgcolor> HTML compatible color value
-
-I<black> adjust all parameters to make the row completely black
-
-Returns HTML string in scalar of array context. If used in void contxet
-then $m-E<gt>out() is used to output the string immediately .
-
-=cut
-
-############################################################################
-sub empty_tr    {   #07/27/01 3:49
-############################################################################
-    my %p = @_;
-
-    my $image = $p{black} ?
-        "/images/ePortal/1px-black.gif" :
-        "/images/ePortal/1px-trans.gif";
-
-    $p{bgcolor} ||= $p{black}? "#000000" : undef;
-
-    my (%tr_params, %td_params);
-    $tr_params{-bgcolor} = $p{bgcolor} if $p{bgcolor};
-    $tr_params{-class} = $p{class} if $p{class};
-    $td_params{-colspan} = $p{colspan} if $p{colspan};
-
-    my $html = CGI::Tr(\%tr_params,
-            CGI::td(\%td_params, img( src => $image, height => $p{height} ))
-    );
-
-    if (defined wantarray) {
-        return $html;
-    } else {
-        $ePortal->m->print( $html );
-    }
-}##empty_tr
-
-
-=head2 empty_td( param =E<gt> value )
-
-Contructs HTML code for empty cell of table. Parameters passed as hash are:
-
-I<height> height in pixels
-
-I<width> width in pixels
-
-I<colspan> make a cell as coluln span.
-
-I<bgcolor> HTML compatible color value
-
-I<black> adjust all parameters to make the row completely black
-
-Returns HTML string in scalar of array context. If used in void contxet
-then $m-E<gt>out() is used to output the string immediately .
-
-=cut
-
-############################################################################
-# Function: empty_td
-# Description: creates empty HTML table's row
-# Parameters: hash with keys:
-#   height => in pixels
-#   width =>
-#   colspan =>
-#   bgcolor => HTML color value
-#   black => shuld be the table all in black?
-#   class =>
-# Returns:
-#   HTML string
-############################################################################
-sub empty_td    {   #07/27/01 3:49
-############################################################################
-    my %p = @_;
-
-    my $image = $p{black} ?
-        "/images/ePortal/1px-black.gif" :
-        "/images/ePortal/1px-trans.gif";
-
-    $p{bgcolor} ||= $p{black}? "#000000" : undef;
-    my $html = '<td';
-    foreach (qw/ bgcolor colspan width height class/) {
-        $html .= qq{ $_="$p{$_}"} if defined $p{$_};
-    }
-    $html .= '>' . img( src => $image, height => $p{height} ) . '</td>';
-
-#   my (%td_params);
-#   $td_params{-bgcolor} = $p{bgcolor} if $p{bgcolor};
-#   $td_params{-colspan} = $p{colspan} if $p{colspan};
-#   $td_params{-width} = $p{width} if $p{width};
-#   $td_params{-height} = $p{height} if $p{height};
-#   $td_params{-class} = $p{class} if $p{class};
-
-#   my $html = CGI::td(\%td_params, img( src => $image, height => $p{height} ));
-
-    if (defined wantarray) {
-        return $html;
-    } else {
-        $ePortal->m->print( $html );
-    }
-}##empty_td
 
 
 =head2 img( param =E<gt> value )
@@ -501,7 +341,8 @@ sub img {   #07/27/01 4:00
         defined $p{hspace} ?    (-hspace => $p{hspace}) : (),
         $p{onMouseDown} ?   (-onMouseDown => $p{onMouseDown}) : (),
         $p{onMouseOver} ?   (-onMouseOver => $p{onMouseOver}) : (),
-        $p{onMouseOut}  ?   (-onMouseOut => $p{onMouseOut}) : (),
+        $p{onMouseOut}  ?   (-onMouseOut  => $p{onMouseOut}) : (),
+        $p{onClieck}    ?   (-onClick     => $p{onClick}) : (),
         $p{width} || $p{height} ?
             (-width  => $p{width}, -height => $p{height}) : (),
         });
@@ -527,6 +368,22 @@ sub img {   #07/27/01 4:00
         $ePortal->m->print( $html );
     }
 }##img
+
+
+############################################################################
+# Function: truncate_string
+# Description: Truncate the string and add optional '...'
+############################################################################
+sub truncate_string { #02/12/2004 1:04
+############################################################################
+  my ($string, $len) = Params::Validate::validate_pos(@_, 1, { default => 30} );  
+  
+  my $l = length($string);
+  if ($l > $len) {
+    $string = substr($string, 0, $len-3) . '...';
+  }
+  return $string;
+}##truncate_string
 
 
 ############################################################################
@@ -637,8 +494,7 @@ sub icon_edit   {   #09/11/01 3:40
             );
 
         if (not $p{url} = $url{$objtype} ) {
-            throw ePortal::Exception::Fatal(
-                -text => "Edit method for $objtype is not known");
+            die "Edit method for $objtype is not known";
         }
     }
 
@@ -891,13 +747,16 @@ sub HTML::Mason::Request::call_next_filtered    {   #02/21/02 1:46
 }##HTML::Mason::Request::call_next_filtered
 
 
+#----------------------------------------------------------------------
+# Apache::Util is depend on mod_perl and is not available under command line
+# 
 ############################################################################
 sub escape  {   #03/18/02 10:49
 ############################################################################
     my $str = shift;
 #    if ($Apache::Util::VERSION) {
     if (ref("Apache::Util::escape_uri")) {
-        $str = Apache::Util::escape_urio($str);
+        $str = Apache::Util::escape_uri($str);
     } else {
         $str =~ s/\%/%25/ogs;   # Percent FIRST!
         $str =~ s/\?/%3F/ogs;
@@ -906,28 +765,6 @@ sub escape  {   #03/18/02 10:49
     }
     return $str;
 }##escape
-
-
-############################################################################
-# Function: date_to_sql
-# Description: Convert date string to SQL ready format
-# Parameters:
-# Returns:
-#
-############################################################################
-sub date_to_sql {   #05/06/02 10:59
-############################################################################
-    my $date = shift;
-
-    if ($date eq '?') {
-        return '?';
-    } elsif (! $date) {
-        return 'NULL';
-    } else {
-        return join ('', reverse (split '\.', $date));
-    }
-}##date_to_sql
-
 
 
 

@@ -2,9 +2,8 @@
 %# ePortal - WEB Based daily organizer
 %# Author - S.Rusakov <rusakov_sa@users.sourceforge.net>
 %#
-%# Copyright (c) 2000-2003 Sergey Rusakov.  All rights reserved.
-%# This program is free software; you can redistribute it
-%# and/or modify it under the same terms as Perl itself.
+%# Copyright (c) 2000-2004 Sergey Rusakov.  All rights reserved.
+%# This program is open source software
 %#
 %#
 %#----------------------------------------------------------------------------
@@ -100,20 +99,6 @@
 
     <% plink(pick_lang(rus => "Вход", eng => "Entrance"),
       -href => "/app/$_/index.htm") %>
-  </&>
-
-  <&| /list.mc:column, title => pick_lang(rus => "Статус", eng => "Status")  &>
-    <%perl>
-      my $ver = try {
-        $ePortal->Application($_, skip_storage_version_check=>1)->storage_version;
-      } otherwise  {
-      };  
-    </%perl>
-    <b>
-    <% $ver == $ePortal::Server::STORAGE_VERSION
-        ? '<font color="green">Ok!</font>'
-        : '<font color="red">Not Ok!</font>' %>
-    </b>
   </&>
 
 </&> <!-- end of list -->

@@ -2,9 +2,8 @@
 %# ePortal - WEB Based daily organizer
 %# Author - S.Rusakov <rusakov_sa@users.sourceforge.net>
 %#
-%# Copyright (c) 2000-2003 Sergey Rusakov.  All rights reserved.
-%# This program is free software; you can redistribute it
-%# and/or modify it under the same terms as Perl itself.
+%# Copyright (c) 2000-2004 Sergey Rusakov.  All rights reserved.
+%# This program is open source software
 %#
 %#
 %#----------------------------------------------------------------------------
@@ -23,29 +22,42 @@
   my ($location, $Title, $MenuItems);
   my $Layout = 'Normal';
 
+  $m->interp->set_escape(h => \&HTML::Mason::Escapes::basic_html_escape);
   CGI::autoEscape(0);         # turn off CGI euto escaping
 
   try {
-    $ePortal = new ePortal::Server();        # Create ePortal Server object
-
-    $ePortal->initialize();                  # this calls DBConnect and config_load
+    $ePortal = new ePortal::Server( m => $m ); # Create ePortal Server object
+    $ePortal->initialize();                  # this calls dbh and config_load
                                              # may throw DatabaseNotConfigured
-    $dbh = $ePortal->DBConnect();               # Global wide $dbh
     
     # User recognition
     if ($r->connection->user) {
       logline('info', "User ".$r->connection->user." recognized from r->connection->user");
       $ePortal->username($r->connection->user);
     } else {
-      my $cookie = new Apache::Cookie($r);
-      my %cookies = $cookie->parse;
+      my %cookies = Apache::Cookie->fetch;
       my $cookie_value = $cookies{ePortal_auth} ? $cookies{ePortal_auth}->value() : undef;
       my($username, $remoteip, $md5hash) = split(/:/, $cookie_value);
       my $actualremoteip = $r->get_remote_host;
       my $mymd5 = Digest::MD5::md5_hex('13', $username, $remoteip);
-      if ( $username and ($mymd5 eq $md5hash)) {
-        logline('info', "User $username recognized from cookie");
-        $ePortal->username($username);
+      if ( $username ) {
+        try {
+          throw ePortal::Exception::BadUser(-reason => 'md5_changed')
+            if $mymd5 ne $md5hash;
+          throw ePortal::Exception::BadUser(-reason => 'ip_changed')
+            if $actualremoteip ne $remoteip;
+
+          $ePortal->username($username);
+          logline('info', "User $username recognized from cookie");
+
+        } catch ePortal::Exception::BadUser with {
+          my $E = shift;
+          logline('error', ref($E). ':'. $E->{-reason}. $E->text);
+          $session{ErrorMessage} ||= $E->text;
+          $ePortal->username(undef);
+          $m->scomp('/pv/send_auth_cookie.mc');
+        };
+
       } else {
         $ePortal->username(undef);
       }
@@ -217,7 +229,10 @@
   }
 
   # Everything after that is HTML!
-  $r->content_type("text/html");
+  # may use attribute ContentType to set any or 
+  # set it in onStartRequest() and set attribute to empty value ''
+  my $content_type = $m->request_comp->attr("ContentType");
+  $r->content_type($content_type) if $content_type;
   $r->send_http_header;
   return if $r->header_only;
 </%init>
@@ -239,30 +254,30 @@
 </head>
 <body bgcolor="#FFFFFF" leftmargin="0" rightmargin="0" topmargin="0" bottommargin="0" marginwidth="0" marginheight="0">
 %} # end of ($Layout ne 'Nothing')
-
+%
 %#
 %# =========== SCREEN BEGIN ==================================================
 %#
-
+%
 % if (grep { $Layout eq $_} (qw/Normal Dialog MenuItems/)) {
-  <!--UdmComment-->
+  <noindex>
   <& /pv/topmenubar.mc &>
   <& /pv/topappbar.mc, title => $Title &>
-  <!--/UdmComment-->
+  </noindex>
 %}
-
+%
 % if ($Layout eq 'MenuItems') {
 <table width="100%" border=0 cellspacing=0 cellpadding=0><tr>
   <td width="120" valign="top"><% $MenuItems %></td>
-  <% empty_td( black => 1, width => 1 ) %>
-  <% empty_td( width => 5 ) %>
+  <& /empty_td.mc, width=>1, black => 1 &>
+  <& /empty_td.mc, width=>5 &>
   <td width="95%" valign="top">
 % }
-
+%
 % if ($Layout ne 'Nothing') {
   <& /message.mc &>
 % }
-
+%
 <%perl>
   $m->flush_buffer;
   try {
@@ -346,19 +361,19 @@
 
 </%perl>
 <% $call_next_content %>
-
+%
 %#============================================================================
 %# AFTER THE call_next
 %#============================================================================
 % if ($Layout eq 'MenuItems') {
 </td></tr></table>
 % }
-
+%
 % if (grep { $Layout eq $_} (qw/Normal Dialog MenuItems/)) {
- <% empty_table( black => 1, height => 1 ) %>
+ <& /empty_table.mc, black => 1, height => 1 &>
  <& SELF:Footer &>
 %}
-
+%
 %#============================================================================
 %# END OF SCREEN
 %#============================================================================
@@ -366,21 +381,20 @@
 <Iframe Name="Alerter_IFrame" scrolling="no" src="/frame_alerter.htm" width="0" height="0" align="right" border="0" noresize>
 </Iframe>
 % }
-
+%
 % if ($Layout ne 'Nothing') {
 </body>
 </html>
 % }
-<!-- Layout: <% $Layout %> -->
 %#============================================================================
 %# CLEANUP BLOCK
 %#============================================================================
 <& SELF:cleanup_request &>
-
+%
 %#
 %# =========== SCREEN END ====================================================
 %#
-
+% return;   # Stop output empty lines to client
 
 
 %#=== @METAGS attr ===========================================================
@@ -388,6 +402,7 @@
 Title       => "ePortal v.$ePortal::Server::VERSION. Home page"
 Layout      => 'Normal'
 Application => 'ePortal'
+ContentType => 'text/html'
 
 dir_enabled => 1
 dir_nobackurl => 1
@@ -409,7 +424,12 @@ require_sysacl => undef
 
 
 %#=== @METAGS methods_prototypes =============================================
-<%method HTMLhead></%method>
+<%method HTMLhead><%perl>
+  my $Layout = $m->request_comp->attr("Layout");
+  if ( $Layout eq 'Dialog' ) {
+    $m->print(qq{<META NAME="Robots" CONTENT="noindex,nofollow">\n});
+  }
+</%perl></%method>
 <%method MenuItems><%perl> return []; </%perl></%method>
 <%method onStartRequest></%method>
 <%method Title><%perl>return $m->request_comp->attr("Title");</%perl></%method>
@@ -418,7 +438,7 @@ require_sysacl => undef
 %#=== @metags Footer ====================================================
 <%method Footer>
 <span class="copyright">
-ePortal v<% $ePortal::Server::VERSION %> &copy; 2000-2003 S.Rusakov
+ePortal v<% $ePortal::Server::VERSION %> &copy; 2000-2004 S.Rusakov
 <br>
 <& /inset.mc, page => "/autohandler.mc", number => 9 &>
 </span>
@@ -432,8 +452,6 @@ ePortal v<% $ePortal::Server::VERSION %> &copy; 2000-2003 S.Rusakov
   $m->scomp('/pv/destroy_session.mc');
   $ePortal = undef;
 
-  $dbh->disconnect if ref($dbh);
-  $dbh = undef;
 </%perl></%method>
 
 %#=== @METAGS eng_rus ====================================================

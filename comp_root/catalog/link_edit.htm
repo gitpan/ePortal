@@ -2,16 +2,18 @@
 %# ePortal - WEB Based daily organizer
 %# Author - S.Rusakov <rusakov_sa@users.sourceforge.net>
 %#
-%# Copyright (c) 2000-2003 Sergey Rusakov.  All rights reserved.
-%# This program is free software; you can redistribute it
-%# and/or modify it under the same terms as Perl itself.
+%# Copyright (c) 2000-2004 Sergey Rusakov.  All rights reserved.
+%# This program is open source software
 %#
 %#
 %#----------------------------------------------------------------------------
 
 &nbsp;
-<&| /dialog.mc:edit_dialog, title => pick_lang(rus => "—сылка на ресурс", eng => "Link to resource"),
-                width => 550, obj => $obj, focus => 'title' &>
+<&| /dialog.mc:edit_dialog,
+      title => pick_lang(rus => "–есурс каталога", eng => "Catalogue resource"),
+      width => 550,
+      obj => $obj,
+      focus => 'title' &>
 
   <& /dialog.mc:read_only, id => 'recordtype' &>
   <&| /dialog.mc:cell &>
@@ -36,7 +38,7 @@
   <& /dialog.mc:field, id => 'xacl_write' &>
   <& /dialog.mc:field, id => 'xacl_admin' &>
 % }
-  
+
   <& /dialog.mc:buttons &>
 
   <&| /dialog.mc:cell &>
@@ -60,7 +62,7 @@ Title => {rus => "—сылка на ресурс", eng => "Link to resource"}
 %#=== @METAGS onStartRequest ====================================================
 <%method onStartRequest><%perl>
   $obj = new ePortal::Catalog;
-  
+
   $m->comp('/dialog.mc:handle_request', obj => $obj);
 
   #initialize ACL

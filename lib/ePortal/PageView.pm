@@ -3,9 +3,8 @@
 # ePortal - WEB Based daily organizer
 # Author - S.Rusakov <rusakov_sa@users.sourceforge.net>
 #
-# Copyright (c) 2000-2003 Sergey Rusakov.  All rights reserved.
-# This program is free software; you can redistribute it
-# and/or modify it under the same terms as Perl itself.
+# Copyright (c) 2000-2004 Sergey Rusakov.  All rights reserved.
+# This program is open source software
 #
 #
 #----------------------------------------------------------------------------
@@ -31,8 +30,9 @@ a site
 
 =item *
 
-B<template> - There may be many templates. They are used when user create
-new personal home page.
+B<template> - There may be many templates. Administrator may restrict access
+to these pages;
+
 
 =back
 
@@ -41,7 +41,7 @@ new personal home page.
 =cut
 
 package ePortal::PageView;
-    our $VERSION = '4.2';
+    our $VERSION = '4.5';
     use base qw/ePortal::ThePersistent::ExtendedACL/;
 
 	use ePortal::Global;
@@ -55,14 +55,19 @@ sub initialize	{	#05/31/00 8:50
 ############################################################################
     my ($self, %p) = @_;
 
+    $p{drop_admin_priv} = 1;
+
     $p{Attributes}{id} ||= {};
     $p{Attributes}{columnswidth} ||= {
             label => {rus => 'Ширина столбцов', eng => 'Columns width'},
             fieldtype => 'popup_menu',
-            values => ['N:W', 'N:W:N'],
+            values => ['N:W', 'N:W:N', 'N:N:N', 'W'],
+            default => 'N:W',
             labels => {
-                    'N:W' => {rus => 'Узк:Шир', eng => 'Nar:Wid'},
-                    'N:W:N' => {rus => 'Узк:Шир:Узк', eng => 'Nar:Wid:Nar'}},
+                    'N:W' => {rus => 'Узк:Шир', eng => 'Nar:Wide'},
+                    'N:W:N' => {rus => 'Узк:Шир:Узк', eng => 'Nar:Wide:Nar'},
+                    'N:N:N' => {rus => 'Узк:Узк:Узк', eng => 'Nar:Nar:Nar'},
+                    'W' => {rus => 'Широкая', eng => 'Wide'}},
             # N:W:N   Narrow:Wide
         };
     $p{Attributes}{title} ||= {
@@ -73,31 +78,15 @@ sub initialize	{	#05/31/00 8:50
         label => {rus => 'Тип страницы', eng => 'Type of page'},
         fieldtype => 'popup_menu',
         values => [ qw/ user default template /],
+        default => 'user',
         labels => {
                 user => {rus => 'Личная', eng => 'Personal'},
                 default => {rus => 'По умолч.', eng => 'Default'},
-                template => {rus => 'Шаблон', eng => 'Template'}},
+                template => {rus => 'Общая', eng => 'Template'}},
         };
 
     $self->SUPER::initialize(%p);
 }##initialize
-
-
-############################################################################
-sub insert	{	#02/05/01 11:36
-############################################################################
-	my $self = shift;
-	my (@p) = @_;
-
-	if ($self->columnswidth eq '') {
-		$self->columnswidth('N:W');
-	}
-	if ($self->pvtype eq '') {
-		$self->pvtype("user");
-	}
-
-	$self->SUPER::insert(@p);
-}##insert
 
 
 ############################################################################
@@ -113,98 +102,6 @@ sub set_acl_default {   #10/04/01 4:25
     }
 }##set_acl_default
 
-
-
-=head2 restore(id)
-
-Restore a PageView.
-
-B<id> is 'default' - find unique default PageView
-
-B<id> is Number - restore a PageView with this ID
-
-Else use some magic to find desired PageView. This is the rules:
-
-- Anonymous user always sees default PageView.
-
-- If user is registered and has 'DefaultPageView' then restore it. If it
-fails then restore default PageView. Once a day restore default PageView
-for the user to see some global news ;-)
-
-- Else or if something fails then restore default PageView.
-
-This function returns 1 on success or 0 on error.
-
-=cut
-
-############################################################################
-sub restore	{	#10/20/00 12:24
-############################################################################
-	my $self = shift;
-	my $id = shift;
-
-	if (! defined $id) {	# restore something default
-
-		if ($ePortal->username eq '') {
-			return $self->restore('default');
-
-		} else {
-
-			# Try to restore preferred PV
-			my $selectedPV = $ePortal->UserConfig("DefaultPageView");
-			if ($self->SUPER::restore($selectedPV)) {
-				return 1;
-			} else {
-				return $self->restore('default');
-			}
-		}
-
-	} elsif ($id eq 'default') {
-		$self->restore_where(where => "pvtype=?", bind => ['default']);
-  		return $self->restore_next();
-
-	} elsif ($id =~ /^\d+$/o) {
-		return $self->SUPER::restore($id);
-	}
-}##restore
-
-
-
-=head2 restore_all_templates()
-
-Does restore_where(pvtype = template).
-
-=cut
-
-############################################################################
-sub restore_all_templates	{	#01/22/01 2:31
-############################################################################
-	my $self = shift;
-	$self->restore_where(where => "pvtype=?", order_by => 'title', bind => ['template']);
-}##restore_all_templates
-
-
-
-=head2 restore_all_for_user(username)
-
-Does restore_where(...) for all PageView available to user (both default
-and user type)
-
-B<username> is default to current user name
-
-=cut
-
-############################################################################
-sub restore_all_for_user	{	#01/22/01 2:32
-############################################################################
-	my $self = shift;
-	my $username = shift || $ePortal->username;
-
-	$self->restore_where(
-		where => "pvtype='default' or (pvtype='user' and uid=?)",
-		order_by => 'pvtype, title',
-		bind => [$username]);
-}##restore_all_for_user
 
 
 =head2 ColumnsCount()
@@ -283,6 +180,13 @@ sub AvailableSections	{	#12/13/00 4:35
 	return ($values, $labels);
 }##AvailableSections
 
+############################################################################
+sub restore_default {   #01/27/2004 10:15
+############################################################################
+    my $self = shift;
+    $self->restore_where(where => "pvtype='default'");
+    return $self->restore_next;
+}##restore_default
 
 =head2 get_UserSection($column)
 
@@ -351,10 +255,6 @@ sub CopyFrom	{	#02/05/01 2:48
 	my $PVt = new ePortal::PageView;
     $PVt->restore_or_throw($template_id);
 
-	if ($PVt->pvtype ne 'template') {
-		logline('error', 'New PageView based on nontemplate PageView. user:'.$ePortal->username);
-	}
-
 	# Copy ALL data from original
 	$self->data ($PVt->data);
 
@@ -366,44 +266,16 @@ sub CopyFrom	{	#02/05/01 2:48
 
 	# Copy all child UserSections
 	my $S = new ePortal::UserSection;
-	for (1..3) {
-		my $St = $PVt->get_UserSection($_);
-		while( $St->restore_next) {
-			$S->data( $St->data );
-			$S->id(undef);
-			$S->pv_id( $self->id );
-			$S->insert;
-		}
-	}
+    my $St = new ePortal::UserSection;
+    $St->restore_where(where => 'pv_id =?', bind => [$template_id]);
+    while( $St->restore_next) {
+        $S->data( $St->data );
+        $S->id(undef);
+        $S->pv_id( $self->id );
+        $S->insert;
+    }
 	1;
 }##CopyFrom
-
-
-=head2 SetDefaultPageView($new_id)
-
-This function is mean only for registered users. B<new_id> is stored in
-user's configuration and used when next call to PageView->restore().
-
-=cut
-
-############################################################################
-sub SetDefaultPageView	{	#02/12/01 12:18
-############################################################################
-	my $self = shift;
-	my $new_id = shift;
-
-	return if not $ePortal->username;
-
-	my $pv = new ePortal::PageView;
-	if ($pv->restore($new_id)) {
-		$ePortal->UserConfig("DefaultPageView", $new_id);
-		1;
-	} else {
-        throw ePortal::Exception(-text => pick_lang(
-			rus => "Указанная домашняя страница не существует или не доступна",
-            eng => "Home page not found"));
-	}
-}##SetDefaultPageView
 
 
 ############################################################################
@@ -425,8 +297,8 @@ sub value	{	#10/04/01 4:34
 			} elsif ($newvalue eq 'default') {
                 $self->xacl_read('everyone');
 
-			} elsif ($newvalue eq 'template') {
-                $self->xacl_read('everyone');
+#           } elsif ($newvalue eq 'template') {
+#                $self->xacl_read('everyone');
 			}
 		}
 		return $self->SUPER::value($attr, $newvalue);
@@ -436,100 +308,6 @@ sub value	{	#10/04/01 4:34
 }##value
 
 
-=head2 handle_request()
-
-Get and process URL parameters to add, remove, modify a section. Parameters
-are:
-
-B<ps> - PageSection ID
-
-B<us> - UserSection ID
-
-B<colnum> - column number
-
-B<addsection> - if true then add new section I<ps> to column I<colnum>
-
-B<removesection> - if true then remove section I<us>
-
-B<min> - if true then minimize section I<us>
-
-B<restore> - if true then restore section I<us> to normal size
-
-
-=cut
-
-############################################################################
-sub handle_request	{	#10/11/01 9:50
-############################################################################
-	my $self = shift;
-	my $m = $HTML::Mason::Commands::m;
-    my %args = $m->request_args;
-
-	# Adjust some arguments because dialog.mc send it with different names
-	$args{us} = $args{objid} if exists $args{objid};
-	$args{removesection} = 1 if exists $args{dlgb_x};
-	$args{colnum} = 1 if not $args{colnum};
-
-	# Only admin or PageView owner may modify it
-    return unless $self->xacl_check_update;
-
-	# Create support objects
-	my $us = new ePortal::UserSection;
-	if ($args{us} > 0) {
-		$us->restore( $args{us} );
-	}
-
-	my $ps = new ePortal::PageSection;
-	if ($args{ps} > 0) {
-		$ps->restore( $args{ps} );
-	}
-
-
-	# Parse arguments
-    if ($args{dlgb_min} and $us->check_id) {
-		$us->minimized(1);
-		$us->update;
-		return "/index.htm";
-
-    } elsif ($args{dlgb_max} and $us->check_id) {
-		$us->minimized(0);
-		$us->update;
-		return "/index.htm";
-
-    } elsif ($args{addsection} and $ps->check_id) {
-		my $S = new ePortal::UserSection;
-		$S->pv_id( $self->id );
-		$S->colnum( $args{colnum});
-		$S->ps_id( $ps->id );
-		$S->insert;
-		return "/index.htm";
-
-    } elsif ($args{removesection} and $us->check_id) {
-		$us->delete;
-		return "/index.htm";
-
-	} elsif ($args{deletepv}) {
-		$self->delete;
-		return "/index.htm";
-
-	} elsif ($args{saveastemplate}) {
-		$self->pvtype('template');
-		$self->update;
-		return "/index.htm";
-
-	} elsif ($args{saveasdefault}) {
-		# remove old template
-		my $PD = new ePortal::PageView;
-		$PD->restore('default');
-		$PD->pvtype('user');
-		$PD->update;
-
-		$self->pvtype('default');
-		$self->update;
-		return "/index.htm";
-	}
-
-}##handle_request
 
 ############################################################################
 # Function: delete
@@ -538,8 +316,10 @@ sub delete	{	#10/15/01 11:32
 ############################################################################
 	my $self = shift;
 
-    my $dbh = $self->dbh();
-	$dbh->do("DELETE FROM UserSection WHERE pv_id=?", undef, $self->id);
+    if ($self->xacl_check_delete) {
+        my $dbh = $self->dbh();
+        $dbh->do("DELETE FROM UserSection WHERE pv_id=?", undef, $self->id);
+    }
 
 	$self->SUPER::delete();
 }##delete
@@ -562,9 +342,105 @@ sub xacl_check_update   {   #04/16/03 4:12
 }##xacl_check_update
 
 
+############################################################################
+sub ObjectDescription   {   #01/22/2004 4:39
+############################################################################
+    my $self = shift;
+    return pick_lang(rus => "Домашняя страница: ", eng => "Home page: ") . 
+        $self->Title;
+}##ObjectDescription
+
 1;
 
 __END__
+
+=head1 ePortal::PageSection object
+
+ePortal::PageSection package is used to implement a single section on a home
+page with a dialog box around it.
+
+Customization of a PageSection is available with a corresponding 
+HTML::Mason component file. Some predefined method should exists in this 
+component.
+
+Here is a brief description of PageSection's component file:
+
+=head2 The content of a section
+
+To produce a content the component is called with one parameter: 
+ePortal::UserSection object. Individual settings are available with 
+C<setupinfo> hash stored in database;
+
+ <%init>
+ my $section = $ARGS{section};  # ePortal::UserSection object
+ my $setupinfo = $section->setupinfo_hash;
+ </%init>
+ HTML code is here
+
+
+=head2 initialialization
+
+To initialize PageSection object define some attributes:
+
+ <%attr>
+ def_title => { eng => 'Resources catalogue', rus => 'Каталог ресурсов'},
+ def_width => 'N',
+ def_url => '/catalog/index.htm',
+ def_setupinfo_hash => {}
+ def_xacl_read => 'everyone'
+ </%attr>
+
+
+=head2 setup_dialog method
+
+This method is used to customize a section with a setup dialog. 
+{old_setupinfo} is used for compatibility with old version of ePortal.
+
+ <%method setup_dialog><%perl>
+  my $setupinfo = $ARGS{setupinfo};
+  if ( $setupinfo->{old_setupinfo} ) {
+    $setupinfo->{filename} = $setupinfo->{old_setupinfo};
+    delete $setupinfo->{old_setupinfo};
+  }
+ <&| /dialog.mc:label_value_row, label => pick_lang(rus => "Имя файла", eng => "File name") &>
+ <& /dialog.mc:textfield, id => 'filename', 
+                          -size => 40,
+                          value => $setupinfo->{filename} &>
+ </&>
+ </%method>
+
+This dialog may be disabled for ordinary users with special attribute
+
+ <%attr>
+ disable_user_setup_dialog => 1
+ </%attr>
+
+
+=head2 setup_validate method
+
+This method is used for C<setupinfo> data validation.
+
+ <%method setup_validate><%perl>
+  my $setupinfo = $ARGS{setupinfo};
+  my $obj = $ARGS{obj};
+  if ( $setupinfo->{filename} eq '' ) {
+    throw ePortal::Exception::DataNotValid( -text => ...);
+  }
+ </%perl></%method>
+
+
+=head2 setup_save method
+
+This method is used to save custom data into C<setupinfo> hash.
+
+ <%method setup_save><%perl>
+  my $setupinfo = $ARGS{setupinfo};
+  my $args = $ARGS{args};
+
+  foreach (qw/ filename /) {
+    $setupinfo->{$_} = $args->{$_} if exists $args->{$_};
+  }
+ </%perl></%method>
 
 =head1 AUTHOR
 

@@ -3,9 +3,8 @@
 # ePortal - WEB Based daily organizer
 # Author - S.Rusakov <rusakov_sa@users.sourceforge.net>
 #
-# Copyright (c) 2000-2003 Sergey Rusakov.  All rights reserved.
-# This program is free software; you can redistribute it
-# and/or modify it under the same terms as Perl itself.
+# Copyright (c) 2000-2004 Sergey Rusakov.  All rights reserved.
+# This program is open source software
 #
 #
 #----------------------------------------------------------------------------
@@ -13,7 +12,7 @@
 #----------------------------------------------------------------------------
 
 package ePortal::ThePersistent::DataType::YesNo;
-    our $VERSION = '4.2';
+    our $VERSION = '4.5';
 
 	use strict;
     use Carp;
@@ -41,11 +40,11 @@ sub value {
 	### set the value ###
 	if (@_) {
 		my $value = shift;
-		if ($value eq 'yes') {
+    if (defined($value) and $value eq 'yes') {
 			$self->{Value} = 1;
-		} elsif ($value eq 'no') {
+    } elsif (defined($value) and $value eq 'no') {
 			$self->{Value} = 0;
-		} elsif ($value) {
+    } elsif (defined($value) and $value) {
 			$self->{Value} = 1;
 		} else {
 			$self->{Value} = 0;

@@ -3,16 +3,15 @@
 # ePortal - WEB Based daily organizer
 # Author - S.Rusakov <rusakov_sa@users.sourceforge.net>
 #
-# Copyright (c) 2000-2003 Sergey Rusakov.  All rights reserved.
-# This program is free software; you can redistribute it
-# and/or modify it under the same terms as Perl itself.
+# Copyright (c) 2000-2004 Sergey Rusakov.  All rights reserved.
+# This program is open source software
 #
 #
 #----------------------------------------------------------------------------
 
 
 package ePortal::ThePersistent::Tools;
-    our $VERSION = '4.2';
+    our $VERSION = '4.5';
 
     # Export section
     our @EXPORT = qw/

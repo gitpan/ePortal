@@ -2,38 +2,31 @@
 %# ePortal - WEB Based daily organizer
 %# Author - S.Rusakov <rusakov_sa@users.sourceforge.net>
 %#
-%# Copyright (c) 2000-2003 Sergey Rusakov.  All rights reserved.
-%# This program is free software; you can redistribute it
-%# and/or modify it under the same terms as Perl itself.
+%# Copyright (c) 2000-2004 Sergey Rusakov.  All rights reserved.
+%# This program is open source software
 %#
 %#
 %#----------------------------------------------------------------------------
+<p>
+<&| /dialog.mc:edit_dialog, 
+          title => pick_lang(rus => "Настройка секции", eng => "Section setup"),
+          obj => $obj,    focus => '',    width => 500 &>
 
-<%perl>
-	$session{us} = $ARGS{us} if $ARGS{us};
+%#<& /dialog.mc:read_only, id => 'component' &>
 
-	my $section = new ePortal::UserSection;
-	if (! $section->restore($session{us}) ) {
-		$m->comp("/message.mc", ErrorMessage => pick_lang(rus => "Не могу найти секцию: $session{us}", eng => "Cannot load section: $session{us}"));
-		return;
-	}
+% if (ref($comp) and $comp->method_exists('setup_dialog')) {
+  <% $comp->call_method('setup_dialog', setupinfo => $obj->setupinfo_hash) %>
+% } else {
+  <&| /dialog.mc:cell &>
+    <& /message.mc, ErrorMessage => pick_lang(
+      rus => "Секция ".$obj->title." не имеет настройки",
+      eng => "The section ".$obj->title." does not support setup") &>
+  </&>
+% }
 
-	my $module = "/pv/sections/" . $section->component;
-	my $comp = $m->fetch_comp($module);
-
-	if (! $comp->method_exists("Setup")) {
-		$m->comp("/message.mc", ErrorMessage => pick_lang(
-			rus => "Секция ".$section->title." не имеет настройки",
-			eng => "The section ".$section->title." does not support setup"));
-		return;
-	}
-
-	$m->comp(".ControlBar");
-	$comp->call_method("Setup", section => $section, %ARGS);
-	$m->comp(".ControlBar");
-
-</%perl>
-
+  <& /dialog.mc:buttons &>
+</&>
+<p>
 
 
 
@@ -45,3 +38,47 @@
 		</td></tr>
 	</table>
 </%def>
+
+%#=== @METAGS onStartRequest ====================================================
+<%method onStartRequest><%perl>
+  $obj = new ePortal::UserSection;
+  $obj->restore_or_throw($ARGS{objid});
+  $comp = $m->fetch_comp('/pv/sections/' . $obj->component);
+
+  try {
+    if ( $m->comp('/dialog.mc:isButtonPressed', button => 'ok') ) {
+      my $hash = $obj->setupinfo_hash;
+      $comp->call_method('setup_save', args => \%ARGS, setupinfo => $hash);
+
+      # Save setupinfo hash to object
+      $obj->setupinfo_hash($hash);
+
+      if ( ref($comp) and $comp->method_exists('setup_validate') ) {
+        $comp->call_method('setup_validate', $obj => $obj, setupinfo => $hash);
+      }
+
+      $obj->update;
+
+      throw ePortal::Exception::Abort( -text => $m->comp('/dialog.mc:back_url'));
+    } elsif ( $m->comp('/dialog.mc:isButtonPressed', button => 'cancel') ) {
+      throw ePortal::Exception::Abort( -text => $m->comp('/dialog.mc:back_url'));
+    }
+
+  } catch ePortal::Exception::DataNotValid with {
+    my $E = shift;
+    $session{ErrorMessage} = $E->text;
+  };
+</%perl></%method>
+
+
+%#=== @metags once =========================================================
+<%once>
+my ($obj, $comp);
+</%once>
+
+%#=== @metags cleanup =========================================================
+<%cleanup>
+($obj, $comp) = ();
+</%cleanup>
+
+

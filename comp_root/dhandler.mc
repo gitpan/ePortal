@@ -2,9 +2,8 @@
 %# ePortal - WEB Based daily organizer
 %# Author - S.Rusakov <rusakov_sa@users.sourceforge.net>
 %#
-%# Copyright (c) 2000-2003 Sergey Rusakov.  All rights reserved.
-%# This program is free software; you can redistribute it
-%# and/or modify it under the same terms as Perl itself.
+%# Copyright (c) 2000-2004 Sergey Rusakov.  All rights reserved.
+%# This program is open source software
 %#
 %#
 %#----------------------------------------------------------------------------
@@ -12,14 +11,7 @@
 <%perl>
 	# I serve requests only for directories
   if (! -d $r->filename) {
-#    logline('warn', "File not found: ", $m->dhandler_arg);
-#    $m->comp("/redirect.mc",
-#      location => href("/errors/error404.htm", url => $m->dhandler_arg));
-
-#    $m->comp('/errors/error404.htm');
-#    return;
     throw ePortal::Exception::FileNotFound(-file => $r->filename);
-    return;
   }
 
 	# Due to location of dhandler at component root it inherits only base
@@ -60,16 +52,30 @@
 
 %#=== @METAGS onStartRequest ====================================================
 <%method onStartRequest><%perl>
+  # Check for existens of requested file in Catalog
+  my ($nickname, $dummy) = split('/', $m->dhandler_arg, 2);
+  my $nickname_utf8 = cstocs('UTF8', 'WIN', $nickname);
+
+  my $C = new ePortal::Catalog;
+  foreach ($nickname, $nickname_utf8) {
+    $C->restore_where(where => "nickname=?", bind => [$_]);
+    if ( $C->restore_next and $C->rows == 1 ) {
+      throw ePortal::Exception::Abort( -text => '/catalog/' . $C->id . '/' );
+    }
+  }
+
+  # check for existance of requested file
   if (! -d $r->filename and ! -f $r->filename) {
     throw ePortal::Exception::FileNotFound(-file => $ENV{REQUEST_URI});
     return;
-#    $m->comp('/errors/error404.htm');
-#    return '';  # do not redirect but stop further processing
   }
 </%perl></%method>
 
 
 %#=== @METAGS once =========================================================
 <%once>
-my $attrib_comp;
+  my $attrib_comp;
 </%once>
+<%cleanup>
+  $attrib_comp = undef;
+</%cleanup>

@@ -3,16 +3,15 @@
 # ePortal - WEB Based daily organizer
 # Author - S.Rusakov <rusakov_sa@users.sourceforge.net>
 #
-# Copyright (c) 2000-2003 Sergey Rusakov.  All rights reserved.
-# This program is free software; you can redistribute it
-# and/or modify it under the same terms as Perl itself.
+# Copyright (c) 2000-2004 Sergey Rusakov.  All rights reserved.
+# This program is open source software
 #
 #
 #----------------------------------------------------------------------------
 
 
 package ePortal::Exception;
-    our $VERSION = '4.2';
+    our $VERSION = '4.5';
     use base qw/Error/;
 
     use ePortal::Utils;
@@ -28,6 +27,30 @@ sub new {   #02/26/03 9:22
     local $Error::Depth = $Error::Depth + 1;
     return $class->SUPER::new(%p);
 }##new
+
+
+############################################################################
+# Description:
+#    local $Error::Depth = $Error::Depth + 1;
+#    my $self = $class->SUPER::new(%p);
+#    $self->add_minimal_stacktrace();
+#
+############################################################################
+sub add_minimal_stacktrace  {   #01/22/2004 4:28
+############################################################################
+    my $self = shift;
+    
+    # local $Error::Depth = 1;
+    # this produces a lot of debug information. truncate it
+    my @lines = split("\n", $self->stacktrace);
+    my ($stacktrace, $called_at_counter) = (undef,0);
+    foreach (@lines) {
+        $called_at_counter++ if /called at/;
+        last if $called_at_counter > 5;     # MAX depth of stacktrace
+        $stacktrace .= "$_\n";
+    }
+    $self->{'-stacktrace'} = $stacktrace;
+}##add_minimal_stacktrace
 
 
 #===========================================================================
@@ -46,11 +69,61 @@ package ePortal::Exception::DataNotValid;
 
 
 #===========================================================================
+package ePortal::Exception::BadUser;
+    our @ISA = qw/ePortal::Exception/;
+    # -text - description what is invalid
+    # -reason - error code
+  my %reasons = (
+    bad_user      => {
+        rus => "Пользователь с таким именем не существует",
+        eng => "Bad user name"},
+    bad_password  => {
+        rus => "Вы ввели неправильный пароль",
+        eng => "Bad password"},
+    md5_changed   => {
+        rus => "Полученная информация не достоверна",
+        eng => "MD5 checksum incorrect"},
+    ip_changed    => {
+        rus => "Адрес компьютера изменился",
+        eng => "Client TCP/IP address changed"},
+    no_user       => {
+        rus => "Неизвестный пользователь или не указано имя пользователя",
+        eng => "No user name or user unknown"},
+    disabled      => {
+        rus => "Бюджет пользователя отключен",
+        eng => "User is disabled"},
+    system_error  => {
+        rus => "Системная ошибка",
+        eng => "System error"},
+  );
+############################################################################
+sub new {   #02/26/03 9:22
+############################################################################
+    my $class = shift;
+    my %p = @_;
+
+    if ($p{'-text'} eq '' and $p{'-reason'} ne '') {
+      $p{'-text'} = ePortal::Utils::pick_lang( $reasons{ $p{'-reason'} } );
+    }
+    $p{'-text'} = ePortal::Utils::pick_lang( rus => "Неизвестная причина отказа", eng => "Unknown error occured")
+      if $p{'-text'} eq '';
+
+    local $Error::Depth = $Error::Depth + 1;
+    my $self = $class->SUPER::new(%p);
+    # $self->add_minimal_stacktrace; # don't need it
+
+    return $self;
+}##new
+
+
+
+
+#===========================================================================
 package ePortal::Exception::ObjectNotFound;
     our @ISA = qw/ePortal::Exception/;
 
     # -text - description
-    # -object - empty object where rstore() fail
+    # -object - empty object where restore() fail
     # -value - id requested
 ############################################################################
 sub new {   #02/26/03 9:22
@@ -61,8 +134,10 @@ sub new {   #02/26/03 9:22
     $p{'-text'} ||= ePortal::Utils::pick_lang(
                 rus => "Не могу найти указанный объект",
                 eng => "Object not found");
+
     local $Error::Depth = $Error::Depth + 1;
     my $self = $class->SUPER::new(%p);
+    $self->add_minimal_stacktrace;
 
     return $self;
 }##new
@@ -78,7 +153,7 @@ sub new {   #02/26/03 9:22
     my $class = shift;
     my %p = @_;
 
-    $p{-text} ||= 'Database storage not exists or old version. Need upgrade.';
+    $p{-text} ||= 'Database storage does not exists or old version. Need upgrade.';
 
     local $Error::Depth = $Error::Depth + 1;
     my $self = Error::new($class, %p);
@@ -90,7 +165,6 @@ sub new {   #02/26/03 9:22
 package ePortal::Exception::DBI;
     our @ISA = qw/ePortal::Exception/;
     # -text -  Error description
-    # -value - nickname of DBISource
     # -object dbh
 
 ############################################################################
@@ -102,16 +176,7 @@ sub new {   #02/26/03 9:22
     local $Error::Depth = $Error::Depth + 1;
     my $self = Error::new($class, %p);
 
-    # I use local $Error::Debug = 1;
-    # this produces a lot of debug information. truncate it
-    my @lines = split("\n",$self->stacktrace);
-    my ($stacktrace, $called_at_counter);
-    foreach (@lines) {
-        $called_at_counter++ if /called at/;
-        last if $called_at_counter > 5;     # MAX depth of stacktrace
-        $stacktrace .= "$_\n";
-    }
-    $self->{'-stacktrace'} = $stacktrace;
+    $self->add_minimal_stacktrace;
 
     return $self;
 }##new
@@ -159,6 +224,19 @@ sub new {   #02/26/03 9:22
 package ePortal::Exception::Fatal;
     our @ISA = qw/ePortal::Exception/;
     # -text - text of fatal exception
+
+############################################################################
+sub new {   #02/26/03 9:22
+############################################################################
+    my $class = shift;
+    my %p = @_;
+
+    local $Error::Depth = $Error::Depth + 1;
+    my $self = $class->SUPER::new(%p);
+    $self->add_minimal_stacktrace;
+
+    return $self;
+}##new
 
 
 

@@ -2,16 +2,15 @@
 %# ePortal - WEB Based daily organizer
 %# Author - S.Rusakov <rusakov_sa@users.sourceforge.net>
 %#
-%# Copyright (c) 2000-2003 Sergey Rusakov.  All rights reserved.
-%# This program is free software; you can redistribute it
-%# and/or modify it under the same terms as Perl itself.
+%# Copyright (c) 2000-2004 Sergey Rusakov.  All rights reserved.
+%# This program is open source software
 %#
 %#
 %#----------------------------------------------------------------------------
 <div align="<% $align %>">
 <table border="0" cellspacing="0" cellpadding="0" bgcolor="#FFFFFF">
 <tr>
-  <% empty_td(width=>5) %>
+  <& /empty_td.mc, width=>5 &>
 <td bgcolor="#e6e4e9" valign="top" width="5" align="right">
   <% img(src => "$images_base/cur_lt.gif", align=>'top', hspace => 0, alt => '') %>
 </td>
@@ -23,7 +22,7 @@
 <td bgcolor="#e6e4e9" valign="top" width="5" align="left">
   <% img(src => "$images_base/cur_rt.gif", align=>'top', hspace => 0, alt => '') %>
 </td>
-<% empty_td(width=>5) %>
+<& /empty_td.mc, width=>5 &>
 <td class="memo">&nbsp;<% $extra %></td>
 </tr>
 </table>
@@ -31,7 +30,7 @@
 % if ($underline) {
 <table width="<% $width %>" border="0" cellspacing="0" cellpadding="0">
 <tr>
-  <% empty_td(width=>5) %>
+  <& /empty_td.mc, width=>5 &>
   <td height="2"  bgcolor="#e6e4e9"><% img(src => "$images_base/cur_2x2.gif", alt => '') %></td>
 </tr>
 </table>

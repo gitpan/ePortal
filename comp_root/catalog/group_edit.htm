@@ -2,33 +2,53 @@
 %# ePortal - WEB Based daily organizer
 %# Author - S.Rusakov <rusakov_sa@users.sourceforge.net>
 %#
-%# Copyright (c) 2000-2003 Sergey Rusakov.  All rights reserved.
-%# This program is free software; you can redistribute it
-%# and/or modify it under the same terms as Perl itself.
+%# Copyright (c) 2000-2004 Sergey Rusakov.  All rights reserved.
+%# This program is open source software
 %#
 %#
 %#----------------------------------------------------------------------------
 
 &nbsp;
-<% $dlg->dialog_start(
-      title => pick_lang(rus => "Группа", eng => "Group"),
-      width => 550) %>
-<% $dlg->field( "recordtype", hidden => 1, value => "group" ) %>
-<% $dlg->field( "parent_id")  %>
-<% $dlg->field( "title" ) %>
-<% $dlg->field( "nickname" ) %>
-<% $dlg->field( "priority" ) %>
-<% $dlg->field( "memo" ) %>
+<&| /dialog.mc:edit_dialog,
+      title => pick_lang(rus => "Группа ресурсов", eng => "Group"),
+      obj => $obj,
+      focus => 'title',
+      width => 550 &>
+  <& /dialog.mc:hidden, id => 'recordtype', value => 'group' &>
+  <& /dialog.mc:field, id => 'parent_id' &>
+  <& /dialog.mc:field, id => 'title' &>
+
+%#
+%# OTHER ============================================================
+%#
+<&| /dialog.mc:collapse, collapse => 0, title => pick_lang(rus => "Дополнительные свойства", eng => "More info") &>
+  <& /dialog.mc:field, id => 'nickname' &>
+  <& /dialog.mc:field, id => 'priority' &>
+  <& /dialog.mc:field, id => 'hidden' &>
+  <&| /dialog.mc:cell, -align=>'center' &>
+    <b><% pick_lang({rus => "Краткое описание", eng => "Short description"}) %>:</b><br>
+    <& /dialog.mc:textarea, id => 'memo' &>
+  </&>
+</&>
+
+%#
+%# Access rights ============================================================
+%#
 
 % if ($obj->xacl_check_admin) {
-  <% $dlg->row( "<hr>" ) %>
-  <% $dlg->field( "xacl_read" ) %>
-  <% $dlg->field( "xacl_write" ) %>
-  <% $dlg->field( "xacl_admin" ) %>
-  <% $dlg->field( "including_children" ) %>
+  <&| /dialog.mc:collapse, title => pick_lang(rus => "Права доступа", eng => "Access rights") &>
+  <& /dialog.mc:read_only, id => 'uid' &>
+  <& /dialog.mc:field, id => 'xacl_read' &>
+  <& /dialog.mc:field, id => 'xacl_write' &>
+  <& /dialog.mc:field, id => 'xacl_admin' &>
+  <& /dialog.mc:field, id => 'including_children' &>
+  </&>
 % }
-<% $dlg->buttons() %>
-<% $dlg->dialog_end %>
+
+  <&| /dialog.mc:cell &>&nbsp;</&>
+  <& /dialog.mc:buttons, ok_label => pick_lang(rus => "Сохранить ресурс", eng => "Save the resource"),
+      apply_button => 1 &>
+</&>
 <p>
 
 
@@ -47,37 +67,27 @@ Title => {rus => "Группа", eng => "Group"}
         label => pick_lang(rus => "Заменить права подчиненных", eng => "Replace rights on children"),
   });
 
-	$dlg = new ePortal::HTML::Dialog( obj => $obj);
-  my $location = try {
-    $dlg->handle_request( );
-  } catch ePortal::Exception::DataNotValid with {
-    my $E = shift;
-    $session{ErrorMessage} = $E->text;
-    '';
-  };
-
-  if ( $dlg->isButtonPressed('ok') and $obj->including_children) {
-    $obj->xacl_set_r;
-  }
-	return $location if $location;
+  $m->comp('/dialog.mc:handle_request',
+    obj => $obj,
+    callback_aftersave => sub {
+      my $obj = shift;
+      $obj->xacl_set_r if $obj-> including_children;
+    });
 
   #initialize ACL
-  if ( ! $obj->check_id ) {                                 # new object
-    $obj->parent_id( $ARGS{parent_id} ) if $ARGS{parent_id};
-    my $parent = $obj->parent;
-    $obj->set_acl_from_obj($parent) if $parent;
-  }
+  my $parent = $obj->parent;
+  $obj->set_acl_from_obj($parent) if $parent and ! $obj->check_id;
 </%perl></%method>
 
 
 
 %#=== @metags once =========================================================
 <%once>
-my ($dlg, $obj);
+my ($obj);
 </%once>
 
 %#=== @metags cleanup =========================================================
 <%cleanup>
-($dlg, $obj) = ();
+($obj) = ();
 </%cleanup>
 

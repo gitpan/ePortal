@@ -3,9 +3,8 @@
 # ePortal - WEB Based daily organizer
 # Author - S.Rusakov <rusakov_sa@users.sourceforge.net>
 #
-# Copyright (c) 2000-2003 Sergey Rusakov.  All rights reserved.
-# This program is free software; you can redistribute it
-# and/or modify it under the same terms as Perl itself.
+# Copyright (c) 2000-2004 Sergey Rusakov.  All rights reserved.
+# This program is open source software
 #
 #
 #----------------------------------------------------------------------------
@@ -28,7 +27,7 @@ ePortal::ThePersistent::Support is medium layer between them.
 =cut
 
 package ePortal::ThePersistent::Support;
-    our $VERSION = '4.2';
+    our $VERSION = '4.5';
     use base qw/ePortal::ThePersistent::Cached/;
 
     use Carp;
@@ -40,41 +39,12 @@ package ePortal::ThePersistent::Support;
     use Error qw/:try/;
     use ePortal::Exception;
 
-=head2 initialize()
-
-Parameters are the same as
-L<ThePersistent::Base::initialize()|ThePersistent::Base>. Additional
-parameters are:
-
-=over 4
-
-=item * DBISource
-
-This is DBISource passed to C<$ePortal->DBConnect>.
-
-=back
-
-=cut
-
 ############################################################################
 sub initialize  {   #07/03/00 4:08
 ############################################################################
     my $self = shift;
-    my %p = Params::Validate::validate_with( params => \@_,
-        spec => {
-            DBISource => { type => SCALAR, optional => 1}
-        },
-        allow_extra => 1);
 
-    if (not ref($ePortal)) {
-        logline('alert', "Global object \$ePortal does not exists in ".__PACKAGE__);
-        exit;
-    }
-
-    my $dbh_to_pass = $ePortal->DBConnect($p{DBISource});
-    delete $p{DBISource};
-
-    $self->SUPER::initialize(DBH => $dbh_to_pass, %p );
+    $self->SUPER::initialize(DBH => $ePortal->dbh, @_ );
 }##initialize
 
 
@@ -143,6 +113,19 @@ my %initialize_attribute_defaults = (
             dtype => 'Varchar',
             fieldtype => 'upload',
     },
+    firstcreated => {
+        label      => { rus => 'Дата создания', eng => 'Create time'},
+        dtype      => 'DateTime',
+    },
+    lastmodified => {
+        label      => { rus => 'Последнее изменение', eng => 'Last edited'},
+        dtype      => 'DateTime',
+    },
+    lastmodifieduid => {
+        label      => {rus => 'Автор посл.изменения', eng => 'Last editor'},
+        size       => 64,
+        default    => sub { $ePortal->username },
+    },  
 );
 
 ############################################################################
@@ -161,32 +144,9 @@ sub initialize_attribute    {   #05/27/2003 3:37
 }##initialize_attribute
 
 ############################################################################
-# Function: newid
-# Description: Calculates new numeric ID vie Oracle sequence
-# Parameters:
-# Returns:
-#
-sub newid   {   #07/03/00 4:21
-############################################################################
-    my $self = shift;
-    my $newid;
-    my $dbh = $self->dbh();
-
-    $dbh->do('update sequence set id=LAST_INSERT_ID(id+1)');
-    $newid = $dbh->selectrow_array("SELECT id FROM sequence");
-
-    throw ePortal::Exception::DBI(-text => "Cannot read new ID for object ".ref($self))
-        if $newid == 0;
-
-    return $newid == 0? undef : $newid;
-}##newid
-
-
-############################################################################
 # Function: insert
 # Description: Overloaded.
 #   Если объект содержит атрибут id и он == 0
-#   то создается новый ИД посредством $self->newid.
 # Parameters: None
 # Returns:
 #   1 on success,
@@ -214,16 +174,21 @@ sub insert  {   #07/04/00 1:18
 
     # --------------------------------------------------------------------
     # Set LastModified field
+    if ($self->attribute('firstcreated')) {
+        $self->value('firstcreated', 'now');
+    }
     if ($self->attribute('lastmodified')) {
         $self->value('lastmodified', 'now');
+    }
+    if ($self->attribute('lastmodifieduid')) {
+        $self->value('lastmodifieduid', $ePortal->username);
     }
 
     # Do INSERT
     my $result = $self->SUPER::insert(@_);
 
     if ($id_is_autoincrement and $result) {
-        my $dbh = $self->dbh;
-        my $newid = $dbh->selectrow_array('SELECT last_insert_id()');
+        my $newid = $self->dbh->selectrow_array('SELECT last_insert_id()');
         $self->id( $newid );
         warn "Cannot get last_insert_id" if $newid == 0;
     }
@@ -245,6 +210,13 @@ sub update  {   #10/26/01 9:05
     my $err_msg = $self->validate(0);
     throw ePortal::Exception::DataNotValid( -text => $err_msg, -object => $self)
         if $err_msg;
+
+    if ($self->attribute('lastmodified')) {
+        $self->value('lastmodified', 'now');
+    }
+    if ($self->attribute('lastmodifieduid')) {
+        $self->value('lastmodifieduid', $ePortal->username);
+    }
 
     return $self->SUPER::update(@_);
 }##update

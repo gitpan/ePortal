@@ -1,6 +1,85 @@
-+ points to important changes (storage updates, incompatible changes, etc)
+*************************************************************************
+Release 4.5    Release Date: 23.04.2004
+*************************************************************************
 
-4.2     Start Date: 23.10.2003 9:39
+Makefile.PL has been replaced with Build.PL. Please report any errors during 
+install process.
+ 
+
+ePortal:
++ ePortal_dbi_source parameter changed to ePortal_dbi_host, ePortal_dbi_database
++ all Applications use the same dbi source as ePortal itself.
+- new Resource type in Catalogue
+- hidden groups and resources in Catalogue
+- fixed bug when "double quoted" text is not saved in text fields
+- no need for PerlSetVar MasonEscapeFlags in httpd.conf
+- Makefile.PL changed to Build.PL
+
+SquidAcnt:
+- old client data not removed after 2 months
+
+*************************************************************************
+Release 4.4.1    Release Date: 02.02.2004
+*************************************************************************
+
+Error in empty database creation script.
+
+*************************************************************************
+Release 4.4    Release Date: 30.01.2004
+*************************************************************************
+
+I have counted 2 votes for English version of ePortal since Release 4.3.
+
+ePortal:
++ The storage format of home page has been changed. Check setup of every section.
+- check for duplicate user name when registering a new user
+- fixed Cannot open dir ... when no Applications installed
+
+SquidAcnt:
+- fixed bug when a limit is not defined
+
+Removed:
+- compInventory application has been removed as incomplete and unsupported
+
+*************************************************************************
+Release 4.3    Release Date: 15.12.2003
+*************************************************************************
+
+This is mainly bugfix release. Many changes in OffPhones application.
+
+WARNING!!! I have no news from English-speaking users of ePortal. 
+If there is no such interest then I will finish that hard dual-language 
+work and will work hardly only on Russian version. Please drop your
+vote to rusakov_sa@users.sourceforge.net to keep ePortal dual-language.
+
+ePortal: 
+- added POD manuals in HTML format to documentation module ePortal-docs
+- fixed bug with Catalogue items with nicknames in Russian
+- fixed: it was possible to create a Catalog item with duplicate nickname
+
+OffPhones: 
+- changed limit to display when searching for commonly used phrase
+- once again fixed bug when all subdepartments shown on edit mode turn 
+- removed phone number Format. Any number formatted with ####-###-##-##
+- added health_check procedure for OffPhones.
+- change search algorithm to cost based.
+- Access Control system corrected
+- export a department with subdepartments to text file 
+- print preview for department with subdepartments (export to html)
+- added possibility to add a photo to client
+
+MsgForum:
+- The time of new messages (posted today) is highlighted.
+
+Removed_files:
+lib/ePortal/AuthCookieHandler.pm
+comp_root/login/*
+comp_root/attachment/*
+
+*************************************************************************
+Release 4.2    Release Date: 18.11.2003
+*************************************************************************
+
 Notes: This is mostly bugfix release. 
 User recognition system has been changed. Please review your httpd.conf.
 
@@ -12,10 +91,10 @@ User recognition system has been changed. Please review your httpd.conf.
 - removed references to ePortal.pl from documentation as expired
 - fixed: /catalog/mostpopular.htm not found
 
+*************************************************************************
+Release 4.1    Release Date: 23.10.2003
+*************************************************************************
 
-
-
-4.1     Start Date: 24.09.2003 14:59
 Notes: Catalogue system has been rewrited. Added possibility to store 
 large files, HTML & text resources, attach any number of files to resource.
 
@@ -28,12 +107,13 @@ MsgForum:
 - Fixed bug whean creating new forums.
 - Fixed bug when one try to subscribe already subscribed forum
 
-
-removed files:
+removed_files:
 /comp_root/catalog/go.htm
 
+*************************************************************************
+Release 4.0    Release Date: 24.09.2003
+*************************************************************************
 
-4.0    Start Date: 08.09.2003 15:40
 Notes: This major release should be concerned to development only. Not so many 
 new features, mostly internal code upgrade...
 
@@ -45,651 +125,5 @@ ePortal:
 - added LDAP synchronization job.
 - ability to merge groups of users
 
-4.0 gamma
-3.91   Start Date: 21.08.2003 16:04
-Notes:
 
-ePortal:
-- added new more powerful component list.mc for iterable objects.
-- new method rows() for ThePersistent::Base
-- Finished SquidAcnt application for declared features
-- Installation process proceed more easy (thanks to Andy Elkin)
-- Documentation corrections
-
-Removed files:
-comp_root/admin/ePortal_catalog.htm
-comp_root/admin/load_catalog.htm
-comp_root/admin/ah_database.htm
-comp_root/admin/*_catalog.htm
-comp_root/admin/APP_database.htm
-
-
-3.90
-3.7    Start Date: 18.06.2003 16:18 AKA release 3.90 AKA release 4.0 beta
-Notes:
-New installation procedure. All DB configuration is WEB compatible.
-DB upgrade supported only from version 3.6. Install fresh database or upgrade
-to ePortal 3.6 before installing 4.0
-
-ePortal:
-- code cleanup
-- fixed small bug with invalidation of database handle
-- removed acl button from dialogs
-- fixed bug in attachment download when DB connect remains active
-+ new application SquidAcnt - Squid accounting and access control
-
-Removed files:
-bin/ePortal.pl
-comp_root/dberror.htm
-comp_root/map.htm
-comp_root/acl.htm
-lib/ePortal/ThePersistent/DataType/Char.pm
-lib/ePortal/autohandler.pod
-
-
-3.6    Start Date: 06.06.2003 14:10, branch tag: b-3-6, CVS tag: rel-3-6
-Notes: New system for file upload and store (attachments)
-
-ePortal:
-+ new table Attachment
-- new Exception::Abort to abort current request immediately without calling
-  $m->abort
-+ user name always lowered when loggin in
-
-MsgForum:
-- allow to attach a file to message
-+ MsgForum table has upgraded
-
-
-Removed files:
-lib/ePortal/ThePersistent/Database.pm
-comp_root/login/*
-comp_root/catalog/download.htm
-
-
-
-
-
-
-
-
-
-3.5    CVS tag: rel-3-5    Start Date: 29.05.2003 10:29
-Notes: intermediate release.
-
-- removed CVS tag from all files. migrating to CVS branch release system
-- All $VERSION replaced with th same from ePortal::Server
-- added 'Apply' button for Dialog.pm. Save the object but don't redirect
-
-
-
-
-3.4    CVS tag: rel-3-4    Start Date: 19.05.2003 11:37
-Notes: New release system. Only developers are affected.
-
-ePortal:
-- changed release system. See CVS for details. New dir /release
-- added navigator for admin's page
-- removed unnecessary files from distribution
-- returned back internal statistics page
-- fixed bug when Digest::MD5 is not available. Removed old MD5 package
-  (reported by Dmitry Krupnikov)
-- added some installation tips. Installation manual is still needs more
-  accuracy
-- faq-rus.htm renamed to README-RUSSIAN.html
-- fixed bug with destroy-session when database is not available
-  (reported by Dmitry Krupnikov)
-
-Organizer:
-- fixed ACL bug when any user may delete an information from anniversary
-
-MsgForum:
-- clean lost in space messages (forum deleted but messages are remains)
-
-
-Removed files:
-/gen_pods.pl
-/make_dist.sh
-/set_appl_version.pl
-/comp_root/admin/autohandler_users.mc
-/lib/ePortal/Dual/Search.pm
-/lib/ePortal/Dual/SimpleSearch.pm
-/lib/ePortal/Dual/ToDoSearch.pm
-/lib/ePortal/Dual/ImportDialog.pm
-/lib/ePortal/Dual/Login.pm
-
-
-
-
-
-
-3.3    CVS tag: rel-3-3    Start Date: 24.04.2003 14:10
-Notes: A collection of command line cron scripts is replaced with one script.
-Administrator is able to configure cron jobs with WEB interface. A result of
-job is send to admins in HTML format.
-
-ePortal:
-- ePortal config saved in database as a freezed hash for speed reason
-- again stupid bug in session management.
-+ added new periodic job execution utility. It replaces all previous utilities.
-- search in Catalog with multiple ANDed words
-- fixed many bugs introduced with Exception handling concept
-- solved bug with CGI 2.93 when autoEscape(0) fails during use ePortal::Apache
-  in httpd.conf
-
-MsgForum:
-- added index for MsgItem table
-- fixed bug (escape_html) in Dialogs with read-only fields
-+ added new column 'email_sent' to MsgItem
-
-Organizer:
-- error on delete any memo
-- New Anniversary date initialized to date of current page
-
-Removed files:
-/bin/cron.daily/*
-/bin/cron.d/*
-/comp_root/admin/menu_edit.htm
-/comp_root/admin/msect_edit.htm
-/comp_root/admin/mlink_edit.htm
-
-
-3.2    CVS tag: rel-3-2    Start Date: 15.04.2003 15:10
-Notes:
-
-ePortal:
-- login as local user bug
-- new session created every time when no data to save for old session
-- better code for ACL processing
-- created Bundle::ePortal for easy modules install
-- bug in most popular of Catalog
-- slightly extended user's group editor
-
-Organizer:
-- fixed bug when adding a contact
-
-MsgForum:
-- fixed bug in MsgForum-expire.pl
-- added warning about missing parameters to MsgForum-subscription.pl
-
-Diskoteka:
-- search in medium memo bug
-- Files and mediums remains in DB on Archive delete
-
-
-
-
-
-3.1    CVS tag: rel-3-1    Start Date: 11.04.2003 11:20
-Notes: this bug fix release.
-
-ePortal:
-- fixed bug in frame_alerter.mc
-- OnDeleteUser, onDeleteGroup bug when unconfigured application exists
-- bug. $dbh remains connected after http request is finished.
-- database error when deleting a user
-
-Organizer:
-- access permission bug
-- Database error on categories list
-
-Diskoteka:
-- broken link to mload.pl
-
-MsgForum:
-- fixed recognition of href's in message text
-
-Removed files:
-lib/ePortal/Dual/NotepadSearch.pm
-
-
-3.0    CVS tag: rel-3-0    Start Date: 08.01.2003 14:03
-
-Notes: This is major release of ePortal. Introduced new installation and
-configuration procedure. Many new features and modules added. Some old
-deprecated modules are removed. Organizer features
-are detached into application. Added exceptions handling code.
-
-ePortal:
-- fixed -q switch for command line utilities to be really quiet
-- ability to sort by column of ePortal::HTML::List
-- added new navigation system /navigator.mc
-+ new Application Diskoteka
-+ all old decimal(9,0) fields are replaced with int(11)
-+ all ID fields changd to int(11) not null auto_increment. removed table
-  sequence
-+ new Applications: Organizer, Diskoteka
-
-MsgForum:
-- TitleURL not shown when reading the message
-- Remove subscription from any forum when user deleted
-- Better recognition of smirks
-
-+ Removed files:
-lib/ePortal/Config.pm
-lib/ePortal/DBISource.pm
-lib/ePortal/epUsrGrp.pm
-lib/ePortal/Menu.pm
-lib/ePortal/MenuLink.pm
-lib/ePortal/MenuSection.pm
-lib/ePortal/SQL.pm
-lib/ePortal/StaticConfig.pm
-lib/ePortal/SystemACL.pm
-lib/ePortal/UserConfig.pm
-lib/ePortal/NotepadFolder.pm
-lib/ePortal/ThePersistent/Personal.pm
-bin/ePortal-xxx.pl
-comp_root/export/*
-comp_root/admin/dbisource_*.htm
-comp_root/admin/sysacl_*.htm
-comp_root/notepad/*
-comp_root/pv/sections/menu.mc
-samples/ePortal.conf
-samples/httpd-ePortal.conf
-
-+ Organizer packages moved to ePortal::App::Organizer
-lib/ePortal/Calendar.pm
-lib/ePortal/Contact.pm
-lib/ePortal/Notepad.pm
-lib/ePortal/ToDo.pm
-
-
-
-2.15    CVS tag: rel-2-15    Start Date: 21.11.2002 9:30
-Notes:
-
-MsgForum:
-- bug: sorting of news in pv/section/forumnews.mc.
-- bug: bin/cron.d/MsgForum-subcriptions.pl
-- reply form added after list of replies.
-+ Personal subscription to forums. Rerun bin/ePortal-MsgForum.pl
-
-ePortal:
-- slightly extended a list of parameters to ThePersistent::Base::new
-- auto discovery of max_allowed_packet size and adjusting of max allowed file
-size in Catalog
-- bug fixed: user displayed as Guest if no full name entered.
-- now every command line utility is based on a package ePortal::CommandLine
-- added possibility to fill in database tables with default values during
-bin/ePortal-xxx.pl stage. rerun bin/ePortal.pl
-+ migrated to HTML::Mason 1.16
-- found bug in ThePersistent::Base::restore_where (number of binds mismatched)
-+ Added statistics collector for Catalogue. rerun bin/ePortal.pl
-
-
-
-
-2.14    CVS tag: rel-2-14    Start Date: 18.10.2002 14:41
-Notes: Added LDAP support. Discussion forums are rewrited from ground.
-
-- once again fixed error404 bug
-- fixed small bug with initial connect to DB server.
-- all auto generated .html files removed from CVS. Use gen_pods.pl to generate
-them.
-- removed my local images from CVS (/images/*)
-+ new field epUser: dn varchar(64). Rerun bin/ePortal.pl
-+ new field epGroup: ext_group number(2). Rerun bin/ePortal.pl
-- removed my local file ePortal/External/azot_user.pm from CVS
-+ removed section [startup] from ePortal.conf
-- removed ePortal/ExternalUser.pod as LDAP is implemented
-+ Migration to HTML::Mason 1.15
-+ MsgForum.id, MsgItem.id changed to autoincrement
-- bug fixed: statement handler is not finished when dbh is disconnected
-- bug fixed: cannot add or remove group membership for a user
-- added onDeleteUser, onDeleteGroup callback functions
-- added http://eportal.sourceforge.net/ files to CVS
-- added new section for home page: forums.mc
-
-2.13    CVS tag: rel-2-13    Start Date: 21.08.2002 11:41
-
-Notes: v2.13 is based on HTML::Mason 1.14. Database access classes are
-completely rewrited. Added manuals in English.
-
-+ database layer (ThePersistent classes) is rewrited. Somewhere API is
-completely changed. See manuals for details. Manuals are made up to date.
-+ Migration HTML::Mason 1.15
-- every missing document returns HTTP 200 Ok with content of
-/errors/error404.htm. Fixed.
-- revised all manuals structure and creation process.
-- default behavior of delete_button in HTML::Dialog is changed to 0
-- ePortal.pl: added creation for missing 'Catalog' system ACL
-- fixed bug with HTML::Calendar causing 2 month step (next/prev month)
-
-
-2.12    CVS tag: rel-2-12    Start Date: 20.08.2002 10:12
-
-Notes: v2.11 includes a part of HTML::Mason used for debug purposes. This
-version fixes it. Sorry.
-
-- Added small help to PageView section edit dialog
-- /errors/error404.htm shows wrong URL not found. Bug in /dhandler.mc.
-
-
-
-
-
-2.11	CVS tag: rel-2-11    Start Date: 30.05.2002 14:54
-
-Notes: This is Release Candidate 2. Many incompatible changes are made! Most
-of them are to bring application support into core ePortal.
-Added Catalog subsystem.
-
-+ The source tree separated into ePortal itself and independend applications.
-Now all applications will be distibuted in independent packages
-+ Completely rewrite Makefile.PL. Added command line parameter HOME=...
-+ All comp_root, bin, images, samples files are copied to destination during
-make install
-- make install keeps track of installed applications in
-ePortal::StaticConfig.pm modified on the fly.
-+ comp_root/app/OffPhones/section.mc moved to
-comp_root/pv/section/OffPhones.mc to satify common requirements
-+ logo_image parameter is not used. It is replaced with inset.
-+ logline() function rewrited to support various levels of verbosity. 'Debug'
-parameter has been changed from boolean to scalar
-+ removed bin/epcron.pl utility. It is rewrited into a number of utilities for
-every application. Sample crontab file included: samples/crontab
-- added sample logrotate script: samples/logrotate.d/ePortal
-- fixed bug: .pl files are chmoded 755 now
-- Added PopupMenu tool
-- ACL.pm: acl_default() renamed to set_acl_default
-- ACL: every object takes ACL from its parent object or parent SystemACL during
-insert()
-- ACL: removed possibility to modify ACL attributes with value(). use
-set_acl() instead
-
-2.10	CVS tag: rel-2-10    Start Date: 20.05.2002 15:33
-
-- bug: incorrect last_message date/time in list of forums
-- ability to inset custom HTML text at some pages (login.htm, login-faq.htm,
-...)
-- added config parameter disk_charset
-- Translation to English completed!
-
-2.9	CVS tag: rel-2-9    Start Date: 11.03.2002 14:34
-
-- Added admin_mode. This mode is used to setup an ePortal instance.
-- Removed some minor bugs.
-- Added ePortal::HTML::Tree object (still incomplete)
-+ completely changed config syntax
-+ Introduced conception of Application (independent ePortal's module)
-+ Added application OffPhones
-- A next piece is translated into English
-- A lot of tests during server startup. The server exits if an error occured.
-- All ACL specific initializaton and processing moved to ACL.pm (was logical
-error)
-- Rewrited ePortal.pl: tables creation, SystemACL creation, Application
-specific initialization, more checks, etc.
-+ Added application CompInventory (early beta)
-- Cleaned bug in /dhandler.mc. Was: empty page on non existing documents
-+ Required Perl 5.6.1
-- Forums converted to Application
-
-2.8	CVS tag: rel-2-8    Start Date: 15.02.2002 15:28
-
-- Added default dhandler.mc. His responsibility is to draw directory listing
-  with help of /dir.mc. dhandler.mc is looking for dir_xxx attributes in
-  request directories. See documentation for details
-  (/comp_root/manual/autohandler.html)
-- Frames changed to <Iframe> tag
-- Added FAQ in Russian (/faq-rus.html)
-- Added missing page "message not found" in forums
-+ /comp_root/FileFolder/like_calendar.mc moved to /comp_root/ah-calendar.mc.
-  /comp_root/FileFolder removed due to low profit
-- Added access control to root autohandler. It's possible now to protect
-  documents and directories (user access, group access, admin access, sysacl)
-  with ePortal methods only. Apache access checking is working too.
-
-2.7	CVS tag: rel-2-7    Start Date: 25.01.2002 15:43
-
-- Added statistics page for admin
-- Found bug in epcron.pl. All sessions are deleting regardless of
-  $KEEP_SESSIONS_DAYS
-- Found small bug in /forum/forum.htm
-- New style of date/time input fields (java script + popup calendar window +
-  javascript validation)
-+ new ePortal config parameter: date_field_style
-- calendar.mc rewrited to ePortal::HTML::Calendar.pm. Also rewrited
-  /FileFolder/like-calendar.mc, /popup/calendar.htm to satisfy new calendar.
-- Calendar event was invisible when start time is before 8:00 or after 19:00
-- Strict checking for new messages on Message forums. No messages without text
-  or without text addition in reply
-
-2.6	CVS tag: rel-2-6    Start Date: 20.11.2001 10:23
-
-- Added ePortal::ThePersistent::Dual package for fake ThePersistent objects.
-  They doesn't have an underlying table and used for dialogs.
-- Added logout_ok.htm to make logout process more clear to user.
-- Revised /autohandler.mc. It splitted into several components
-- Missing SystemACL and corresponding users group autocreated on first check on
-  ACL by admin.
-- Added auto-discovery of attributes from native SELECT SQL statement in
-  ePortal::ThePersistent::Support
-- Added ePortal::HTML::Dialog and ePortal::HTML::List
-- Removed menu.htm. All work goes in map.htm
-- ThePersistent::restore_where rewrited to get HASH as argument. Thus we
-  seperate different SQL clauses: WHERE, ORDER BY, GROUP BY
-- Added ThePersistent::Personal.pm to concentrate on common properties of all
-  personal objects (Calendar, Notepad, ToDo, Address)
-- Found bug in Calendar::find_(prev|next)_event. It find an event of any user ;-)
-- Bug in ACL processing of MenuLinks
-- Added limit_offset and limit_rows parameters to restore_where (MySQL
-  specific, not portable!)
-- Removed some bugs in login process (Server.pm)
-- Migrated from ePortal::List to ePortal::HTML::List (removed list.mc)
-- Migrated from ePortal::Dialog to ePortal::HTML::Dialog (removed dialog.mc)
-- Revised /dir.mc for more accurate work with current dir info
-- Revised /FileFolder/calendar.mc to print <META robots=noindex,nofollow> on
-  empty dates
-- Added JavaScript popup alerter for events in Calendar.
-+ new table PopupEvent
-+ new ePortal config parameter: refresh_interval
-- Added admin's page with list of current ePortal::Server's parameters.
-- Added "my tasks today" personal section (PageView)
-
-2.5	CVS tag: rel-2-5    Start Date: 17.10.2001 15:10
-
-- Rewrited map.htm (menu map of the server) to Javascript
-- Dialog now returns back to caller's page.
-- Added "delete", "copy", "ACL" buttons to dialog
-- Added cache to map.htm for speedup output
-- Added confirmation on delete to /delete.htm
-- If any ePortal::ThePersistent object has 'lastmodified' attribute then this
-attribute update to 'now' on every insert or update. (Support.pm)
-- If an attribute is popup_menu fieldtype then htmlValue returns qassociated
-label not value
-- ThePersistent classes rewrited to use dbh cursors rather then load all
-recordset into memory array
-- Declaration of all global variables moved to ePortal::Global module
-- Cleaned bug in ePortal.pl when error was always reported during missing
-column creation
-- Moved to Apache::Session::MySQL.
-- Added ePortal's cron script
-- Apache::AuthCookie package replaced to internal one.
-- Revised import process. Fixed some bugs.
-- Added robots.txt
-- Display busy time in calendar view
-
-2.4	CVS tag: rel-2-4    Start Date: 05.09.2001 10:04
-
-- ACL rewrited to unix-like system. owner, group, other users, other
-registered users.
-- decode_msg() changed to pick_lang(). It get hash or hash_ref with lang codes
-as hash keys.
-- Completely rewrited component list.mc with a help of ePortal::List.pm
-- Added daily calendar with events, todo list.
-- Partialy rewrited /dialog.mc component.
-- Removed component /dialog_onButton.mc. All perl code moved to
-ePortal::Dialog::handle_request
-- Added Contacts section
-- Move focus to the first item in dialog when opened.
-- This is first version released at sourceforge.net
-
-2.3	CVS tag: rel-2-3    Start Date: 03.01.01 9:51
-
-- User's notepad created
-- Создание и проверка существования таблиц в БД через утилиту командной
-строки.
-- Возможность конфигурирования нескольких наборов dbi:user:pass
-- Импорт/экспорт объектов
-- Появилась система дискуссионных форумов
-- Новая система инициализации ThePersistent объектов через хэш с описанием
-свойств атрибутов. Автоматически можно получать отформатированные htmlLabel,
-htmlValue, htmlField.
-- Все ссылки из меню и верхнего меню сделаны на target="_top" в случае, если
-позднее будут использоваться фреймы.
-- Конфигурация ePortal задается через файл. Переработана система запуска.
-Можно предварительно создавать несколько объектов для более полного
-использования шареной памяти и ускорения обслуживания страниц при первом
-обращении.
-- ePortal::Config переименован в ePortal::Server.
-- Созданы новые таблицы: PageView, PageSection, UserConfig.
-- Верхняя строка меню (верх экрана) настраивается через админовскую форму.
-- Переработана большая часть всего кода. Business logic вынесена в модули.
-Освобождаю htm от кода насколько это возможно.
-- Добавлен новый тип данных ThePersistent::DataType::YesNo.
-- Создание таблиц ePortal самостоятельно через меню.
-- Ну вот и появился javascript. Изготовлен popup-calendar для ввода дат в
-формах. Добавлен атрибут Popup, который определяет внешний вид окна.
-- НЕ ПРОШЛО!!! BUG in Perl!!!
-Exception handling: Любой модуль ePortal в
-любой момент может сделать die. Результат $@ можно декодировать с помощью
-decode_msg в соотвествии с текущим выбранным языком (русский, английский).
-- Добавлен модуль ThePersistent::Database. В него вынесена вся логика,
-связанная с БД. Теперь нет необходимости в ThePersistent::Oracle,
-ThePersistent::mysql.
-- Глобальная переменная $ePortal вынесена в отдельный модуль
-ePortal::Global;
-- Переход на Mason-1.0
-- Запросы ThePersistent->restore и ->restore_where можно вызывать с bind
-параметрами. Теперь большинство запросов на выборку могут кэшироваться СУБД.
-- При наследовании прав в /acl.htm также есть возможность наследовать также
-владельца объекта.
-- Удалена возможность держать таблицы БД у другого пользователя. Теперь,
-если такая неоходимость есть, то надо использовать синонимы. Соответственно
-удален конфигурационный параметр SchemaOwner.
-- В модули edit.mc, list.mc встроена проверка ACL. Кнопки на редактирование
-и удаление объектов появляются только при наличии права w на объект.
-- Из таблицы newsitem удалены столбцы owner, acl. Исправлена работа с ACL в
-новостях и новостных лентах.
-
-2.2      tag: rel-2-2    Start Date: 07.12.00 16:22
-
-- Глобальная переменная $ePortal;
-- Функции isAdmin и webName перенесены из package User в ePortal.
-- ePortal переделан под объектный принцип.
-- Убрана взможность работы с несколькими столбцами из autohandler.mc
-за ненадобностью. Переделан соответственно /index.htm.
-- Обнаружен глюк в Config::get_mason_config. Если в httpd.conf не были описаны
-mason_allowglobals, то они вообще не создавались, а нам обязательно нужны
-%session, $dbh, %gdata.
-
-2.1      tag: rel-2-1    Start Date: 17.11.00 9:32</b>
-
-- Редактор прав ACL может менять владельца объекта.
-- Добавлена возможность вывода лент новостей на home page не только по ИД,
-но и по короткому имени.
-- Найден глюк в news. Новости видел только тот, кто создал эту новость.
-- Найден глюк в /login.htm, не позволяющий запоминать пользователя, если
-включена авторегистрация.
-- Объеденены ApacheHandler и ePortal::Config. Вся конфигурация HTML::Mason
-вынесена в httpd.conf.
-
-2.0      tag: rel-2-0    Start Date: 05.09.2000 14:12
-
-- Информация, не имеющая отношения к ePortal вынесена во внешний каталог.
-- Добавлены файлы ePortal::User::Group.pm, ThePersistent::mysql.pm
-- Сделал страницу базовой настройки ePortal. С ее помощью можно создать
-базовый народ системных ACL, Системного меню ePortal.
-- Добавлен классы ePortal::Group, ePortal::ThePersistent::SystemACL.
-- Введены функции restore_all_array и restore_all_hash в
-ePortal::ThePersistent::Base.
-- Сильно упростил классы ThePersistent. Немного поднялась скорость при
-создании экземпляра этого класса. Надо бы еще переделать Char, DateTime
-классы.
-- Сделано рекурсивное удаление подчиненных объектов на уровне
-ePortal::ThePersistent::Base::delete. Список подчиненных объектов получаетс из
-children.
-- В конфигурации можно задать список пользователей, являющихс
-абсолютными администраторами сайта.
-- Картинки, имеющие отношение к порталу перенесены в /images/ePortal
-- При изменении ACL через методы ePortal::ThePersistent::Base::acl_xxx
-проверяется право текущего юзера на "а". Если его нет, то модификация ACL не
-производится.
-- Изменена схема защиты объектов. В следующие таблицы добавлены столбцы
-owner vc(64), acl vc(4000): menu, menusection, menulinksm newsband, newsitem.
-За ненадобностью удалена таблица ACL.
-- Убрано кэширование меню в связи с тем, что изменена схема защиты объектов
-и сильно увеличилась скорость доступа. Кэширование стало просто не нужно.
-- Сделана карта сервера.
-- Переделана система формирования и кэширования меню.
-- Добавлен пункт "Запомнить пароль" при регистрации. Пришлось изменить
-Apache::AuthCookie. Надо бы известить автора.
-- Исправлен bug в ePortal::ThePersistent::Base при удалении объекта и его
-сопутствующих ACL.
-- ThePersistent::Base класс считывает не более 300 строк из таблицы, а то
-память сильно кушается.
-- Изменен дизайн меню.
-- Введено кэширование информации в ThePersistent::Base::acl_list в
-глобальных хэш. menu.htm теперь тоже полностью кешируется. Скорость поднялась
-примерно в 18 раз. экспиринг кэша сделан как пункт меню с удалением самих
-файлов.
-- BUG:Меню, разделы, ссылки удаляются рекурсивно. При удалении меню
-удаляется все, что к нему относится.
-- Переделана вся система листинга и редактирования элементов Persistent.
-- Появился редактор прав доступа (пока еще не очень удобный в применении).
-- В ePortal::ThePersistent::Base добавлены методы для работы с правами ACL.
-Введено понятие родительского объекта, например меню и секиця, секция и
-ссылка.
-- Методы работы с sequence перенесены из ThePersistent в
-ePortal::ThePersistent::Base.
-- Появились новые классы: ePortal::ThePersistent::Menu,
-ePortal::ThePersistent::MenuSection, ePortal::ThePersistent::MenuLink.
-- Метод newid перенесен из ThePersistent::Base в ePortal::ThePersistent::Base
-- Изменен ePortal::MasonHandler. Теперь он стал универсальным. Нужные
-объекты с нужной конфигурацией создаются по запросу, а не сразу все
-конфигурации при старте сервера. К сожалению, набор объектов будет создаватьс
-для каждого apache child отдельно, т.к. пока мы не получим запрос от браузера
-мы не будем знать с каким виртуальным сервером мы работаем. Это несколько
-увеличит потребление памяти, но не должно быть значительным.
-- Модуль azot::AuthCookieHandler перенесен в ePortal::AuthCookieHandler.
-Переделаны все конфигурационные файлы.
-- /database.mc - попытка коннекта делается теперь каждый раз. Кэширование
-коннекта производится средствами Apache::DBI
-- Добавлен экспорт телефонного справочника предприятия в файлы DBF.
-- Добавлен заголовок Content-Length в /autohandler.mc. Это переводит режим
-вывода в batch вместо stream, но пока я как-либо использую фильтры режим
-stream не работает. А мне нужен фильтр для формирования URL для картинок на
-другой сервер.
-- Сделаны следующие пункты TODO насчет календаря:
-- 1. При попадании на середину календаря, когда указан год или месяц но без
-числа считать, что нас просят перейти на last день. УРЛ на шаг назад
-формировать сразу на предыдущую папку календаря.
-- 2. Баг в календаре. Если в календарной папке создать каталог, то
-потом делается переход на текущий месяц, на не на тот, в котором мы находимс
-в календаре.
-- 3. Еще про календарь. Надо синхронизировать текущий урл и календарь, т.е. при
-выборе даты или месяца надо срочненько переходить на этот месяц, либо в корне
-менять систему инициализации календаря.
-- Изменена система подключения модулей, наследование в которых зависит от
-конфигурации. Теперь модули подключет сам Config.pm, а уже подключаемый
-модуль работает с $ePortal::Config самостоятельно.
-- Убраны комментарии из Persistent, ненужные методы и т.д. Предполагается, что
-буду работать только с DBI, иначе все это нафиг не нужно ;-)
-- Класс Persistent переименован в ThePersistent, чтобы исключить коллизии с
-классом, который написал Winter.
-- Классы Persistent::azot::newsXXX перенесены в ePortal::ThePersistent::newsXXX
-- Добавлен класс ThePersistent::DataType::Date - чисто дата, без времени.
-- Изменен порядок получения данных в ThePersistent::Base::restore_where. Раньше
-получался с сервера хэш, который потом разбирался по полям. Это медленно.
-Подразумевая, что список полей в запросе формируется в определнном порядке,
-получаю массив данных, а потом вытаскиваю значения в этом же порядке.
-- Изменена система формирования меню. Раньше надо было специально указывать, что
-тебе не надо иметь bask url, теперь все формируется с помощью иерархии. Если
-тебе надо наследовать меню с предыдущего уровня, то используй
-@{ $m->comp("PARENT:MenuItems") }
-
-1.x.  tag: rel-1-0
-
-- Начальный полувариант. Отнесем сюда все, что было сделано до того.
-- Начал вести changes.
 

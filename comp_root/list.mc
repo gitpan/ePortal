@@ -2,9 +2,8 @@
 %# ePortal - WEB Based daily organizer
 %# Author - S.Rusakov <rusakov_sa@users.sourceforge.net>
 %#
-%# Copyright (c) 2000-2003 Sergey Rusakov.  All rights reserved.
-%# This program is free software; you can redistribute it
-%# and/or modify it under the same terms as Perl itself.
+%# Copyright (c) 2000-2004 Sergey Rusakov.  All rights reserved.
+%# This program is open source software
 %#
 %#----------------------------------------------------------------------------
 <%doc>
@@ -215,7 +214,7 @@ descending.
     -border => 0,
   );
   foreach (keys %ARGS) {
-    $CGI{$_} = $ARGS{$_} if substr($_, 0, 1) eq '-';
+    $CGI{$_} = $ARGS{$_} if /^-/o;
   }
   $m->print( CGI::start_table(\%CGI) );
   $m->comp('SELF:_submit_form') if $L->{submit};
@@ -908,7 +907,7 @@ Row number counter
  <% $content %>
 % } else {
   <table width="100%" cellspacing="0" cellpadding="0" border="0"><tr>
-    <td width="50%" valign="middle">
+    <td nowrap valign="middle">
       &nbsp;<% pick_lang(rus => "Строк на страницу:", eng => "Rows per page:") %>
 % delete $args{'rows'.$listid};
 % $args{'page'.$listid} = $L->{page};
@@ -917,23 +916,23 @@ Row number counter
 % if ($L->{rows} == $p) {
   <b><% $p %></b>
 % } else {
-  <a href="<% href($ENV{SCRIPT_NAME}, 'rows'.$listid => $p, %args) %>"><u><% $p %></u></a>
+  <a href="<% href($ENV{SCRIPT_NAME}.$ENV{PATH_INFO}, 'rows'.$listid => $p, %args) %>"><u><% $p %></u></a>
 % }
   &nbsp;
 % }
     </td>
-    <td width="50%" valign="middle" align="right">
+    <td nowrap valign="middle" align="right">
       <% pick_lang(rus => "Страница:", eng => "Page:") %>
 
 % $args{'rows'.$listid} = $L->{rows};
 % delete $args{'page'.$listid};
 % if ($page > 1) {
-  <a href="<% href($ENV{SCRIPT_NAME}, 'page'.$listid => $page-1, %args) %>"
+  <a href="<% href($ENV{SCRIPT_NAME}.$ENV{PATH_INFO}, 'page'.$listid => $page-1, %args) %>"
         title="<% pick_lang(rus => "Предыдущая страница", eng => "Previous page")
         %>"><u>&lt;&lt;&lt;</u></a>&nbsp;&middot;&nbsp;
 % }
 % if ($page >= 7) {
-  <a href="<% href($ENV{SCRIPT_NAME}, 'page'.$listid => 1, %args) %>"><u>1</u></a>&nbsp;&middot;&nbsp;
+  <a href="<% href($ENV{SCRIPT_NAME}.$ENV{PATH_INFO}, 'page'.$listid => 1, %args) %>"><u>1</u></a>&nbsp;&middot;&nbsp;
 % }
 
 
@@ -941,13 +940,13 @@ Row number counter
 % if ($p == $page) {
   <b><% $p %></b>&nbsp;&middot;&nbsp;
 % } else {
-  <a href="<% href($ENV{SCRIPT_NAME}, 'page'.$listid => $p, %args) %>"><u><% $p %></u></a>&nbsp;&middot;&nbsp;
+  <a href="<% href($ENV{SCRIPT_NAME}.$ENV{PATH_INFO}, 'page'.$listid => $p, %args) %>"><u><% $p %></u></a>&nbsp;&middot;&nbsp;
 % }
 % }
 
 
 % if ($page < $pages) {
-  <a href="<% href($ENV{SCRIPT_NAME}, 'page'.$listid => $page+1, %args) %>"
+  <a href="<% href($ENV{SCRIPT_NAME}.$ENV{PATH_INFO}, 'page'.$listid => $page+1, %args) %>"
         title="<% pick_lang(rus => "Следующая страница", eng => "Next page")
         %>"><u>&gt;&gt;&gt;</u></a>
 % }

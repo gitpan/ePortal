@@ -2,28 +2,22 @@
 %# ePortal - WEB Based daily organizer
 %# Author - S.Rusakov <rusakov_sa@users.sourceforge.net>
 %#
-%# Copyright (c) 2000-2003 Sergey Rusakov.  All rights reserved.
-%# This program is free software; you can redistribute it
-%# and/or modify it under the same terms as Perl itself.
+%# Copyright (c) 2000-2004 Sergey Rusakov.  All rights reserved.
+%# This program is open source software
 %#
 %#
 %#----------------------------------------------------------------------------
 <%perl>
   # only admin may see it
   return if ! $ePortal->isAdmin;
-
-  # prepare Dialog
-  my $dlg = new ePortal::HTML::Dialog( width => "99%", formname => undef,
-      title => pick_lang(rus => "Раздел администратора", eng => "Administrator's section"),
-      title_url => '/admin/index.htm',
-  );
-
 </%perl>
-<% $dlg->dialog_start %>
-<% $dlg->row( $m->comp('SELF:dialog_content') ) %>
-<% $dlg->dialog_end %>
-<p>
 
+<&| /dialog.mc, width => '100%',
+      title => pick_lang(rus => "Раздел администратора", eng => "Administrator's section"),
+      title_url => '/admin/index.htm' &>
+<& SELF:dialog_content &>
+</&>
+<& /empty_table.mc, height => 10 &>
 
 %#=== @metags dialog_content ====================================================
 <%method dialog_content><%perl>
@@ -66,7 +60,7 @@ if ( !$ePortal->www_server or ! $ePortal->smtp_server or ! $ePortal->mail_domain
 #=== @metags Default_PageView ===================================
 #
 my $pv = new ePortal::PageView;
-if ( ! $pv->restore('default') ) {
+if ( ! $pv->restore_default ) {
   $something_wrong=1;
   </%perl>
   <li><b><% pick_lang(
@@ -182,6 +176,46 @@ foreach my $appname ($ePortal->ApplicationsInstalled) {
       <% plink({rus => "Проверить", eng => "Check it"}, -href => '/admin/CronJob_list.htm') %>
       <%perl>
     }
+  }
+}
+
+#
+#=== @metags hideinsets ==================================================
+#
+{
+  if ( $ePortal->UserConfig('hideinsets')) {
+    $something_wrong = 1;
+    </%perl>
+    <li><b><% pick_lang(
+        rus => "Отображение вставок HTML " . img(src=>"/images/ePortal/html.gif") . " отключено",
+        eng => "Insets ".img(src=>"/images/ePortal/html.gif")." are hidden") %></b>
+    <span class="memo">
+      <% pick_lang(
+          rus => "Редактирование вставок HTML не возможно",
+          eng => "Inset editor is not available") %>
+    </span>
+    <% plink({rus => "Включить", eng => "Turn on"}, -href => '/admin/show_insets.htm') %>
+    <%perl>
+  }
+}
+
+#
+#=== @metags perl_no_validation ==================================================
+# 
+{
+  #if ( !$ENV{PERL_NO_VALIDATION} ) {
+  if ( $ePortal::DEBUG ) {
+    $something_wrong = 1;
+    </%perl>
+    <li><b><% pick_lang(
+        rus => "Включен режим отладки",
+        eng => "Debug mode is ON") %></b>
+    <span class="memo">
+      <% pick_lang(
+          rus => "Установите переменную окружения PERL_NO_VALIDATION=1 для отключения режима отладки",
+          eng => "Set environment variable PERL_NO_VALIDATION=1 to turn it off") %>
+    </span>
+    <%perl>
   }
 }
 

@@ -3,27 +3,25 @@
 # ePortal - WEB Based daily organizer
 # Author - S.Rusakov <rusakov_sa@users.sourceforge.net>
 #
-# Copyright (c) 2000-2003 Sergey Rusakov.  All rights reserved.
-# This program is free software; you can redistribute it
-# and/or modify it under the same terms as Perl itself.
+# Copyright (c) 2000-2004 Sergey Rusakov.  All rights reserved.
+# This program is open source software
 #
 #
 #----------------------------------------------------------------------------
 
 package ePortal::Global;
-    our $VERSION = '4.2';
+    our $VERSION = '4.5';
 
 	# --------------------------------------------------------------------
 	# Symbols to export
 	#
     use base qw/Exporter/;
-    our @EXPORT = qw/$ePortal $dbh %session %gdata /;
+    our @EXPORT = qw/$ePortal %session %gdata /;
 
    	# --------------------------------------------------------------------
 	# Global variables
 	#
     our $ePortal;
-	our $dbh;
 	our %session;
 	our %gdata;
 
@@ -55,13 +53,9 @@ Global object blessed to ePortal::Server. This is main engine.
 
 
 
-=head2 $dbh
-
-Global database handle
-
 =head2 %session
 
-This is hash of Session data storage
+This is hash of persistent per session data
 
 
 =head2 %gdata

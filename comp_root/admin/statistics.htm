@@ -2,9 +2,8 @@
 %# ePortal - WEB Based daily organizer
 %# Author - S.Rusakov <rusakov_sa@users.sourceforge.net>
 %#
-%# Copyright (c) 2000-2003 Sergey Rusakov.  All rights reserved.
-%# This program is free software; you can redistribute it
-%# and/or modify it under the same terms as Perl itself.
+%# Copyright (c) 2000-2004 Sergey Rusakov.  All rights reserved.
+%# This program is open source software
 %#
 %#
 %#----------------------------------------------------------------------------
@@ -110,12 +109,7 @@ Title => {rus => 'Статистика сервера ePortal', eng => "Statistics page"}
   my %args = $m->request_args;
 
   foreach my $key (keys %ARGS) {
-    my $stat_dbh = $dbh;
-    if ( $ARGS{$key}{app} ) {
-      my $app = $ePortal->Application( $ARGS{$key}{app} );
-      $stat_dbh = $app->dbh;
-    }
-    my $value_1 = $stat_dbh->selectrow_array($ARGS{$key}{sql_1});
+    my $value_1 = $ePortal->dbh->selectrow_array($ARGS{$key}{sql_1});
     </%perl>
     <tr>
       <td>
@@ -136,7 +130,7 @@ Title => {rus => 'Статистика сервера ePortal', eng => "Statistics page"}
     # --------------------------------------------------------------------
     # Verbose output if choosen
     if ( $args{verbose} eq $key ) {
-      my @value_2 = @{ $stat_dbh->selectall_arrayref( $ARGS{$key}{sql_2} . ' limit 20' ) };
+      my @value_2 = @{ $ePortal->dbh->selectall_arrayref( $ARGS{$key}{sql_2} . ' limit 20' ) };
       </%perl>
       <tr><td colspan="2" align="right">
         <% join('<br>', map {join '&nbsp;-&nbsp;', @$_} @value_2) %>

@@ -18,7 +18,7 @@
 # Define some of environment variables
 #
 MAILTO=root
-PERL5LIB=/home/ePortal/lib
+PERL5LIB=/opt/ePortal/lib
 
 #
 # Define DBI source

@@ -2,9 +2,8 @@
 %# ePortal - WEB Based daily organizer
 %# Author - S.Rusakov <rusakov_sa@users.sourceforge.net>
 %#
-%# Copyright (c) 2000-2003 Sergey Rusakov.  All rights reserved.
-%# This program is free software; you can redistribute it
-%# and/or modify it under the same terms as Perl itself.
+%# Copyright (c) 2000-2004 Sergey Rusakov.  All rights reserved.
+%# This program is open source software
 %#
 %#
 %#----------------------------------------------------------------------------
@@ -13,6 +12,9 @@
 <p>
 <& SELF:compress_statistics, %ARGS &>
 <p>
+% if ($m->comp_exists('/app/OffPhones/health_check.mc')) {
+  <& /app/OffPhones/health_check.mc, %ARGS &>
+% }
 
 %#=== @metags expire_sessions ====================================================
 <%method expire_sessions>
@@ -25,7 +27,7 @@
     <%perl>
 
   } else {
-      my $cnt = 0 + $ePortal->DBConnect->do("DELETE
+      my $cnt = 0 + $ePortal->dbh->do("DELETE
               FROM sessions
               WHERE ts < date_sub(now(), interval ? day)",
               undef, $ePortal->days_keep_sessions);
@@ -45,7 +47,7 @@
       eng => "Compressing Catalogue statistics") %></b>
 <p><blockquote>
 <%perl>
-  my $ep_dbh = $ePortal->DBConnect;
+  my $ep_dbh = $ePortal->dbh;
   COMPRESS_STATISTICS: {
       # calculate first of month $MAX_MONTH_SHOW ago
       my $first_of_month = $ep_dbh->selectrow_array(

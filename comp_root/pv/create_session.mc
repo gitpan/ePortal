@@ -2,9 +2,8 @@
 %# ePortal - WEB Based daily organizer
 %# Author - S.Rusakov <rusakov_sa@users.sourceforge.net>
 %#
-%# Copyright (c) 2000-2003 Sergey Rusakov.  All rights reserved.
-%# This program is free software; you can redistribute it
-%# and/or modify it under the same terms as Perl itself.
+%# Copyright (c) 2000-2004 Sergey Rusakov.  All rights reserved.
+%# This program is open source software
 %#
 %#
 %#----------------------------------------------------------------------------
@@ -17,7 +16,7 @@
   my %cookies = $cookie->parse;
 
   foreach (keys %cookies) {
-    logline('debug', "Cookie $_=".$cookies{$_}->value);
+    logline('debug', "Received cookie $_=".$cookies{$_}->value);
   }
 
   # clear session hash
@@ -26,10 +25,16 @@
 
   # try to restore new session
   if ( $session_id ) {
-    my $datacount = $dbh->selectrow_array("SELECT count(*) FROM sessions WHERE id=?", undef, $session_id);
-    my $data = $dbh->selectrow_array("SELECT a_session FROM sessions WHERE id=?", undef, $session_id);
+    my $datacount = $ePortal->dbh->selectrow_array("SELECT count(*) FROM sessions WHERE id=?", undef, $session_id);
+    my $data = $ePortal->dbh->selectrow_array("SELECT a_session FROM sessions WHERE id=?", undef, $session_id);
     if ( $datacount != 0 ) {
-      %session = ( %{Storable::thaw($data)} );
+      my $data_thaw = Storable::thaw($data);
+      if ( ref($data_thaw) eq 'HASH' ) {
+        %session = ( %{$data_thaw} );
+      } else {  # Session data exists, but it is not a HASH
+        $session_id = undef;
+        $session{_new_session} = 1;
+      }  
     } else {
       $session{_new_session} = 1;
     }
@@ -45,12 +50,12 @@
   if ( ! $cookies{ePortal} ) {
       my $cookie = new Apache::Cookie($r,
           -name=>'ePortal',
-          -expires => '+3M',
+          -expires => 'Mon, 28-Dec-2099 00:00:00 GMT',
           -value=>$session{_session_id},
           -path => '/',);
       $cookie->bake;
       my $address = $r->get_remote_host;
-      logline('debug', "Sending cookie to client. TCP/IP=$address. ePortal=$session{_session_id}");
+      logline('debug', 'Sending session cookie. '.$cookie->as_string);
   }
 
   return $session{_session_id};

@@ -3,9 +3,8 @@
 # ePortal - WEB Based daily organizer
 # Author - S.Rusakov <rusakov_sa@users.sourceforge.net>
 #
-# Copyright (c) 2000-2003 Sergey Rusakov.  All rights reserved.
-# This program is free software; you can redistribute it
-# and/or modify it under the same terms as Perl itself.
+# Copyright (c) 2000-2004 Sergey Rusakov.  All rights reserved.
+# This program is open source software
 #
 #
 #----------------------------------------------------------------------------
@@ -28,7 +27,7 @@ INSERT, DELETE.
 
 
 package ePortal::ThePersistent::Base;
-    our $VERSION = '4.2';
+    our $VERSION = '4.5';
 
     use strict;
     use Carp;
@@ -84,9 +83,6 @@ my $ThePersistentParameters = {
         OrderBy => {type => SCALAR | UNDEF, optional => 1 },
         Attributes => {type => ARRAYREF | HASHREF, optional => 1},
         DEBUG_SQL => {type => BOOLEAN, optional => 1},
-
-        # May be replace to Storage???
-        DBISource => {type => SCALAR, optional => 1},
     };
 ############################################################################
 sub new {   #09/25/02 9:27
@@ -1101,7 +1097,7 @@ sub restore_where {
     # where parameter may be arrayref. convert it into ANDed string
     # Use for it only non null strings
     if ( ref($p{where}) eq 'ARRAY') {
-        $p{where} = join ' AND ', grep {$_ ne ''} @{ $p{where} };
+        $p{where} = join ' AND ', map { '('.$_.')' } grep {$_ ne ''} @{ $p{where} };
     }
 
     # Add obligatory where clause
@@ -1239,14 +1235,14 @@ Returns none.
 ############################################################################
 sub add_where   {   #01/11/02 11:21
 ############################################################################
-    my ($self, $p, $where, @binds) = @_;
+  my ($self, $p, $where, @binds) = @_;
 
-    if ($where) {
-        $p->{where} .= ' AND ' if $p->{where};
-        $p->{where} .= '(' . $where . ')';
-        push @{$p->{bind}}, @binds;
-    }
-    return $p
+  if ($where) {
+    $p->{where} = [ $p->{where} ] if ref($p->{where}) ne 'ARRAY';
+    push @{ $p->{where} }, $where;
+    push @{$p->{bind}}, @binds;
+  }
+  return $p
 }##add_where
 
 

@@ -3,9 +3,8 @@
 # ePortal - WEB Based daily organizer
 # Author - S.Rusakov <rusakov_sa@users.sourceforge.net>
 #
-# Copyright (c) 2000-2003 Sergey Rusakov.  All rights reserved.
-# This program is free software; you can redistribute it
-# and/or modify it under the same terms as Perl itself.
+# Copyright (c) 2000-2004 Sergey Rusakov.  All rights reserved.
+# This program is open source software
 #
 #
 #----------------------------------------------------------------------------
@@ -17,7 +16,7 @@ package ePortal::ThePersistent::DataType::Date;
 use strict;
 use Carp;
 
-    our $VERSION = '4.2';
+    our $VERSION = '4.5';
 
   ### month name to number map ###
   my %month_to_num = (
@@ -123,9 +122,9 @@ sub year {
   ### set it ###
   if (@_) {
     my $year = shift;
-    $year = undef if $year == 0;
 
     if (defined $year) {
+      $year = undef if $year == 0;
       croak "year ($year) must be between 0 and 9999" if $year < 0 || $year > 9999;
     }
     $self->{Year} = $year;
@@ -146,8 +145,8 @@ sub month {
   ### set it ###
   if (@_) {
     my $month = shift;
-    $month = undef if $month == 0;
     if (defined $month) {
+      $month = undef if $month == 0;
       croak "month ($month) must be between 1 and 12" if $month < 1 || $month > 12;
     }
     $self->{Month} = $month;
@@ -167,8 +166,8 @@ sub day {
   ### set it ###
   if (@_) {
     my $day = shift;
-    $day = undef if $day == 0;
     if (defined $day) {
+      $day = undef if $day == 0;
       croak "day ($day) must be between 1 and 31" if $day < 1 || $day > 31;
     }
     $self->{Day} = $day;

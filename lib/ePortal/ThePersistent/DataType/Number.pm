@@ -3,9 +3,8 @@
 # ePortal - WEB Based daily organizer
 # Author - S.Rusakov <rusakov_sa@users.sourceforge.net>
 #
-# Copyright (c) 2000-2003 Sergey Rusakov.  All rights reserved.
-# This program is free software; you can redistribute it
-# and/or modify it under the same terms as Perl itself.
+# Copyright (c) 2000-2004 Sergey Rusakov.  All rights reserved.
+# This program is open source software
 #
 #
 #----------------------------------------------------------------------------
@@ -16,7 +15,7 @@ package ePortal::ThePersistent::DataType::Number;
     use strict;
     use Carp;
 
-    our $VERSION = '4.2';
+    our $VERSION = '4.5';
 
 sub new {
   my $proto = shift;
@@ -43,7 +42,7 @@ sub value {
     my $value = shift;
     $value = undef if defined($value) and $value eq '';
 
-    if ($self->{maxlength} and (length($value) > $self->{maxlength})) {
+    if ($self->{maxlength} and $value and (length($value) > $self->{maxlength})) {
         carp "Length of value [$value] is greater then maxlength";
     }
 

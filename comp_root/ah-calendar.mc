@@ -77,7 +77,7 @@
 	my $uri = $r->uri;
 	my @date = (0,0,0);
   my %args = $m->request_args;
-	$C = new ePortal::HTML::Calendar;
+  $C = new ePortal::HTML::Calendar( m => $m );
 
   # $base_uri is a base directory not including trailing slash
 	# where year directories are placed

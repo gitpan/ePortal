@@ -2,105 +2,202 @@
 %# ePortal - WEB Based daily organizer
 %# Author - S.Rusakov <rusakov_sa@users.sourceforge.net>
 %#
-%# Copyright (c) 2000-2003 Sergey Rusakov.  All rights reserved.
-%# This program is free software; you can redistribute it
-%# and/or modify it under the same terms as Perl itself.
+%# Copyright (c) 2000-2004 Sergey Rusakov.  All rights reserved.
+%# This program is open source software
 %#
+%#
+%# request to /index.htm:
+%# - check for $session{DefaultPageView}
+%# - if readable then redirect to index.htm?pv=#id#
+%#
+%# request to /index.htm?pv=default
+%# - remove $session{DefaultPageView}
+%#
+%# request to /index.htm?pv=#id#
+%# - if not found then redirect to /index.htm?pv=default
+%# - store $session{DefaultPageView}
 %#
 %#----------------------------------------------------------------------------
-
 
 %#=== @METAGS onStartRequest ====================================================
 <%method onStartRequest><%perl>
   $PV = new ePortal::PageView;
-  #
-  # Нам могут передать значение нового PageView по умолчанию.
-  # Если оно правильное и сохранилось успешно, то восстанавливаем этот PV
-  #
-  $PV->SetDefaultPageView($ARGS{pv}) if $ARGS{pv};
-  $PV->restore();
 
-  return $PV->handle_request();
+  # ----------------------------------------------------------------------
+  # Current PageView Selection algorithm
+  # 
+  if ( $ARGS{pv} eq '' ) {
+    throw ePortal::Exception::Abort(-text => href('/index.htm', pv => $session{DefaultPageView}))
+      if ( $session{DefaultPageView} > 0 ) and ( $PV->restore( $session{DefaultPageView} ));
+  }
+
+  $ARGS{pv} = 'default' if $ARGS{pv} == 0;
+  if ( $ARGS{pv} eq 'default' ) {
+    delete $session{DefaultPageView};
+    $PV->restore_where(where => q{pvtype='default'} );
+    $PV->restore_next();
+
+  } else {  # A PageView id is present
+    throw ePortal::Exception::Abort(-text => href('/index.htm', pv => 'default'))
+      if ( ! $PV->restore( $ARGS{pv} ));
+
+    # store $session{DefaultPageView} only for non-default PV
+    if ( $PV->pvtype eq 'default' ) {
+      delete $session{DefaultPageView};
+    } else {
+      $session{DefaultPageView} = $ARGS{pv};
+    }
+  }
+
+
+  # ----------------------------------------------------------------------
+  # Process some HomePage commands
+  #
+  return if ! $PV->xacl_check_update;
+
+  # dummy objects
+  my $us = new ePortal::UserSection;
+  my $ps = new ePortal::PageSection;
+
+  # ----------------------------------------------------------------------
+  if ( $ARGS{minimize} ) {
+    $us->restore_or_throw($ARGS{minimize});
+    $us->minimized(1);
+    $us->update;
+    throw ePortal::Exception::Abort(-text => href('/index.htm', pv => $PV->id));
+
+  # ----------------------------------------------------------------------
+  } elsif ( $ARGS{maximize} ) {
+    $us->restore_or_throw($ARGS{maximize});
+    $us->minimized(0);
+    $us->update;
+    throw ePortal::Exception::Abort(-text => href('/index.htm', pv => $PV->id));
+
+  # ----------------------------------------------------------------------
+  } elsif ( $ARGS{addsection}) {
+    $ARGS{colnum} = 1 if $ARGS{colnum} < 1 or $ARGS{colnum} > $PV->ColumnsCount;
+    $ps->restore_or_throw($ARGS{addsection});
+
+    my $S = new ePortal::UserSection;
+    $S->pv_id( $PV->id );
+    $S->ps_id( $ARGS{addsection} );
+    $S->colnum( $ARGS{colnum});
+    $S->setupinfo( $ps->setupinfo );
+    $S->insert;
+    # Set default order_id to new ID for sorting purposes
+    $S->order_id( $S->id );
+    $S->update;
+    throw ePortal::Exception::Abort(-text => href('/index.htm', pv => $PV->id));
+    
+  # ----------------------------------------------------------------------
+  } elsif ( $ARGS{remove}) {
+    $us->restore_or_throw($ARGS{remove});
+    $us->delete;
+    throw ePortal::Exception::Abort(-text => href('/index.htm', pv => $PV->id));
+  
+  # ----------------------------------------------------------------------
+  } elsif ( $ARGS{moveup}) {
+    # This section move up
+    $us->restore_or_throw($ARGS{moveup});
+    # This section move down
+    my $S = new ePortal::UserSection;
+
+    $S->restore_where(where => 'pv_id=? and colnum=? and order_id<?', 
+                      order_by => 'order_id desc',
+                      bind => [$PV->id, $us->colnum, $us->order_id]);
+    if ( $S->restore_next ) { # if a section exists above me
+      my $dummy = $S->order_id;
+      $S->order_id( $us->order_id );
+      $us->order_id( $dummy );
+      $S->update;
+      $us->update;
+    }
+    throw ePortal::Exception::Abort(-text => href('/index.htm', pv => $PV->id));
+  }
+
 </%perl></%method>
 
 
 
-%#=== @METAGS body ====================================================
-% my @width = $PV->ColumnsWidthPercent;
+%#=== @METAGS init =========================================================
+<%init>
+  my @width = $PV->ColumnsWidthPercent;
+  my $columns = $PV->ColumnsCount;
+  my $section = new ePortal::UserSection;
+</%init>
+%if ($ePortal::DEBUG) {
+  <!-- start of /index.htm =======================================================  -->
+%}
+<& SELF:PageViewList &>
+<& /pv/admin_section.mc &>
 
-  <& /message.mc &>
-  <& .PageViewList &>
-  <& /pv/admin_section.mc &>
+<table width="100%" border=0 cellpadding=0 cellspacing=0><tr>
+  <%perl>
+  for(my $column=1; $column <= $columns; $column++) {
+    $section->restore_where(where => 'colnum=? and pv_id=?', order_by => 'order_id', bind => [$column, $PV->id]);
+    </%perl>
+    <!-- PV column start <% $column %> -->
+    <td width="<% $width[$column-1] %>%" valign="top">
+    <%perl>
+    my $rownum = 1;
+    while($section->restore_next) {
+      # Some PageSections are not available due to ACL restrictions
+      # Check it but don't warn
+      next if ! $section->{ps}->check_id;
+      $m->comp("SELF:Section", section => $section, rownum => $rownum++);
+    }
+    $m->print("<td>\n");
 
-<table width="100%" border=0 cellpadding=0 cellspacing=0>
-  <tr>
-%   for(my $i=1; $i <= $PV->ColumnsCount; $i++) {
-      <td width="<% $width[$i-1] %>%" valign="top">
-        <& .ColumnContent, column => $i &>
-      </td>
+    if ( $column != $columns ) {
+      </%perl>  
+      <& /empty_td.mc, width=>3 &>
+      <%perl>
+    }
+  }
+  </%perl>
+</tr></table>
 
-%     if ($i != $PV->ColumnsCount ) {      # Разделитель колонок
-        <% empty_td( width => 5 ) %>
-%     }
-%   } # end of for()
-  </tr>
-</table>
-
-<& .SetupSection &>
-
-% undef $PV;
+<& SELF:SetupSection &>
+%if ($ePortal::DEBUG) {
+  <!-- end of /index.htm =======================================================  -->
+%}
 %# ===== END OF INDEX.HTM ====================================================
 
 
 %#=== @METAGS PageViewList ===================================================
-<%def .PageViewList><%perl>
+<%method PageViewList><%perl>
   my @PVlist;   # Сюда будем засовывать все доступные юзеру PageView в виде
-                # (ID, название) . ИД=0 если это текущий PV
+                # [ID, название] . ИД==0 если это текущий PV
   my $pv = new ePortal::PageView;
+  $pv->restore_where( order_by => 'pvtype, title' );
+  return if ($pv->rows <= 1); # Nothing to show
 
-  # Админ может кроме своих страниц также видеть шаблоны и страницу по умолчанию
-  for my $i (1..2) {
-    $pv->restore_all_for_user     if $i == 1;
-    $pv->restore_all_templates if $i == 2;
-
-    my $suffix;
-    while($pv->restore_next) {
-      if ($ePortal->isAdmin) {
-        $suffix = " (U)" if $pv->pvtype eq "user";
-        $suffix = " (D)" if $pv->pvtype eq "default";
-        $suffix = " (T)" if $pv->pvtype eq "template";
-      }
-
-      if ($PV->id == $pv->id) {
-        push @PVlist, 0, $pv->Title . $suffix;
-      } else {
-        push @PVlist, $pv->id, $pv->Title . $suffix;
-      }
-    }
-
-    last unless ($ePortal->isAdmin and $ePortal->UserConfig("ShowTemplates"));
-  }
-
-  return if scalar @PVlist == 0;
-
-  </%perl>
-  <table width="100%" border=0 cellpadding=0 cellspacing=0 bgcolor="#EEEEEE">
-  <tr><td class="sidemenu">
-  <%perl>
-
-  $m->out("&nbsp;&middot;&nbsp;");
-  while (scalar @PVlist) {
-    my $id = shift @PVlist;
-    my $title = shift @PVlist;
-    if ($id == 0) {
-      $m->out("&lt;&lt;<b>$title</b>&gt;&gt;&nbsp;&middot");
-    } else {
-      $m->out(CGI::a( {-href=>href($ENV{SCRIPT_NAME}, pv => $id)}, $title ) . "&nbsp;&middot");
-    }
-  }
-  $m->out("</td></tr></table>");
 </%perl>
-</%def>
+<table width="100%" border=0 cellpadding=0 cellspacing=0 bgcolor="#EEEEEE">
+ <tr><td class="pvlist">
+ &nbsp;&middot;&nbsp;
+  <%perl>
+  while ($pv->restore_next ) {
+    my $suffix;
+    if ($ePortal->isAdmin) {
+      $suffix = " (U)" if $pv->pvtype eq "user";
+      $suffix = " (D)" if $pv->pvtype eq "default";
+      $suffix = " (T)" if $pv->pvtype eq "template";
+    }
+
+    if ($pv->id == $PV->id) { # this is current PageView
+      </%perl>
+      &lt;&lt;<b><% $pv->Title |h %><% $suffix %></b>&gt;&gt;&nbsp;&middot
+      <%perl>
+    } else {
+      </%perl>
+      <a href="/index.htm?pv=<% $pv->id %>"><% $pv->title |h %><% $suffix %></a>&nbsp;&middot
+      <%perl>
+    }
+  }
+</%perl>
+</td></tr></table>
+</%method>
 
 
 
@@ -110,7 +207,7 @@
 
 %#=== @METAGS attr =========================================================
 <%attr>
-Title => {rus => "Домашняя страница", eng => "Home page"}
+Title => {rus => "ePortal: Домашняя страница", eng => "ePortal: Home page"}
 FullPage => 1
 </%attr>
 
@@ -120,52 +217,69 @@ FullPage => 1
 
 
 
-%#=== @METAGS ColumnContent ====================================================
-<%def .ColumnContent><%perl>
-    my $column = $ARGS{column};
-
-    my $S = $PV->get_UserSection($column);
-    while($S->restore_next) {
-      $m->comp(".Section", section => $S);
-    }
-
-</%perl></%def>
-
-
-
 
 
 
 %#=== @METAGS Section ====================================================
-<%def .Section><%perl>
-    my $section = $ARGS{section};
-    my $dlg = new ePortal::HTML::Dialog;
-    my $content = $section->content;
-    return if ! $content;
-</%perl>
+<%method Section><%perl>
+    my $section = $ARGS{section}; # UserSection object
+    my $rownum = $ARGS{rownum};
+    my ($content, $comp, $setupable);
 
-  <% $dlg->dialog_start(
-        formname => undef,
+    # This is a section Mason component file name
+    my $component_file = '/pv/sections/' . $section->component;
+    if ( ! $m->comp_exists($component_file) ) {
+      $content = undef;
+      logline('error', "PageView section file $component_file does not exists");
+      return;
+    } else {
+      $comp = $m->fetch_comp( $component_file );
+      $setupable = $comp->method_exists('setup_dialog');
+      $setupable = 0 if $comp->attr_exists('disable_user_setup_dialog');
+      
+      # Evaluate the content only if section is not minimized
+      if (! $section->minimized) {
+        $content = $m->scomp($comp, section => $section );
+      }
+
+      # Alwais show the section for user who may edit the PageView
+      return if (! $content) and (! $PV->xacl_check_update);
+    }  
+</%perl>
+%if ($ePortal::DEBUG) {
+  <!-- start of index.htm:Section, rownum=<% $rownum %>, setupable=<% $setupable %> -->
+%}
+<&| /dialog.mc, 
         title => $section->title,
+        align => '',
+        width => '99%',
         title_url => $section->URL,
         objid => $section->id,
-        $PV->xacl_check_update ? (
-          $section->minimized ? (max_button => 1) : (min_button => 1),
-          $section->setup_button() ?
-            (edit_button => => href("/pv/setup.htm", us => $section->id))
+        $PV->xacl_check_update 
+        ? (
+          x_icon => href('/index.htm', pv => $PV->id, remove => $section->id),
+          $rownum > 1 
+            ? (up_icon => href('/index.htm', pv => $PV->id, moveup => $section->id)) 
             : (),
-        ) : (),
-        x_button => $section->cancel_button(),
-        ) %>
+          $section->minimized 
+            ? (max_icon => href('/index.htm', pv => $PV->id, maximize => $section->id)) 
+            : (min_icon => href('/index.htm', pv => $PV->id, minimize => $section->id)),
+          $setupable
+            ? (edit_icon => href("/pv/setup.htm", objid => $section->id))
+            : (),
+          ) 
+        : (),
+        &>
 % if ( not $section->minimized ) {
-  <% $dlg->row( $content, -align => "left" ) %>
+  <% $content %>
 % }
-  <% $dlg->dialog_end %>
-% undef $dlg;
+</&>
 
-  <% empty_table(height => 5) %>
-
-</%def>
+<& /empty_table.mc, height => 5 &>
+%if ($ePortal::DEBUG) {
+  <!-- end of index.htm:Section -->
+%}
+</%method>
 
 
 
@@ -173,74 +287,67 @@ FullPage => 1
 
 
 %#=== @metags SetupSection ====================================================
-<%def .SetupSection><%perl>
+<%method SetupSection><%perl>
   my @width = $PV->ColumnsWidthPercent;
-  my $dlg = new ePortal::HTML::Dialog;
 </%perl>
-
-  <% $dlg->dialog_start(
+<&| /dialog.mc, 
       title => pick_lang(rus => "Настройка домашней страницы", eng => "Home page setup"),
       title_url => "/pv/pvhelp.htm",
-      q_button => "/pv/pvhelp.htm",
-      formname => undef,
-      x_button => 0, width => "100%" ) %>
+      q_icon => "/pv/pvhelp.htm",
+      width => "100%" &>
 
 % if ($PV->xacl_check_update) {
-
-  <tr><td colspan=2 class="smallfont"><% pick_lang(
+  <span class="smallfont">
+  <% pick_lang(
     rus => "Добавление нового раздела на свою домашнюю страницу:",
     eng => "Add new section to personal home page:") %>
-  </td></tr>
+  </span>
 
-  <tr><td colspan=2>
   <table width="100%" border=0 cellspacing=0 cellpadding=0><tr>
 
 %foreach my $column (1 .. $PV->ColumnsCount) {
+% my ($values, $labels) = $PV->AvailableSections($column);
 
     <form name="pv_column$column" action="<% $ENV{SCRIPT_NAME} %>" method="GET">
     <td width="<% $width[$column-1] %>%" nowrap valign="top" align="center">
-% my ($values, $labels) = $PV->AvailableSections($column);
-    <% CGI::popup_menu( -name => "ps",
+    <% CGI::popup_menu( -name => "addsection", -class => 'dlgfield',
         -labels => $labels, -values => $values) %>
-    <% CGI::submit( -name => "submit", -value => "+", -title => pick_lang(rus => "Добавить раздел", eng => "Add section")) %>
+    <% CGI::submit( -name => "submit", -value => "+", -title => pick_lang(rus => "Добавить раздел", eng => "Add section"), -class=>'button') %>
     <% CGI::hidden( -name => "colnum", -value => $column) %>
-    <% CGI::hidden( -name => "addsection", -value => 1) %>
+    <% CGI::hidden( -name => "pv", -value => $PV->id) %>
     </td></form>
 
-% if ($column != $PV->ColumnsCount ) {
-    <% empty_td( width => 5 ) %>
-% }
-
+  <& /empty_td.mc, width=>3, skip_if => $column != $PV->ColumnsCount &>
 %}  # end of foreach column
 
   </tr></table><!-- table with combo boxes -->
-  </td></tr><!-- adjust dialog -->
 
-  <tr><td>
+  <div align="center">
     <hr width="80%">
-  </td></tr>
 
-  <tr><td align="center">
-    <% plink({rus => "Изменить название страницы", eng => "Edit home page options"},
+    <% plink({rus => "Изменить настройку страницы", eng => "Setup this home page"},
               href=> href("/pv/pv_edit.htm", objid => $PV->id)) %>
     <% plink({rus => "Удалить эту страницу", eng => "Delete this home page"},
-              href => href("/index.htm", deletepv => $PV->id)) %>
-% if ($ePortal->isAdmin) {
-    <% plink({rus => "Настройка секций", eng => "Sections setup"},
-              href => "/pv/ps_list.htm") %>
-% }
-  </td><tr>
-% }
+              href => href("/delete.htm", objtype => ref($PV), objid => $PV->id)) %>
+    <% $ePortal->isAdmin
+       ? plink({rus => "Настройка секций", eng => "Sections setup"}, href => "/pv/ps_list.htm")
+       : undef %>
+  </div>
+% } # if ($PV->xacl_check_update)
+</&><!-- end of dialog -->
 
-  <% $dlg->dialog_end %>
-% undef $dlg;
-  <% empty_table(height => 10) %>
-</%def>
+<& /empty_table.mc, height => 10 &>
+</%method>
 
 
 
 
 %#=== @metags once =========================================================
 <%once>
-  our ($PV);
+  my ($PV);
 </%once>
+
+%#=== @METAGS cleanup =========================================================
+<%cleanup>
+ ($PV) = ();
+</%cleanup>

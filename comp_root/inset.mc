@@ -2,9 +2,8 @@
 %# ePortal - WEB Based daily organizer
 %# Author - S.Rusakov <rusakov_sa@users.sourceforge.net>
 %#
-%# Copyright (c) 2000-2003 Sergey Rusakov.  All rights reserved.
-%# This program is free software; you can redistribute it
-%# and/or modify it under the same terms as Perl itself.
+%# Copyright (c) 2000-2004 Sergey Rusakov.  All rights reserved.
+%# This program is open source software
 %#
 %#
 %#----------------------------------------------------------------------------
@@ -20,10 +19,10 @@
 	$ARGS{page} = $ENV{SCRIPT_NAME} unless $ARGS{page};
 
 	my $inset_id = "inset$ARGS{number}_$ARGS{page}";
-	if ($ePortal->isAdmin) {
+  if ($ePortal->isAdmin and ! $ePortal->UserConfig('hideinsets')) {
     $m->print( img(
-      src => "/images/icons/text.gif",
-			href => href("/inset_edit.htm", number => $ARGS{number}, page=>$ARGS{page}),
+      src => "/images/ePortal/html.gif",
+      href => href("/admin/inset_edit.htm", number => $ARGS{number}, page=>$ARGS{page}),
 			title => pick_lang(
 				rus => "Нажмите сюда, чтобы изменить кусок HTML в этом месте",
 				eng => "Click here to insert HTML code right here"))
@@ -31,5 +30,4 @@
 	}
 
 	my $inset = $ePortal->Config($inset_id);
-</%perl><% $inset %>
-
+</%perl><% $inset %>\

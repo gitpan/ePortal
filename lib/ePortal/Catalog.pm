@@ -3,30 +3,33 @@
 # ePortal - WEB Based daily organizer
 # Author - S.Rusakov <rusakov_sa@users.sourceforge.net>
 #
-# Copyright (c) 2000-2003 Sergey Rusakov.  All rights reserved.
-# This program is free software; you can redistribute it
-# and/or modify it under the same terms as Perl itself.
+# Copyright (c) 2000-2004 Sergey Rusakov.  All rights reserved.
+# This program is open source software
 #
 #
 #----------------------------------------------------------------------------
 
 
 package ePortal::Catalog;
-    our $VERSION = '4.2';
+    our $VERSION = '4.5';
     use base qw/ePortal::ThePersistent::ExtendedACL/;
 
     use ePortal::Utils;
     use ePortal::Global;
     use Params::Validate qw/:types/;
+    use Storable qw/freeze thaw/;
 
     # --------------------------------------------------------------------
     # Catalog setup section
     #
 
-    our $SECONDS_BETWEEN_HITS = 5;  # Ignore hits from one cvisitor within this period
+    our $SECONDS_BETWEEN_HITS = 5;  # Ignore hits from one visitor within this period
     our $MAX_DATES_SHOW = 4;        # A number of distinct dates to keep
     our $MAX_MONTH_SHOW = 2;        # A number of distinct months to keep statistics
-
+    my @setupinfo_parameters = qw/
+        catname_date catname_1
+        show_files show_info
+    /;
 
 ############################################################################
 sub initialize  {   #05/31/00 8:50
@@ -40,15 +43,16 @@ sub initialize  {   #05/31/00 8:50
                 maxlength => 64,
                 fieldtype => 'popup_menu',
                 values => ['link', 'group', 'text', 'textHTML', 'textpara', 'file'],
-                default => 'link',
+                default => 'group',
                 labels => {
                     link  => {rus => 'Ссылка', eng => 'Link'},
                     group => {rus => 'Группа ресурсов', eng => 'Group of resources'},
-                    text  => {rus => 'Текст как есть', eng => 'Preformatted text'},
-                    textHTML  => {rus => 'Текст HTML', eng => 'HTML text'},
-                    textpara  => {rus => 'Текст по параграфам', eng => 'Text with paragraphs'},
-                    textline  => {rus => 'Строка это параграф', eng => 'A line is paragraph'},
-                    file  => {rus => 'Файл', eng => 'File'},
+                    #text  => {rus => 'Текст как есть', eng => 'Preformatted text'},
+                    #textHTML  => {rus => 'Текст HTML', eng => 'HTML text'},
+                    #textpara  => {rus => 'Текст по параграфам', eng => 'Text with paragraphs'},
+                    #textline  => {rus => 'Строка это параграф', eng => 'A line is paragraph'},
+                    file      => {rus => 'Файл или текст', eng => 'File or text'},
+                    composite => {rus => 'Файлы по категориям', eng => 'Files with categories'},
                 },
     };
     $p{Attributes}{parent_id} ||= {
@@ -103,9 +107,12 @@ sub initialize  {   #05/31/00 8:50
                 },
     };
     $p{Attributes}{priority} ||= {};
-    $p{Attributes}{title}    ||= {};
+    $p{Attributes}{title}    ||= { size => 70,};
     $p{Attributes}{nickname} ||= {};
     $p{Attributes}{ts}       ||= {};
+    $p{Attributes}{firstcreated}       ||= {};
+    $p{Attributes}{lastmodified}       ||= {};
+    $p{Attributes}{lastmodifieduid}    ||= {};
     $p{Attributes}{url} ||= {
                 label => {rus => "Адрес URL", eng => "URL address"},
                 dtype => 'Varchar',
@@ -156,6 +163,33 @@ sub initialize  {   #05/31/00 8:50
     $p{Attributes}{upload_file} ||= { type => 'Transient',};
     $p{Attributes}{xacl_write}  ||= {};
     $p{Attributes}{xacl_admin}  ||= {};
+    $p{Attributes}{setup_hash} ||= {
+                dtype => 'VarChar',
+                maxlength => 16000000,
+    };
+    $p{Attributes}{catname_date} ||= { type => 'Transient',
+            dtype => 'VarChar',
+            label => {rus => 'Наименование даты', eng => 'Name of date'},
+            default => pick_lang(rus => "Дата", eng => "Date"),
+    };
+    $p{Attributes}{catname_1} ||= { type => 'Transient',
+            dtype => 'VarChar',
+            label => {rus => 'Наименование категории 1', eng => 'Name of category 1'},
+    };
+    $p{Attributes}{show_files} ||= { type => 'Transient',
+            dtype => 'YesNo',
+            default => 'Yes',
+            label => {rus => 'Показывать прикрепленные файлы', eng => 'Show attached files'},
+    };
+    $p{Attributes}{show_info} ||= { type => 'Transient',
+            dtype => 'YesNo',
+            default => 'Yes',
+            label => {rus => 'Показывать доп.информацию', eng => 'Show common info'},
+    };
+    $p{Attributes}{hidden} ||= {
+            dtype => 'YesNo',
+            label => {rus => 'Скрытый', eng => 'Hidden'},
+    };
 
     $self->SUPER::initialize(%p);
 }##initialize
@@ -183,10 +217,6 @@ sub validate    {   #07/06/00 2:35
     my $self = shift;
     my $beforeinsert = shift;
 
-#    if ($self->RecordType eq 'file') {
-#        $self->Title( $self->Filename ) unless $self->Title;
-#    }
-
     # Check title
     if ( ! $self->title ) {
         return pick_lang(rus => "Не указано наименование", eng => 'No name');
@@ -206,13 +236,24 @@ sub validate    {   #07/06/00 2:35
         return pick_lang(rus => "Не указан URL для ресурса", eng => "No URL given");
     }
 
-    if ($self->RecordType eq 'text' and ! $self->Text) {
-        return pick_lang(rus => "Текст ресурса пуст", eng => "Resource text is empty");
-    }
-
-    if ($self->RecordType eq 'file' and ! $self->Title) {
-        my $att = new ePortal::Attachment;
+    if ($self->Nickname) {
+        # Count items with the same nickname
+        my $dbh = $self->dbh;
+        my $cnt = $dbh->selectrow_array(
+            'SELECT count(*) from Catalog WHERE id!=? AND nickname=?', undef,
+            0+$self->id, $self->nickname);
+        
+        if ($cnt > 0) {
+            return pick_lang(rus => "Такое короткое имя уже используется", 
+                         eng => "The nickname is already used with another item")
+        }
     }    
+
+    if ( $self->recordtype eq 'composite' ) {
+      # Groupping by date name is required
+      $self->catname_date( pick_lang(rus => "Дата", eng => "Date") )
+        if $self->catname_date eq '';
+    }
 
     undef;
 }##validate
@@ -222,15 +263,31 @@ sub validate    {   #07/06/00 2:35
 sub delete  {   #06/18/2003 1:15
 ############################################################################
     my $self = shift;
+    my $result;
 
-    my $att = $self->Attachment;
-    my $result = $self->SUPER::delete;
+    if ($self->xacl_check_delete) {
+        # myself attachments
+        my $att = $self->Attachment;
+        while($att and $att->restore_next) {
+            $result += $att->delete;
+        }
 
-    while($result and $att) {
-        $result += $att->delete;
-        last if ! $att->restore_next;
+        # composite object with subcategories
+        my $c1 = new ePortal::CtlgCategory;
+        $c1->restore_where(where => 'parent_id=?', bind => [$self->id]);
+        while($c1->restore_next) {
+            $result += $c1->delete;
+        }
+
+        # items of composite object. May contain attachments
+        my $c2 = new ePortal::CtlgItem;
+        $c2->restore_where(where => 'parent_id=?', bind => [$self->id]);
+        while($c2->restore_next) {
+            $result += $c2->delete;
+        }
     }
 
+    $result += $self->SUPER::delete;
     return $result;
 }##delete
 
@@ -249,6 +306,51 @@ sub restore_where   {   #12/24/01 4:30
     $self->SUPER::restore_where(%p);
 }##restore_where
 
+
+############################################################################
+# Function: restore_next
+# Description: clear internal setupinfo_hash for every new object
+#
+############################################################################
+sub restore_next    {   #12/25/2003 5:45
+############################################################################
+    my $self = shift;
+
+    # clear hash
+    $self->{setupinfo_hash} = undef;
+
+    my $result = $self->SUPER::restore_next(@_);
+
+    # get current information and fill transient attributes
+    if ($result) {
+        my $hash = $self->setupinfo_hash;
+        foreach (@setupinfo_parameters) {
+            $self->value( $_, $hash->{$_} );
+        }
+    }
+
+    return $result;
+}##restore_next
+
+
+############################################################################
+sub insert  {   #02/02/2004 2:52
+############################################################################
+    my $self = shift;
+    
+    $self->setupinfo_hash( map { ($_ => $self->value($_)) } @setupinfo_parameters );
+    return $self->SUPER::insert();
+}##insert
+
+
+############################################################################
+sub update  {   #02/02/2004 3:01
+############################################################################
+    my $self = shift;
+    
+    $self->setupinfo_hash( map { ($_ => $self->value($_)) } @setupinfo_parameters );
+    return $self->SUPER::update();
+}##update
 
 ############################################################################
 sub parent  {   #06/17/02 11:10
@@ -331,16 +433,14 @@ sub value   {   #06/19/02 10:59
 sub ClickTheLink    {   #07/09/02 9:14
 ############################################################################
     my $self = shift;
-    my $go = shift;
 
     # I have to do it manualy to avoid ACL denial
-    my $dbh = $self->dbh;
     
     # replace null to 0
-    $dbh->do("UPDATE Catalog SET clicks=0 WHERE clicks is null AND id=?", undef, $self->id);
+    $ePortal->dbh->do("UPDATE Catalog SET clicks=0 WHERE clicks is null AND id=?", undef, $self->id);
     
     # increment counter
-    $dbh->do("UPDATE Catalog SET clicks=clicks+1 WHERE id=?", undef, $self->id);
+    $ePortal->dbh->do("UPDATE Catalog SET clicks=clicks+1 WHERE id=?", undef, $self->id);
 }##ClickTheLink
 
 
@@ -449,7 +549,7 @@ sub htmlSave    {   #06/16/2003 3:49
 sub ClearStatistics {   #12/25/02 2:51
 ############################################################################
     my $self = shift;
-    my $dbh = $ePortal->DBConnect();
+    my $dbh = $ePortal->dbh();
 
     $dbh->do("TRUNCATE TABLE Statistics");
     $dbh->do("UPDATE Catalog SET Hits=0, Clicks=0");
@@ -520,5 +620,54 @@ sub LastModified    {   #10/17/2003 3:42
         "SELECT unix_timestamp(ts) from Catalog WHERE id=?",
         undef, $self->id);
 }##LastModified
+
+############################################################################
+sub nickname_or_id  {   #12/10/03 10:10
+############################################################################
+    my $self = shift;
+
+    return $self->Nickname
+        ? $self->Nickname
+        : $self->id;
+}##nickname_or_id
+
+############################################################################
+# Function: setupinfo_hash
+# Description: overloaded attribute !!!
+# Parameters:
+#  HASH to store
+#  Don't forget to update() the object!
+# Returns: HASHref with current information
+#  catname_date - name of groupping categories
+#  catname_1
+#  index_file - name of index file
+#
+#
+# 
+############################################################################
+sub setupinfo_hash  {   #12/25/2003 5:43
+############################################################################
+    my $self = shift;
+    my %p = @_;
+  
+    # create hash for current object
+    if (! defined $self->{setupinfo_hash}) {
+        $self->{setupinfo_hash} = {};
+        my $data = $self->value('setup_hash');
+        if ($data) {
+            $self->{setupinfo_hash} = Storable::thaw($data);
+        }
+    }    
+
+    # store arguments to setupinfo_hash
+    if (scalar %p) {
+        foreach (keys %p) {
+            $self->{setupinfo_hash}{$_} = $p{$_};
+        }
+        $self->value('setup_hash', Storable::nfreeze($self->{setupinfo_hash})); 
+    }    
+
+    return $self->{setupinfo_hash};
+}##setupinfo_hash
 
 1;

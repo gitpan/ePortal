@@ -3,9 +3,8 @@
 # ePortal - WEB Based daily organizer
 # Author - S.Rusakov <rusakov_sa@users.sourceforge.net>
 #
-# Copyright (c) 2000-2003 Sergey Rusakov.  All rights reserved.
-# This program is free software; you can redistribute it
-# and/or modify it under the same terms as Perl itself.
+# Copyright (c) 2000-2004 Sergey Rusakov.  All rights reserved.
+# This program is open source software
 #
 #
 #----------------------------------------------------------------------------
@@ -26,7 +25,7 @@ This manual is incomplete !!!
 =cut
 
 package ePortal::Application;
-    our $VERSION = '4.2';
+    our $VERSION = '4.5';
     use base qw/ePortal::ThePersistent::ACL/;
 
 	use ePortal::Global;
@@ -42,13 +41,6 @@ sub new {   #09/08/2003 1:53
     return $self;
 }##new
 
-=head2 initialize()
-
-This is application initializer. By default initialize() creates new
-DBISource if any of dbi_xxx parameters are meet in config file.
-
-=cut
-
 ################################################################################################################
 sub initialize  {   #05/31/00 8:50
 ############################################################################
@@ -61,47 +53,9 @@ sub initialize  {   #05/31/00 8:50
             type => 'ID', 
             default => '!' . $self->ApplicationName . '!',
             dtype => 'VarChar'};
-    $p{Attributes}{dbi_source_type} = {
-          type => 'Transient',
-          fieldtype => 'radio_group',
-          default => 'ePortal',
-          values => ['ePortal', 'custom'],
-          label => pick_lang(rus => "Подключение к базе данных", eng => "Database connect"),
-          labels => { 
-            ePortal => pick_lang(rus => "Стандартное", eng => "Standard"),
-            custom  => pick_lang(rus => "Специальное", eng => "Custom"),
-          }};
-
-    $p{Attributes}{dbi_source} = {
-            size => 50,
-#            label => pick_lang(rus => "Источник данных DBI", eng => "DBI connect string"),
-            default => 'ePortal',
-      };
-    $p{Attributes}{dbi_username} = {
-            size => 20,
-#            label => pick_lang(rus => "Имя пользователя DBI", eng => "DBI user name")
-      };
-    $p{Attributes}{dbi_password} = {
-            size => 20,
-#            label => pick_lang(rus => "Пароль пользователя DBI", eng => "DBI password")
-      };
-    $p{Attributes}{storage_version} = {
-            dtype => 'Number',
-    };
-
     $self->SUPER::initialize(%p);
-
-    # Base method new() calls clear after initialize()
-#    $self->config_load;
 }##initialize
 
-
-=head2 ApplicationName
-
-You should overwrite this method to supply your own application name. By
-default a last part of application's package name is used.
-
-=cut
 
 ############################################################################
 sub ApplicationName	{	#04/18/02 2:33
@@ -129,13 +83,7 @@ sub config_load {   #03/17/03 4:55
             $self->value($_, $c->{$_}) if exists $c->{$_};
         }
 
-    } else {    # Old style 'row per parameter' config
-        foreach (qw/ dbi_source dbi_username dbi_password /) {
-            $self->value($_, $ePortal->_Config('!' . $self->ApplicationName . '!', $_));
-        }
     }
-    
-    $self->dbi_source_type( $self->dbi_source eq 'ePortal' ? 'ePortal' : 'custom' );
 }##config_load
 
 
@@ -153,14 +101,6 @@ sub config_save {   #03/17/03 4:55
         $c->{$_} = $self->value($_);
     }
     $ePortal->_Config('!' . $self->ApplicationName . '!', 'config', $c);
-
-
-    # Special handling for dbi_xxx parameters
-    # These parameters shuld be accessible alone for DBConnect to work
-    foreach (qw/ dbi_source dbi_username dbi_password /) {
-        $ePortal->_Config('!' . $self->ApplicationName . '!', $_, $self->value($_) );
-    }
-
 }##config_save
 
 
@@ -179,7 +119,7 @@ sub Config  {   #07/29/2003 11:21
 sub dbh	{	#05/06/02 2:46
 ############################################################################
 	my $self = shift;
-    return $ePortal->DBConnect($self->ApplicationName);
+  return $ePortal->dbh;
 }##dbh
 
 
@@ -248,23 +188,6 @@ sub update  {   #11/22/01 11:53
 ############################################################################
     my $self = shift;
     
-    $self->dbi_source('ePortal') if $self->dbi_source_type eq 'ePortal';
-
-    # clear storage_version for external storages
-    if ($self->dbi_source ne 'ePortal') {
-        $self->storage_version(0);
-    }
-
-    if ($self->dbi_source ne 'ePortal') {
-        my $d = eval {
-            DBI->connect( $self->dbi_source, $self->dbi_username, $self->dbi_password);
-        };
-        if (! $d or $@) {
-            throw ePortal::Exception::DataNotValid(-text => 
-                pick_lang(rus => "Не могу подключиться к БД", eng => "Cannot connect to database") . "<br><small>$@</small>");
-        }
-    }
-
     $self->config_save;
     1;
 }##update

@@ -2,49 +2,62 @@
 %# ePortal - WEB Based daily organizer
 %# Author - S.Rusakov <rusakov_sa@users.sourceforge.net>
 %#
-%# Copyright (c) 2000-2003 Sergey Rusakov.  All rights reserved.
-%# This program is free software; you can redistribute it
-%# and/or modify it under the same terms as Perl itself.
-%#
+%# Copyright (c) 2000-2004 Sergey Rusakov.  All rights reserved.
+%# This program is open source software
 %#
 %#----------------------------------------------------------------------------
-%# Editor of list of vailable PageSections
-%#----------------------------------------------------------------------------
 
-<% $list->draw_list %>
+<a href="ps_edit.htm?objid=0">
+<% img(src => '/images/icons/memo.gif') %>
+<% pick_lang(rus => "Добавить новую секцию", eng => "Add new section") %>
+</a>
+<p>
 
+<&| /list.mc, obj => new ePortal::PageSection &>
+ <&| /list.mc:row &>
+  <& /list.mc:column_image &>
+  
+  <& /list.mc:column, id => 'title', 
+          order_by => 'title', 
+          url => href('ps_edit.htm', objid => $_->id) &>
 
-%#=== @metags row_info ====================================================
-<%method row_info><%perl>
-	my $list = $ARGS{list};
-	my $obj = $list->{obj};
-</%perl>
-	<span class="smallfont" style="color:#336699;">
-		URL: <% $obj->url %>
-	</span>
+  <&| /list.mc:column, id => 'component', 
+          order_by => 'component' &>
+      <%perl>
+      my $comp = $m->fetch_comp('/pv/sections/'. $_->component);
+      if ( ! $comp ) { # component file does not exists
+        </%perl>
+        <font color="red"><% $_->component %></font>
+        <%perl>
+      } else {
+        </%perl>
+        <% $_->component %>
+        <%perl>
+      }
+      </%perl>
+  </&>
 
-</%perl></%method>
+  <& /list.mc:column, id => 'width', 
+          order_by => 'width' &>
+
+  <& /list.mc:column, id => 'xacl_read', 
+          order_by => 'xacl_read' &>
+
+  <& /list.mc:column_delete &>
+
+ </&> <!-- row -->
+
+ <&| /list.mc:extra_row, start_column => 2 &>
+% if ($_->url) {
+  <span class="smallfont" style="color:#336699;">URL: <% $_->url |h %></span>
+% }
+ </&>
+
+</&> <!-- list -->
 
 
 %#=== @METAGS onStartRequest ====================================================
 <%method onStartRequest><%perl>
-
-	$list = new ePortal::HTML::List( obj => new ePortal::PageSection, after_row => "row_info" );
-	$list->add_column_image();
-	$list->add_column( id => "title",
-			url => "ps_edit.htm?objid=#id#");
-	$list->add_column( id => "component", class => "smallfont");
-	$list->add_column( id => "params", class => "smallfont");
-	$list->add_column( id => "width", align => "center");
-  $list->add_column( id => "xacl_read", align => "center");
-  $list->add_column_system( delete => 1);
-
-	$list->add_button_create( url => "ps_edit.htm" );
-
-  my $location = $list->handle_request;
-  return $location if $location;
-
-	$list->{obj}->restore_all();
 
 </%perl></%method>
 
@@ -54,14 +67,3 @@
 Title => {rus => "Список секций для дом.страницы", eng => "Sections for home page"}
 require_admin => 1
 </%attr>
-
-
-%#=== @metags once =========================================================
-<%once>
-my ($list, $obj, $search_object);
-</%once>
-
-%#=== @metags cleanup =========================================================
-<%cleanup>
-($list, $obj, $search_object) = ();
-</%cleanup>

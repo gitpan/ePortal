@@ -2,23 +2,24 @@
 %# ePortal - WEB Based daily organizer
 %# Author - S.Rusakov <rusakov_sa@users.sourceforge.net>
 %#
-%# Copyright (c) 2000-2003 Sergey Rusakov.  All rights reserved.
-%# This program is free software; you can redistribute it
-%# and/or modify it under the same terms as Perl itself.
+%# Copyright (c) 2000-2004 Sergey Rusakov.  All rights reserved.
+%# This program is open source software
 %#
 %#
 %#----------------------------------------------------------------------------
 <%perl>
-    my $section = $ARGS{section};
-    my $catalog = new ePortal::Catalog;
-    $catalog->restore_where(parent_id => undef, recordtype => 'group');
+  my $section = $ARGS{section};
+  my $setupinfo = $section->setupinfo_hash;
+
+  my $catalog = new ePortal::Catalog;
+  $catalog->restore_where(parent_id => undef, recordtype => 'group', hidden => 0, limit_rows => 20);
 </%perl>
 
 <table border=0 cellspacing=0 cellpadding=0 width="98%">
 % while ($catalog->restore_next) {
-    <tr><td class="sidemenu" nowrap>
-        <a href="<% '/catalog/' . $catalog->id %>/"><% $catalog->Title %></a>
-    </td></tr>
+  <tr><td class="sidemenu" nowrap>
+   <a href="<% '/catalog/' . $catalog->id %>/"><% $catalog->Title %></a>
+  </td></tr>
 % }
 </table>
 

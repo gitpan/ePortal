@@ -2,9 +2,8 @@
 %# ePortal - WEB Based daily organizer
 %# Author - S.Rusakov <rusakov_sa@users.sourceforge.net>
 %#
-%# Copyright (c) 2000-2003 Sergey Rusakov.  All rights reserved.
-%# This program is free software; you can redistribute it
-%# and/or modify it under the same terms as Perl itself.
+%# Copyright (c) 2000-2004 Sergey Rusakov.  All rights reserved.
+%# This program is open source software
 %#
 %#----------------------------------------------------------------------------
 <%doc>
@@ -25,6 +24,11 @@ for easy creation of dialogs to edit C<ThePersistent> objects.
  <&| /dialog.mc, parameters ... &>
   content of the dialog
  </&>
+
+ <%method onStartRequest><%perl>
+  $obj = new ePortal::Catalog;
+  $m->comp('/dialog.mc:handle_request', obj => $obj);
+ </%perl></%method>
 
 =head2 Parameters
 
@@ -78,7 +82,7 @@ where B<xxx> is a name of icon.
     width       => $ARGS{width}    || '70%',
     bgcolor     => $ARGS{bgcolor}  || '#FFFFFF',
     color       => $ARGS{color}    || '#CCCCFF',
-    align       => $ARGS{align}    || 'center',
+    align       => $ARGS{align},
     title       => $ARGS{title},           # The title of dialog
     title_popup => $ARGS{title_popup},     # a Popup message for title
     title_url   => $ARGS{title_url},       # A URL to anchor from title
@@ -96,10 +100,16 @@ where B<xxx> is a name of icon.
     max   => pick_lang(rus => "Развернуть", eng => "Maximize"),
     x     => pick_lang(rus => "Закрыть", eng => "Close dialog"),
     copy  => pick_lang(rus => "Копировать", eng => "Copy object"),
+    up    => pick_lang(rus => "Передвинуть выше", eng => "Move up"),
+    down  => pick_lang(rus => "Передвинуть ниже", eng => "Move down"),
   );
 
-  foreach (qw/edit q copy min max x/) {   # well known icons
+  foreach (qw/down up q copy edit min max x/ ) {   # well known icons
     next if ! exists $ARGS{$_."_icon"};
+
+    if ( exists($ARGS{$_."_icon"}) and $ARGS{$_."_icon"} eq '1') {
+      $ARGS{$_."_icon"} = href($ENV{SCRIPT_NAME}, 'dlgb_'.$_ => 1);
+    }
 
     push @{$D->{icons}} , {
           src => "/images/ePortal/dlg_" . $_ . ".png",
@@ -108,34 +118,57 @@ where B<xxx> is a name of icon.
         };
   }
   my $html_icons = join('&nbsp;', map { img(%{$_}) } @{$D->{icons}});
+  my $content = $ARGS{content} || $m->content;
+
+  if ( $D->{title_url} ) {
+    $D->{title_html} = CGI::a( 
+          {-href => $D->{title_url}, -title => $D->{title_popup}}, 
+          $D->{title});
+  } else {
+    $D->{title_html} = $D->{title};
+  }
 
 </%perl>
+%if ($ePortal::DEBUG) {
 <!-- dialog start -->
-<&| SELF:_table3td, align => $D->{align}, extra => $ARGS{extra} &>
+%}
+% if ($D->{align} or $ARGS{extra}) {
+ <&| SELF:_table3td, align => $D->{align}, extra => $ARGS{extra} &>
+ <& SELF:_dialog, D => $D, html_icons => $html_icons, content => $content &>
+ </&>
+% } else {
+ <& SELF:_dialog, D => $D, html_icons => $html_icons, content => $content &>
+% }
+%if ($ePortal::DEBUG) {
+<!-- dialog end -->
+%}
+%delete $gdata{dialog};
+
+%#=== @metags _dialog ====================================================
+<%method _dialog>
+% my $D = $ARGS{D};
+% my $html_icons = $ARGS{html_icons};
+% my $content = $ARGS{content};
 
 %# Start of the dialog
-<% CGI::start_table({   -width => $D->{width},     -border => 0,
-                        -cellspacing => 1,    -cellpadding => 1,
-                        -bgcolor => $D->{color}  }) %>
-
-%# a Row with caption
+<table width="<% $D->{width} %>" border="0" cellspacing="1" cellpadding="1" bgcolor="<% $D->{color} %>">
 <tr>
-<% CGI::td({   -align => 'left', -bgcolor => $D->{color},
-                -class => $D->{title_class}, -nowrap => 1 },
-        [ $D->{title_url}
-            ? CGI::a( {-href => $D->{title_url}, -title => $D->{title_popup}}, $D->{title})
-            : $D->{title}
-        ]
-   ) %><% CGI::td({ -align => 'right', -nowrap => 1}, $html_icons)
-   %></tr>
+ <td align="left" class="<% $D->{title_class} %>" nowrap>
+  <% $D->{title_html} %>
+ </td>
+ <td align="right" nowrap>
+   <% $html_icons %>
+ </td>
+</tr>
 
 %# a Row with dialog's content (start of table)
-<tr bgcolor="<% $D->{bgcolor} %>">
-<% CGI::td({-colspan => 2, -bgcolor => $D->{bgcolor}}, $m->content ) %>
-</tr></table>
-
-</&> <!-- _table3td -->
-%  delete $gdata{dialog};
+<tr><td colspan="2" bgcolor="<% $D->{bgcolor} %>">
+  <table border="0" width="100%" cellpadding="0" cellspacing="0" bgcolor="<% $D->{bgcolor} %>">
+  <tr><td>
+  <% $content %>
+  </td></tr></table>
+</td></tr></table>
+</%method>
 
 <%filter>
   # ----------------------------------------------------------------------
@@ -191,7 +224,7 @@ Name of the field to be focused when dialog apeears on screen
   # prepare object to edit
   my $objid;
   $objid = $ARGS{objid} || $args{objid};
-  $objid ||= $ARGS{obj}->id if UNIVERSAL::can($ARGS{obj}, 'id');
+  $objid ||= $ARGS{obj}->id if ref($ARGS{obj});
   my $objtype = $ARGS{objtype} || ref($ARGS{obj});
   my $back_url = $m->comp('SELF:back_url');
 
@@ -208,12 +241,15 @@ Name of the field to be focused when dialog apeears on screen
   $hidden_fields{back_url} = $back_url if $back_url;
 
   $ARGS{formname} ||= 'dialog';
+  $ARGS{align} = 'center' if ! exists $ARGS{align};
+
 </%perl>
 <&| /dialog.mc, %ARGS &>
   <%perl># $gdata{dialog} just initialized
   my $D = $gdata{dialog};
   $D->{obj} = $ARGS{obj};
   $D->{focus} = $ARGS{focus};
+  $D->{formname} = $ARGS{formname};
   </%perl>
  <% CGI::start_table({ -width => '100%', -cellpadding => 0, -cellspacing => 0, -border => 0, -cols => 2 }) %>
   <&| SELF:form,  formname => $ARGS{formname},
@@ -352,7 +388,7 @@ These parameters are applied to C<canvas> property.
 
   # default value
   $args->{defaultvalue} = $args->{value};
-  $args->{defaultvalue} ||= $obj->value($args->{name}) if ref($obj);
+  $args->{defaultvalue} ||= $obj->value($args->{name}) if ref($obj) and $obj->attribute($args->{name});
   $args->{defaultvalue} ||= $args->{default} if exists $args->{default};
   $args->{defaultvalue} = join(', ', @{$args->{defaultvalue}}) if ( ref($args->{defaultvalue}) eq 'ARRAY');
 
@@ -360,7 +396,7 @@ These parameters are applied to C<canvas> property.
   $gdata{dialog_focus_field} ||= $args->{name};
 
   # Fillin ARGS hash with object attribute parameters
-  if ( ref($obj) ) {
+  if ( ref($obj) and $obj->attribute($args->{name})) {
     foreach (qw/size maxlength rows columns class/) {
       $args->{$_} ||= $obj->attribute($args->{name})->{$_}
         if exists $obj->attribute($args->{name})->{$_};
@@ -637,7 +673,9 @@ Value of the field
 =cut
 
 </%doc>
-<%method hidden><%perl></%perl><%
+<%method hidden><%perl>
+  HTML::Mason::Escapes::basic_html_escape( \$ARGS{value} );
+</%perl><%
   CGI::hidden({ -name => $ARGS{name}, -value => $ARGS{value}, -override => 1})
 %></%method>
 
@@ -800,7 +838,7 @@ See L<DIALOG FORM FIELDS|DIALOG FORM FIELDS> for other parameters.
   foreach (qw/ size maxlength /) {
       $CGI{"-$_"} = $ARGS{$_} if exists $ARGS{$_};
   }
-
+  HTML::Mason::Escapes::basic_html_escape( \$CGI{-value} );
 </%perl>
 <% CGI::textfield( {%CGI} ) %>
 </%method>
@@ -842,6 +880,7 @@ See L<DIALOG FORM FIELDS|DIALOG FORM FIELDS> for other parameters.
       $CGI{"-$_"} = $ARGS{$_} if exists $ARGS{$_};
   }
 
+  HTML::Mason::Escapes::basic_html_escape( \$CGI{-value} );
 </%perl>
 <% CGI::password_field( {%CGI} ) %>
 </%method>
@@ -883,6 +922,7 @@ See L<DIALOG FORM FIELDS|DIALOG FORM FIELDS> for other parameters.
   $CGI{-rows}    = $ARGS{rows} || 8;
   $CGI{-cols}    = $ARGS{cols} || 70;
 
+  HTML::Mason::Escapes::basic_html_escape( \$CGI{-defaultvalue} );
 </%perl>
 <% CGI::textarea( {%CGI} ) %>
 </%method>
@@ -1110,17 +1150,21 @@ See L<DIALOG FORM FIELDS|DIALOG FORM FIELDS> for other parameters.
 =cut
 
 </%doc>
-<%method read_only><%perl>
+<%method read_only>
+<& SELF:prepare_field, \%ARGS &>
+<%perl>
   my $label = $m->comp('SELF:_label', %ARGS);
-  my $value = $ARGS{value};
-  my $name = $ARGS{name} || $ARGS{id};
-  my $obj = $ARGS{obj} || $gdata{dialog}{obj};
-  $value ||= $obj->htmlValue($name) if ref($obj);
+  my $value = $ARGS{defaultvalue};
+
+  my $name = $ARGS{name};
+  my $obj = $ARGS{obj};
+  my $htmlValue = $value;
+  $htmlValue = $obj->htmlValue($name) if ref($obj);
 </%perl>
-% if ($name and $obj) {
-<& SELF:hidden, name => $name, value => $obj->value($name) &>
+% if ($name and $value) {
+<& SELF:hidden, name => $name, value => $value &>
 % }
-<& SELF:label_value_row, label => $label, value => $value &>
+<& SELF:label_value_row, label => $label, value => $htmlValue &>
 </%method>
 
 
@@ -1246,26 +1290,107 @@ main content is aligned at center or none.
     $ARGS{td1} = $ARGS{extra} if $ARGS{extra};
   }
 </%perl>
+<!-- _table3td:start -->
 % if ( $ARGS{td1} or $ARGS{td2} or $ARGS{td3}) {
 <table width="100%" border="0" cellspacing="0" cellpadding="0"><tr>
 % if ($ARGS{td1}) {  
-  <td align="left"><% $ARGS{td1} %></td>
+<td align="left"><% $ARGS{td1} %></td>
 % }
 % if ($ARGS{td2}) {  
-  <td align="center"><% $ARGS{td2} %></td>
+<td align="center"><% $ARGS{td2} %></td>
 % }
 % if ($ARGS{td3}) {  
-  <td align="right"><% $ARGS{td3} %></td>
+<td align="right"><% $ARGS{td3} %></td>
 % }
 </tr></table>
 % } else {
- <% $content %>
+<% $content %>
 % }
+<!-- _table3td:end -->
 </%method>
 
 
 
+%#=== @metags collapse ====================================================
+<%method collapse><%perl>
+  if ( $ePortal::DEBUG ) {
+    %ARGS = Params::Validate::validate(@_, {
+        title => { type => SCALAR},
+        collapse => { type => BOOLEAN, optional => 1},
+    });  
+  }
+  my $D = $gdata{dialog};
+  my %args = $m->request_args;
+
+  # The title of a section
+  my $title = $ARGS{title};
+
+  # Unique number each collapseable section
+  $D->{collapsenum}++;
+  my $sectionname = 'dlgcs_' . $D->{collapsenum};
+  my $imgname = 'dlgci_' . $D->{collapsenum};
+  my $varname = 'dlgcv_' . $D->{collapsenum};
+  my $formname = 'dlgcf_' . $D->{collapsenum};
+
+  # a section initially collapsed
+  my $collapse = exists $ARGS{collapse} ? 0+$ARGS{collapse} : 1;
+  $collapse = $args{$formname} if exists $args{$formname}; # highier priority !!!
+
+</%perl>
+%#
+%# Строка с треугольником и названием секции
+%# 
+<tr bgcolor="#E8FFDD">
+ <td colspan="2" valign="top">
+  <% img(src => '/images/ePortal/3-r.gif', 
+         id => $imgname, onClick => "javascript:toggle_$sectionname(null)",
+         title => pick_lang(rus => "Щелкните чтобы свернуть/зарвернуть секцию", eng => "Click to collapse"),
+         href => 'javascript:void(0);') %>
+  &nbsp;&nbsp;&nbsp;
+  <a href="javascript:void(0);" 
+     onclick="javascript:toggle_<% $sectionname %>(null);"><b><% $title |h %></b></a>
+  <input type="hidden" name="<% $formname %>" value="<% $collapse %>">
+ </td>
+</tr>
+%#
+%# Сделать невидимым могу только tr, придется завернуть все остальное
+%# содержимое во внутреннюю таблицу.
+%# 
+<tr id="<% $sectionname %>" style="display=inline;"><td colspan="2">
+<table width="100%" border="0" cellspacing="0" cellpadding="0">
+<% $m->content %>
+</table></td></tr>
+<script language="JavaScript">
+//<!--
+var <% $varname %> = <% $collapse ? 'true' : 'false' %>; // true if collapsed
+function toggle_<% $sectionname %>(pos) {
+  if ( pos == null ) {
+    <% $varname %> = ! <% $varname %>;
+  } else {
+    <% $varname %> = pos;
+  }
+  if ( <% $varname %> ) { // true if collapsed
+    document.all('<% $sectionname %>').style.display = 'none';
+    document.all('<% $imgname %>').src = '/images/ePortal/3-r.gif';
+    document.all('<% $formname %>').value = 1;
+  } else {
+    document.all('<% $sectionname %>').style.display = 'inline';
+    document.all('<% $imgname %>').src = '/images/ePortal/3-d.gif';
+    document.all('<% $formname %>').value = 0;
+  }
+}
+toggle_<% $sectionname %>(<% $varname %>);
+var dummy1_<% $imgname %> = new Image();
+dummy1_<% $imgname %>.src = "/images/ePortal/3-r.gif";
+var dummy2_<% $imgname %> = new Image();
+dummy2_<% $imgname %>.src = "/images/ePortal/3-d.gif";
+//-->
+</script>
+</%method>
+
+
 %#=== @METAGS handle_request ====================================================
+
 <%doc>
 
 =head1 REQUEST HANDLING METHODS 
@@ -1308,18 +1433,56 @@ Required. The object to work on it.
 
 This parameter usually passed as request parameter. The ID of object to edit.
 
+=item * callback_htmlSave
 
+Code reference. Called after SELF:htmlSave
+
+ callback_htmlSave => sub {
+  my $obj = shift;
+  my $args = shift;
+ }
+
+=item * callback_validate
+
+Code reference. Called just before updating the object
+
+ callback_validate => sub {
+  my $obj = shift;
+ }
+
+=item * callback_aftersave
+
+Code reference. Called after the object has been updated or inserted.
+
+ callback_aftersave => sub {
+  my $obj = shift;
+  my $args = shift;
+ }
 
 =back
 
 =cut
 
 </%doc>
+
 <%method handle_request><%perl>
+  if ( $ePortal::DEBUG ) {
+    %ARGS = Params::Validate::validate(@_, {
+      obj => { type => OBJECT, isa => 'ePortal::ThePersistent::Support' },
+      objid => { type => SCALAR, optional => 1},
+      back_url => { type => SCALAR, optional => 1},
+      callback_htmlSave => { type => CODEREF, optional => 1},
+      callback_validate=> { type => CODEREF, optional => 1},
+      callback_aftersave => { type => CODEREF, optional => 1},
+    });  
+  }
   my %args = $m->request_args;
   my $obj = $ARGS{obj};
   my $objid = $ARGS{objid} || $args{objid};
   my $back_url = $ARGS{back_url} || $m->comp('SELF:back_url');
+  my $callback_htmlSave = $ARGS{callback_htmlSave};
+  my $callback_validate = $ARGS{callback_validate};
+  my $callback_aftersave = $ARGS{callback_aftersave};
 
   # restore object to edit
   if ( $objid ) {
@@ -1328,14 +1491,24 @@ This parameter usually passed as request parameter. The ID of object to edit.
 
   # Get default or new values from URL. Do not save the object !
   $m->comp('SELF:htmlSave', obj => $obj);
+  if (ref($callback_htmlSave) eq 'CODE') {
+    &$callback_htmlSave($obj, \%args);
+  }
 
   # Process BUTTONS
-  if ( $m->comp('SELF:isButtonPressed', button => 'ok' )) {
+  if ( $m->comp('SELF:isButtonPressed', button => 'ok' ) or 
+       $m->comp('SELF:isButtonPressed', button => 'apply' )) {
     my $success = try {
+      if (ref($callback_validate) eq 'CODE') {
+        &$callback_validate( $obj );
+      }
       if ($obj->check_id()) {
           $obj->update;
       } else {
           $obj->insert;
+      }
+      if (ref($callback_aftersave) eq 'CODE') {
+        &$callback_aftersave($obj, \%args);
       }
       1;
 
@@ -1344,8 +1517,9 @@ This parameter usually passed as request parameter. The ID of object to edit.
       $session{ErrorMessage} = $E->text;
       0;
     };
+
     throw ePortal::Exception::Abort(-text => $back_url)
-      if $success;
+      if $success and $m->comp('SELF:isButtonPressed', button => 'ok' );
 
   } elsif ( $m->comp('SELF:isButtonPressed', button => 'cancel' )) {
     throw ePortal::Exception::Abort(-text => $back_url);
@@ -1364,10 +1538,9 @@ This parameter usually passed as request parameter. The ID of object to edit.
 
 =head2 htmlSave
 
-This method is under construction
-
-Safely get attributes values from request and apply them to the object. This 
-method does not updates the object in database. Do it yourself.
+Safely get attributes values from request and apply them to the object with 
+object->htmlSave2(). This method does not updates the object in database. Do 
+it yourself.
 
 This method does extra processing for special multipart attributes like 
 DateTime, xacl_field, etc...
@@ -1386,9 +1559,13 @@ Object to update.
 
 </%doc>
 <%method htmlSave><%perl>
+  if ( $ePortal::DEBUG ) {
+    %ARGS = Params::Validate::validate(@_, {
+        obj => { type => OBJECT, isa => 'ePortal::ThePersistent::Support'},
+    });  
+  }
   my %args = $m->request_args;
   my $obj = $ARGS{obj};
-  throw ePortal::Exception::Fatal(-text => 'obj parameter is required for dialog.mc:htmlSave') if ! ref($obj);
 
   # Save attributes from HTTP request into self
   FIELD:
@@ -1454,8 +1631,16 @@ A button name to check.
 
 </%doc>
 <%method isButtonPressed><%perl>
+  if ( $ePortal::DEBUG ) {
+    %ARGS = Params::Validate::validate(@_, {
+        button => { type => SCALAR},
+    });  
+  }
   my $button = $ARGS{button};
   my %args = $m->request_args;
+
+  throw ePortal::Exception::Fatal(-text => 'Unknown button name for isButtonPressed')
+    if ($button eq '');
 
   my $button_pressed;
   $button_pressed = 'ok' if $args{dialog_submit}; # as default
@@ -1493,16 +1678,32 @@ pressed.
   my %args = $m->request_args;
   my $back_url = $args{back_url};
 
+  # Get it from referer request header
   if (! $back_url) {
     my $referer_uri = new URI($ENV{HTTP_REFERER}, 'http');
     my $this_uri = new URI($ENV{REQUEST_URI}, 'http');
     $back_url = $ENV{HTTP_REFERER} if $referer_uri->path ne $this_uri->path;
   }
+
+  # last chance
+  $back_url = 'index.htm' if ! $back_url;
+
   return $back_url;
 </%perl></%method>
 
 
 <%doc>
+
+=head1 DATA FLOW
+
+ handle_request()     dialog.mc     
+  htmlSave()          dialog.mc      handler DateTime, xacl fields
+  htmlSave2()         Support.pm     this called 
+  value_from_req()    Support.pm     for each attribute to save
+  value()
+ update() or insert() Base.pm
+  validate()
+
 
 =head1 AUTHOR
 

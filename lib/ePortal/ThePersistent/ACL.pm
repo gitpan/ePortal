@@ -3,9 +3,8 @@
 # ePortal - WEB Based daily organizer
 # Author - S.Rusakov <rusakov_sa@users.sourceforge.net>
 #
-# Copyright (c) 2000-2003 Sergey Rusakov.  All rights reserved.
-# This program is free software; you can redistribute it
-# and/or modify it under the same terms as Perl itself.
+# Copyright (c) 2000-2004 Sergey Rusakov.  All rights reserved.
+# This program is open source software
 #
 #
 #----------------------------------------------------------------------------
@@ -32,7 +31,7 @@ B<ePortal::ThePersistent::ACL> implements Access Control Lists
 
 package ePortal::ThePersistent::ACL;
     use base qw/ePortal::ThePersistent::Support/;
-    our $VERSION = '4.2';
+    our $VERSION = '4.5';
 
     use ePortal::Global;
     use ePortal::Utils;     # import logline, pick_lang
@@ -158,6 +157,19 @@ sub update  {   #10/27/00 8:28
     $self->SUPER::update(@param);
 }##update
 
+
+
+############################################################################
+sub restore_next    {   #10/19/01 10:35
+############################################################################
+    my $self = shift;
+
+    my $result = undef;
+    while ($result = $self->SUPER::restore_next(@_)) {
+        last if $self->xacl_check_read;
+    }
+    return $result;
+}##restore_next
 
 
 =head2 xacl_check()

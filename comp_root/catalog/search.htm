@@ -2,9 +2,8 @@
 %# ePortal - WEB Based daily organizer
 %# Author - S.Rusakov <rusakov_sa@users.sourceforge.net>
 %#
-%# Copyright (c) 2000-2003 Sergey Rusakov.  All rights reserved.
-%# This program is free software; you can redistribute it
-%# and/or modify it under the same terms as Perl itself.
+%# Copyright (c) 2000-2004 Sergey Rusakov.  All rights reserved.
+%# This program is open source software
 %#
 %#
 %#----------------------------------------------------------------------------
@@ -12,6 +11,12 @@
 %#     text - text to search in Catalog
 %#----------------------------------------------------------------------------
 
+<& /navigatorbar.mc, bold_last => 1, 
+  items => [
+    { title => pick_lang(rus => "Начало каталога", eng => "Top of Catalogue"), 
+       href => "/catalog/index.htm" },
+    { title => pick_lang(rus => "Поиск в Каталоге", eng => "Search in Catalogue") },
+  ] &>
 <table width="100%" border=0>
 <tr><td>
   <% pick_lang(
@@ -33,6 +38,9 @@
     push @sql_where, "(title like ? OR  memo like ? OR  url like ? OR (recordtype like 'text%' AND text like ?))";
     push @sql_bind, $like, $like, $like, $like;
   }
+  if ( ! $ePortal->isAdmin ) {
+    push @sql_where, 'hidden=0';
+  }
 
   my $catalog = new ePortal::Catalog;
   </%perl>
@@ -41,18 +49,18 @@
     bind => [ @sql_bind ],
     order_by => "Title",
     skip_attributes => [qw/text/]} &>
-  
+
     <& /list.mc:column_image &>
     <&| /list.mc:column, id => 'title', url => '/catalog/'.$_->id. '/' &>
       <% $_->title |h %>
     </&>
 
     <&| /list.mc:column, id => 'RecordType', -align => 'center' &>
-      <% $_->RecordType eq 'group' 
+      <% $_->RecordType eq 'group'
         ? pick_lang(rus => "Группа ресурсов", eng => "Group")
         : pick_lang(rus => "Ресурс", eng => "Resource") %>
     </&>
-  
+
     <&| /list.mc:nodata &>
       <& /message.mc, ErrorMessage => pick_lang(
           rus => "Поиск не принес результатов",
@@ -60,7 +68,7 @@
     </&>
   </&>
 </%perl></%method>
-    
+
 
 %#=== @METAGS attr =========================================================
 <%attr>
